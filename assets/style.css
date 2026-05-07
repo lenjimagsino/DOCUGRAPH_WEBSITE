@@ -523,6 +523,14 @@ section.s {
   transition: transform .3s, box-shadow .3s, border-color .3s;
 }
 .member:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); border-color: var(--green-200); }
+.member-img {
+  width: 120px; height: 120px;
+  margin: 0 auto 16px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 3px solid var(--green-300);
+  box-shadow: 0 8px 24px -8px rgba(42,168,74,.4);
+}
 .avatar {
   width: 88px; height: 88px;
   margin: 0 auto 16px;
