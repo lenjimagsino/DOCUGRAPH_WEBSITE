@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Verify your Email — DOCUGRAPH</title>
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="nav scrolled">
+  <div class="nav-inner">
+    <a href="index.html" class="brand">
+      <img src="assets/logo.png" alt="DOCUGRAPH">
+      <span><b>DOCU</b><em>GRAPH</em></span>
+    </a>
+    <button class="btn btn-ghost" id="logout-btn" style="padding:8px 16px; font-size:13px;">Sign out</button>
+  </div>
+</header>
+
+<main class="page-wrap">
+  <div class="wrap">
+    <div class="verify-card">
+
+      <div class="icon-circle">📬</div>
+
+      <h1>Verify your email address</h1>
+      <p>We sent a verification link to:</p>
+      <div class="email-pill" id="user-email">your email</div>
+      <p>Click the link in that email to activate your DOCUGRAPH account. The message may take a minute to arrive — don't forget to check your spam folder.</p>
+
+      <div class="auth-alert error" id="alert-error" style="text-align:left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="alert-error-msg"></span>
+      </div>
+      <div class="auth-alert success" id="alert-success" style="text-align:left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span id="alert-success-msg"></span>
+      </div>
+
+      <div class="verify-actions">
+        <button class="btn btn-primary btn-submit" id="check-btn">
+          I've verified — Continue
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+        <button class="btn btn-ghost btn-submit" id="resend-btn">
+          Resend verification email
+        </button>
+      </div>
+
+      <p style="margin-top:24px; font-size:12.5px; color:var(--ink-300);">
+        Wrong email? <a href="#" id="logout-link" style="color:var(--green-700); font-weight:500;">Sign out</a> and create a new account.
+      </p>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { auth, onAuthStateChanged, resendVerificationEmail, logout, authErrorMessage } from "./assets/auth.js";
+  import { reload } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+  const errBox = document.getElementById('alert-error');
+  const errMsg = document.getElementById('alert-error-msg');
+  const okBox  = document.getElementById('alert-success');
+  const okMsg  = document.getElementById('alert-success-msg');
+  function showError(msg)   { errBox.classList.add('show'); errMsg.textContent = msg; okBox.classList.remove('show'); }
+  function showSuccess(msg) { okBox.classList.add('show');  okMsg.textContent  = msg; errBox.classList.remove('show'); }
+
+  // Require an authenticated user; show their email
+  onAuthStateChanged(auth, (user) => {
+    if (!user) { window.location.href = 'login.html'; return; }
+    document.getElementById('user-email').textContent = user.email || 'your email';
+
+    // Already verified? Bounce to dashboard
+    if (user.emailVerified) window.location.href = 'dashboard.html';
+  });
+
+  // Check verification status on demand
+  document.getElementById('check-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Checking…';
+    try {
+      await reload(auth.currentUser);
+      if (auth.currentUser.emailVerified) {
+        showSuccess('Email verified! Redirecting to your dashboard…');
+        setTimeout(() => window.location.href = 'dashboard.html', 800);
+      } else {
+        showError('Not verified yet. Click the link in the email we sent you, then try again.');
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    } catch (err) {
+      showError(authErrorMessage(err));
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  });
+
+  // Resend verification email (60s cooldown)
+  let cooldown = false;
+  document.getElementById('resend-btn').addEventListener('click', async (e) => {
+    if (cooldown) return;
+    const btn = e.currentTarget;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Sending…';
+    try {
+      await resendVerificationEmail();
+      showSuccess('Verification email re-sent. Check your inbox.');
+      cooldown = true;
+      let secs = 60;
+      btn.innerHTML = `Resend available in ${secs}s`;
+      const t = setInterval(() => {
+        secs--;
+        if (secs <= 0) {
+          clearInterval(t);
+          cooldown = false;
+          btn.disabled = false;
+          btn.innerHTML = orig;
+        } else {
+          btn.innerHTML = `Resend available in ${secs}s`;
+        }
+      }, 1000);
+    } catch (err) {
+      showError(authErrorMessage(err));
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  });
+
+  // Sign-out handlers
+  async function doLogout() {
+    await logout();
+    window.location.href = 'login.html';
+  }
+  document.getElementById('logout-btn').addEventListener('click', doLogout);
+  document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); doLogout(); });
+</script>
+</body>
+</html>

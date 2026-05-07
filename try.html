@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Try DOCUGRAPH — Upload Document</title>
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  body.loading main, body.loading header { visibility: hidden; }
+  .auth-loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--white); z-index: 9999; }
+  .auth-loading .spinner { width: 44px; height: 44px; border: 3px solid var(--green-200); border-top-color: var(--green-600); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  body:not(.loading) .auth-loading { display: none; }
+</style>
+</head>
+<body class="loading">
+
+<div class="auth-loading"><div class="spinner"></div></div>
+
+<!-- ===== NAVBAR ===== -->
+<header class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="brand">
+      <img src="assets/logo.png" alt="DOCUGRAPH">
+      <span><b>DOCU</b><em>GRAPH</em></span>
+    </a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="try.html" class="active">Analyze</a></li>
+        <li><a href="results.html">Results</a></li>
+        <li><a href="index.html#about">Research</a></li>
+      </ul>
+    </nav>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="nav-user" id="nav-user">
+        <button class="nav-user-btn" id="user-btn">
+          <span class="avatar-sm" id="user-avatar">U</span>
+          <span class="name" id="user-name">User</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-user-menu">
+          <div class="menu-head">
+            <div class="menu-name" id="menu-name">User</div>
+            <div class="menu-email" id="menu-email">user@example.com</div>
+          </div>
+          <a href="dashboard.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a>
+          <div class="menu-divider"></div>
+          <button class="logout" id="logout-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</button>
+        </div>
+      </div>
+      <button class="nav-toggle" aria-label="Toggle navigation"><span></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== TRY PAGE ===== -->
+<main class="page-wrap">
+  <div class="wrap">
+
+    <div class="page-head reveal">
+      <div>
+        <span class="s-tag" style="margin-bottom:14px">Live Demo</span>
+        <h1>Try <span style="background:linear-gradient(120deg,var(--green-700),var(--green-500)); -webkit-background-clip:text; background-clip:text; color:transparent;">DOCUGRAPH</span></h1>
+        <p>Upload a document and watch DOCUGRAPH reconstruct its layout into structured, OCR-ready output.</p>
+      </div>
+      <a href="index.html" class="btn btn-ghost">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back to Home
+      </a>
+    </div>
+
+    <div class="demo-grid">
+
+      <!-- Left: Upload -->
+      <div class="panel reveal">
+        <h3>1. Upload Your Document</h3>
+
+        <div class="dropzone" id="dropzone">
+          <div class="icon">📤</div>
+          <h4>Drag &amp; drop your file</h4>
+          <p>or click to browse from your device</p>
+          <button type="button" class="btn btn-primary" id="browse-btn" style="margin-top:6px">
+            Choose File
+          </button>
+          <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" hidden>
+          <div class="formats">
+            <span>PDF</span>
+            <span>JPG</span>
+            <span>PNG</span>
+          </div>
+        </div>
+
+        <div id="file-info" style="display:none; margin-top:18px; padding:14px 16px; background:var(--green-50); border:1px solid var(--green-200); border-radius:12px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:var(--green-200); display:grid; place-items:center; font-size:20px;">📄</div>
+            <div style="flex:1; min-width:0;">
+              <div id="file-name" style="font-weight:600; font-size:14px; color:var(--ink-900); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+              <div id="file-size" style="font-size:12px; color:var(--ink-500); font-family:var(--font-mono);"></div>
+            </div>
+            <button type="button" id="remove-file" style="color:var(--ink-500); padding:6px;" aria-label="Remove file">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="analyze-btn" disabled style="opacity:.5; cursor:not-allowed;">
+            🧠 Analyze Layout
+          </button>
+          <button class="btn btn-ghost" id="ocr-btn" disabled style="opacity:.5; cursor:not-allowed;">
+            🔍 Start OCR
+          </button>
+        </div>
+
+        <div style="margin-top:24px; padding:14px 16px; background:var(--off); border-radius:10px; border:1px solid var(--line);">
+          <div style="font-size:13px; color:var(--ink-700); display:flex; align-items:flex-start; gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Documents are processed locally during this prototype demo. No files are uploaded or stored.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Preview -->
+      <div class="panel reveal" style="transition-delay:.1s">
+        <h3>2. Document Preview</h3>
+        <div class="preview-area" id="preview">
+          <div class="ph">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <p style="font-size:14px;">Your uploaded document will appear here.</p>
+            <p style="font-size:12.5px; margin-top:6px; color:var(--ink-300)">Drag a PDF / JPG / PNG into the upload area.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script src="assets/main.js"></script>
+<script type="module">
+  import { auth, onAuthStateChanged, logout } from "./assets/auth.js";
+
+  function getInitials(user) {
+    const src = user.displayName || user.email || "U";
+    const parts = src.trim().split(/[\s@.]+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return src.slice(0, 2).toUpperCase();
+  }
+
+  // Auth gate
+  onAuthStateChanged(auth, (user) => {
+    if (!user) { window.location.href = 'login.html'; return; }
+    document.getElementById('user-avatar').textContent = getInitials(user);
+    document.getElementById('user-name').textContent   = user.displayName || user.email.split('@')[0];
+    document.getElementById('menu-name').textContent   = user.displayName || "DOCUGRAPH user";
+    document.getElementById('menu-email').textContent  = user.email || "";
+    document.body.classList.remove('loading');
+  });
+
+  // Dropdown
+  const navUser = document.getElementById('nav-user');
+  document.getElementById('user-btn').addEventListener('click', (e) => { e.stopPropagation(); navUser.classList.toggle('open'); });
+  document.addEventListener('click', () => navUser.classList.remove('open'));
+
+  // Logout
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'login.html';
+  });
+</script>
+<script>
+  // ---- Try-page interactivity ----
+  const dz       = document.getElementById('dropzone');
+  const fileIn   = document.getElementById('file-input');
+  const browse   = document.getElementById('browse-btn');
+  const info     = document.getElementById('file-info');
+  const fname    = document.getElementById('file-name');
+  const fsize    = document.getElementById('file-size');
+  const remove   = document.getElementById('remove-file');
+  const analyze  = document.getElementById('analyze-btn');
+  const ocr      = document.getElementById('ocr-btn');
+  const preview  = document.getElementById('preview');
+
+  function fmt(bytes){
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(2) + ' MB';
+  }
+
+  function enableButtons(){
+    [analyze, ocr].forEach(b => {
+      b.disabled = false;
+      b.style.opacity = '1';
+      b.style.cursor = 'pointer';
+    });
+  }
+  function disableButtons(){
+    [analyze, ocr].forEach(b => {
+      b.disabled = true;
+      b.style.opacity = '.5';
+      b.style.cursor = 'not-allowed';
+    });
+  }
+
+  function showFile(file){
+    fname.textContent = file.name;
+    fsize.textContent = fmt(file.size) + ' · ' + (file.type || 'unknown type');
+    info.style.display = 'block';
+    enableButtons();
+
+    // Render preview
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = '<img src="'+url+'" alt="preview" style="max-width:100%; max-height:480px; border-radius:8px; box-shadow:var(--shadow-sm);">';
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = '<div style="text-align:center;"><div style="font-size:64px; margin-bottom:12px;">📕</div><div style="font-weight:600; color:var(--ink-900); margin-bottom:6px;">'+file.name+'</div><div style="font-size:12.5px; color:var(--ink-500);">PDF preview will render after analysis.</div></div>';
+    } else {
+      preview.innerHTML = '<div style="text-align:center;"><div style="font-size:64px; margin-bottom:12px;">📄</div><div style="font-weight:600; color:var(--ink-900);">'+file.name+'</div></div>';
+    }
+  }
+
+  function clearFile(){
+    fileIn.value = '';
+    info.style.display = 'none';
+    disableButtons();
+    preview.innerHTML = `
+      <div class="ph">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <p style="font-size:14px;">Your uploaded document will appear here.</p>
+        <p style="font-size:12.5px; margin-top:6px; color:var(--ink-300)">Drag a PDF / JPG / PNG into the upload area.</p>
+      </div>`;
+  }
+
+  browse.addEventListener('click', () => fileIn.click());
+  dz.addEventListener('click', e => {
+    if (e.target === browse || browse.contains(e.target)) return;
+    fileIn.click();
+  });
+  fileIn.addEventListener('change', e => {
+    if (e.target.files[0]) showFile(e.target.files[0]);
+  });
+  remove.addEventListener('click', clearFile);
+
+  ['dragenter','dragover'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); })
+  );
+  ['dragleave','drop'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); })
+  );
+  dz.addEventListener('drop', e => {
+    if (e.dataTransfer.files[0]) {
+      const f = e.dataTransfer.files[0];
+      const ok = ['application/pdf','image/jpeg','image/png','image/jpg'].includes(f.type);
+      if (!ok) {
+        alert('Please upload a PDF, JPG, or PNG file.');
+        return;
+      }
+      fileIn.files = e.dataTransfer.files;
+      showFile(f);
+    }
+  });
+
+  // Analyze / OCR -> processing page
+  analyze.addEventListener('click', () => { window.location.href = 'processing.html?mode=analyze'; });
+  ocr.addEventListener('click',     () => { window.location.href = 'processing.html?mode=ocr'; });
+</script>
+</body>
+</html>
