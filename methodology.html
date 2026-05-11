@@ -1,0 +1,1904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="DOCUGRAPH Thesis Methodology — Research design, system architecture, development methods, and evaluation framework.">
+<title>Methodology — DOCUGRAPH Research</title>
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .methodology-content {
+    max-width: 900px;
+    margin: 0 auto;
+    color: var(--ink-700);
+    line-height: 1.7;
+  }
+
+  .methodology-section {
+    margin-bottom: 4rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .methodology-section:last-child {
+    border-bottom: none;
+  }
+
+  .methodology-section h2 {
+    font-size: 1.8rem;
+    color: var(--ink-900);
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+  }
+
+  .methodology-section h3 {
+    font-size: 1.3rem;
+    color: var(--green-700);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .methodology-section p {
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .methodology-section ul, .methodology-section ol {
+    margin: 1.5rem 0 1.5rem 2rem;
+  }
+
+  .methodology-section li {
+    margin-bottom: 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .info-box {
+    background: var(--green-50);
+    border-left: 4px solid var(--green-600);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin: 2rem 0;
+  }
+
+  .info-box strong {
+    color: var(--green-700);
+  }
+
+  .formula-box {
+    background: var(--white);
+    border: 1px solid var(--line);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin: 1.5rem 0;
+    font-family: var(--font-mono);
+    overflow-x: auto;
+    font-size: 0.9rem;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    margin: 2rem 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  table th {
+    background: var(--green-700);
+    color: var(--white);
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+  }
+
+  table td {
+    padding: 0.9rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  table tr:hover {
+    background: var(--green-50);
+  }
+
+  .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 4rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .page-head h1 {
+    font-size: 2.5rem;
+    color: var(--ink-900);
+  }
+
+  .s-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--green-700);
+    background: var(--green-100);
+    padding: 0.4rem 0.9rem;
+    border-radius: 100px;
+    margin-bottom: 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<header class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="brand">
+      <img src="assets/logo.png" alt="DOCUGRAPH">
+      <span><b>DOCU</b><em>GRAPH</em></span>
+    </a>
+
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="index.html#how">How It Works</a></li>
+        <li><a href="index.html#about">About Research</a></li>
+        <li><a href="methodology.html" class="active">Methodology</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    <div style="display:flex; align-items:center; gap:10px;" id="nav-actions">
+      <a href="login.html" class="btn btn-ghost" id="login-btn" style="padding:8px 16px; font-size:13.5px;">
+         Login
+      </a>
+      <a href="signup.html" class="nav-cta" id="signup-btn">
+         Create Account
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation"><span></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== METHODOLOGY PAGE ===== -->
+<main class="page-wrap">
+  <div class="wrap">
+    <div class="page-head">
+      <div>
+        <span class="s-tag">Chapter 3</span>
+        <h1>Methodology</h1>
+        <p style="font-size: 1.1rem; color: var(--ink-500); margin-top: 1rem;">Research design, system architecture, development methods, and evaluation framework for DOCUGRAPH.</p>
+      </div>
+      <a href="index.html" class="btn btn-ghost" style="margin-top: 1rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </a>
+    </div>
+
+    <div class="methodology-content">
+
+      <!-- 3.1 Research Type -->
+      <div class="methodology-section">
+        <h2>3.1. Research Type</h2>
+        
+        <p>This study employs a <strong>developmental research design</strong>, combined with <strong>descriptive research methods</strong>, to design, develop, and evaluate a graph-based document layout analysis system using Graph Neural Networks for enhanced OCR accuracy.</p>
+
+        <p>The developmental approach is appropriate because the primary objective of this study is to produce a functional software system that integrates:</p>
+        <ul>
+          <li>Document image preprocessing and normalization</li>
+          <li>Graph Neural Network-based layout analysis</li>
+          <li>Optical Character Recognition (OCR) enhancement</li>
+          <li>Structured output generation and validation</li>
+        </ul>
+
+        <p>Descriptive research methods are also employed to evaluate system performance in terms of OCR accuracy, layout detection correctness, processing efficiency, and usability. These descriptive measures provide an objective assessment of how well the system performs its intended functions under actual usage conditions.</p>
+
+        <div class="info-box">
+          <strong>Research Objective:</strong> To produce a functional Graph Neural Network-based document analysis system that enhances OCR accuracy and layout understanding for researchers and institutions processing complex documents.
+        </div>
+      </div>
+
+      <!-- 3.2 System Design -->
+      <div class="methodology-section">
+        <h2>3.2. System Design</h2>
+        
+        <p>DOCUGRAPH is a <strong>graph-based, web-first, cloud-integrated document layout analysis system</strong> designed to address limitations in traditional OCR when processing complex document layouts, multi-column formats, and non-standard document structures.</p>
+
+        <p>The system prioritizes:</p>
+        <ul>
+          <li><strong>Graph representation</strong> of document structure for accurate layout understanding</li>
+          <li><strong>Neural network inference</strong> for robust feature extraction</li>
+          <li><strong>Transparency and explainability</strong> in document processing</li>
+          <li><strong>Scalability and accessibility</strong> through web-based architecture</li>
+          <li><strong>Accuracy</strong> in both layout detection and OCR output</li>
+        </ul>
+
+        <h3>3.2.1. Functional Flow</h3>
+
+        <p>The system begins with users uploading a document image through the web interface. The document undergoes the following processing pipeline:</p>
+
+        <ol>
+          <li><strong>Image Preprocessing:</strong> Document image is normalized, deskewed, and prepared for analysis</li>
+          <li><strong>Layout Analysis:</strong> Graph Neural Network analyzes document structure and identifies layout elements (text regions, blocks, reading order)</li>
+          <li><strong>OCR Processing:</strong> Tesseract OCR extracts text from identified regions</li>
+          <li><strong>Structure Reconstruction:</strong> Extracted text is reconstructed according to the analyzed layout</li>
+          <li><strong>Validation & Output:</strong> Structured output is validated and presented to the user</li>
+        </ol>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.6; color: var(--ink-700);">
+<pre>
+┌─────────────────────────────────────────────────────────────────┐
+│                   DOCUGRAPH FUNCTIONAL FLOW                      │
+└─────────────────────────────────────────────────────────────────┘
+
+User Action: Upload Document
+       ↓
+   ┌───────────────────────────┐
+   │  1. IMAGE PREPROCESSING   │
+   │  ─────────────────────    │
+   │  • Load image             │
+   │  • Deskew & normalize     │
+   │  • Convert to grayscale   │
+   │  • Apply enhancement      │
+   └───────────────┬───────────┘
+                   ↓
+   ┌───────────────────────────┐
+   │  2. GRAPH CONSTRUCTION    │
+   │  ─────────────────────    │
+   │  • Detect text blocks     │
+   │  • Extract block regions  │
+   │  • Create node features   │
+   │  • Build spatial edges    │
+   └───────────────┬───────────┘
+                   ↓
+   ┌───────────────────────────┐
+   │  3. GNN LAYOUT ANALYSIS   │
+   │  ─────────────────────    │
+   │  • Pass graph to GNN      │
+   │  • Infer layout patterns  │
+   │  • Predict reading order  │
+   │  • Score regions          │
+   └───────────────┬───────────┘
+                   ↓
+   ┌───────────────────────────┐
+   │  4. OCR PROCESSING        │
+   │  ─────────────────────    │
+   │  • Extract text regions   │
+   │  • Run Tesseract OCR      │
+   │  • Post-process output    │
+   │  • Confidence scoring     │
+   └───────────────┬───────────┘
+                   ↓
+   ┌───────────────────────────┐
+   │  5. RECONSTRUCTION        │
+   │  ─────────────────────    │
+   │  • Merge OCR + layout     │
+   │  • Apply reading order    │
+   │  • Format output          │
+   │  • Generate metadata      │
+   └───────────────┬───────────┘
+                   ↓
+   ┌───────────────────────────┐
+   │  6. VALIDATION & OUTPUT   │
+   │  ─────────────────────    │
+   │  • Validate structure     │
+   │  • Check consistency      │
+   │  • Return results         │
+   │  • Store analysis log     │
+   └───────────────┬───────────┘
+                   ↓
+            User receives
+          structured output
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 1.</strong> DOCUGRAPH Functional Flow - Document processing pipeline from upload to structured output</p>
+
+        <h3>3.2.2. Graph-Based Layout Detection Design</h3>
+
+        <p>DOCUGRAPH uses a <strong>Graph Neural Network (GNN)-based approach</strong> to represent and analyze document layout:</p>
+
+        <ul>
+          <li><strong>Graph Construction:</strong> Document layout is represented as a graph where nodes represent document elements (text blocks, images, tables) and edges represent spatial relationships</li>
+          <li><strong>Spatial Features:</strong> Node features include position, size, font characteristics, and visual properties</li>
+          <li><strong>Relational Learning:</strong> GNN learns spatial and semantic relationships between document elements</li>
+          <li><strong>Reading Order Prediction:</strong> Network predicts optimal reading order and logical grouping of content</li>
+        </ul>
+
+        <h3>3.2.3. OCR Integration Design</h3>
+
+        <p>The system integrates layout analysis with OCR through a <strong>layout-guided OCR pipeline:</strong></p>
+
+        <ul>
+          <li>Layout analysis identifies text regions with high confidence</li>
+          <li>Tesseract OCR processes identified regions with region-specific parameters</li>
+          <li>Post-processing corrects common OCR errors using context from layout analysis</li>
+          <li>Confidence scores guide manual review priorities</li>
+        </ul>
+      </div>
+
+      <!-- 3.3 System Architecture -->
+      <div class="methodology-section">
+        <h2>3.3. System Architecture</h2>
+
+        <p>DOCUGRAPH uses a <strong>three-tier web architecture</strong> designed for scalability, security, and real-time processing:</p>
+
+        <h3>3.3.1. Presentation Layer</h3>
+        <p>The web-based user interface (built with HTML5, CSS3, JavaScript) handles front-end tasks such as:</p>
+        <ul>
+          <li>Document upload and file management</li>
+          <li>Real-time processing visualization</li>
+          <li>Structured output display and export</li>
+          <li>User authentication and account management</li>
+        </ul>
+
+        <h3>3.3.2. Application Logic Layer</h3>
+        <p>The backend processing engine performs the system's core operations:</p>
+        <ul>
+          <li>Image preprocessing and normalization</li>
+          <li>Graph Neural Network inference for layout analysis</li>
+          <li>OCR processing via Tesseract integration</li>
+          <li>Structure reconstruction and post-processing</li>
+          <li>Result validation and quality scoring</li>
+        </ul>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DOCUGRAPH SYSTEM ARCHITECTURE                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │                   PRESENTATION LAYER (Web UI)                       │
+   │  ─────────────────────────────────────────────────────────────────  │
+   │  • HTML5 Interface  • File Upload  • Progress Visualization         │
+   │  • Results Display  • User Dashboard  • Export/Download             │
+   │  • Firebase Auth    • Session Management  • Error Handling          │
+   └──────────────────────────────┬──────────────────────────────────────┘
+                                  │
+                                  ↓ REST API / WebSocket
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │                   APPLICATION LOGIC LAYER                           │
+   │  ─────────────────────────────────────────────────────────────────  │
+   │                                                                     │
+   │  ┌──────────────────────────────────────────────────────────────┐  │
+   │  │  IMAGE PREPROCESSING ENGINE                                  │  │
+   │  │  • Grayscale Conversion  • Deskewing  • Normalization       │  │
+   │  │  • Noise Reduction  • Contrast Enhancement                  │  │
+   │  └──────────────────────────────────────────────────────────────┘  │
+   │                          ↓                                          │
+   │  ┌──────────────────────────────────────────────────────────────┐  │
+   │  │  GRAPH CONSTRUCTION MODULE                                   │  │
+   │  │  • Text Block Detection  • Feature Extraction               │  │
+   │  │  • Spatial Relationship Mapping  • Graph Generation         │  │
+   │  └──────────────────────────────────────────────────────────────┘  │
+   │                          ↓                                          │
+   │  ┌──────────────────────────────────────────────────────────────┐  │
+   │  │  GRAPH NEURAL NETWORK ENGINE                                │  │
+   │  │  • Node Feature Processing  • Graph Convolution             │  │
+   │  │  • Layout Classification  • Reading Order Prediction        │  │
+   │  │  • Confidence Scoring  • Region Prioritization             │  │
+   │  └──────────────────────────────────────────────────────────────┘  │
+   │                          ↓                                          │
+   │  ┌──────────────────────────────────────────────────────────────┐  │
+   │  │  OCR PROCESSING ENGINE                                      │  │
+   │  │  • Tesseract Integration  • Text Extraction                 │  │
+   │  │  • Confidence Tracking  • Post-Processing                   │  │
+   │  └──────────────────────────────────────────────────────────────┘  │
+   │                          ↓                                          │
+   │  ┌──────────────────────────────────────────────────────────────┐  │
+   │  │  STRUCTURE RECONSTRUCTION ENGINE                            │  │
+   │  │  • Layout-Guided Assembly  • Reading Order Application      │  │
+   │  │  • Metadata Generation  • Output Formatting                 │  │
+   │  └──────────────────────────────────────────────────────────────┘  │
+   │                          ↓                                          │
+   │  ┌──────────────────────────────────────────────────────────────┐  │
+   │  │  VALIDATION & QUALITY ASSURANCE                             │  │
+   │  │  • Structure Validation  • Consistency Checks               │  │
+   │  │  • Quality Scoring  • Error Detection                       │  │
+   │  └──────────────────────────────────────────────────────────────┘  │
+   │                                                                     │
+   └──────────────────────────────┬──────────────────────────────────────┘
+                                  │
+                                  ↓ Data & Results
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │                      DATA & STORAGE LAYER                           │
+   │  ─────────────────────────────────────────────────────────────────  │
+   │  • Cloud Storage (Document Images)  • Database (Results/Metadata)   │
+   │  • User Accounts & Sessions  • Processing Logs  • Model Versioning │
+   │  • Cache Layer (Redis)  • Backup & Replication                     │
+   └─────────────────────────────────────────────────────────────────────┘
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 2.</strong> DOCUGRAPH System Architecture - Three-tier design with integrated processing modules</p>
+
+        <h3>3.3.3. Data & Storage Layer</h3>
+        <p>Cloud-based storage and database management:</p>
+        <ul>
+          <li>Document image storage with access control</li>
+          <li>Processing results and metadata storage</li>
+          <li>User account and authentication data</li>
+          <li>Processing logs and performance metrics</li>
+          <li>Trained model storage and versioning</li>
+        </ul>
+
+        <div class="info-box">
+          <strong>Architecture Advantage:</strong> The three-tier design enables independent scaling of UI, processing, and storage components, supporting increased user load and document complexity.
+        </div>
+      </div>
+
+      <!-- 3.4 Hardware and Software Requirements -->
+      <div class="methodology-section">
+        <h2>3.4. Hardware and Software Requirements</h2>
+
+        <h3>3.4.1. Development Hardware Requirements</h3>
+
+        <p>The application is developed using modern computing hardware to support deep learning model training and inference:</p>
+
+        <div class="table-responsive">
+          <table>
+            <tr>
+              <th>Component</th>
+              <th>Specification</th>
+            </tr>
+            <tr>
+              <td><strong>OS</strong></td>
+              <td>Windows 11 / macOS 13+ / Ubuntu 20.04+</td>
+            </tr>
+            <tr>
+              <td><strong>CPU</strong></td>
+              <td>Intel i7/i9 or AMD Ryzen 7/9 (8+ cores recommended)</td>
+            </tr>
+            <tr>
+              <td><strong>RAM</strong></td>
+              <td>16 GB minimum (32 GB recommended for model training)</td>
+            </tr>
+            <tr>
+              <td><strong>GPU</strong></td>
+              <td>NVIDIA GPU with CUDA support (optional, for training acceleration)</td>
+            </tr>
+            <tr>
+              <td><strong>Storage</strong></td>
+              <td>50 GB SSD space (for development environment and datasets)</td>
+            </tr>
+            <tr>
+              <td><strong>Internet</strong></td>
+              <td>Stable broadband (for cloud services and package downloads)</td>
+            </tr>
+          </table>
+        </div>
+
+        <h3>3.4.2. Core Software & Frameworks</h3>
+
+        <div class="table-responsive">
+          <table>
+            <tr>
+              <th>Technology</th>
+              <th>Version</th>
+              <th>Purpose</th>
+            </tr>
+            <tr>
+              <td><strong>Python</strong></td>
+              <td>3.9+</td>
+              <td>Backend processing and ML model development</td>
+            </tr>
+            <tr>
+              <td><strong>PyTorch / TensorFlow</strong></td>
+              <td>Latest stable</td>
+              <td>Graph Neural Network implementation</td>
+            </tr>
+            <tr>
+              <td><strong>Tesseract OCR</strong></td>
+              <td>5.0+</td>
+              <td>Optical character recognition</td>
+            </tr>
+            <tr>
+              <td><strong>OpenCV</strong></td>
+              <td>4.5+</td>
+              <td>Image preprocessing and analysis</td>
+            </tr>
+            <tr>
+              <td><strong>Flask / FastAPI</strong></td>
+              <td>Latest</td>
+              <td>Backend API server</td>
+            </tr>
+            <tr>
+              <td><strong>Firebase</strong></td>
+              <td>Latest SDK</td>
+              <td>Authentication and cloud storage</td>
+            </tr>
+            <tr>
+              <td><strong>Node.js</strong></td>
+              <td>18.0+</td>
+              <td>Frontend build tools and runtime</td>
+            </tr>
+          </table>
+        </div>
+
+        <h3>3.4.3. Development Tools</h3>
+
+        <div class="table-responsive">
+          <table>
+            <tr>
+              <th>Tool</th>
+              <th>Purpose</th>
+            </tr>
+            <tr>
+              <td><strong>Visual Studio Code</strong></td>
+              <td>Primary IDE for frontend and backend development</td>
+            </tr>
+            <tr>
+              <td><strong>Jupyter Notebook</strong></td>
+              <td>Exploratory analysis and model prototyping</td>
+            </tr>
+            <tr>
+              <td><strong>Git / GitHub</strong></td>
+              <td>Version control and collaboration</td>
+            </tr>
+            <tr>
+              <td><strong>Docker</strong></td>
+              <td>Containerization for consistent deployment</td>
+            </tr>
+            <tr>
+              <td><strong>Postman / REST Client</strong></td>
+              <td>API testing and validation</td>
+            </tr>
+          </table>
+        </div>
+
+        <h3>3.4.4. Production Deployment Requirements</h3>
+
+        <ul>
+          <li><strong>Web Server:</strong> Cloud hosting (Vercel, AWS, Google Cloud, or Azure)</li>
+          <li><strong>Backend Server:</strong> Python API server (Gunicorn + Flask/FastAPI)</li>
+          <li><strong>Database:</strong> Cloud database (Firestore, PostgreSQL, or MongoDB)</li>
+          <li><strong>GPU Support (Optional):</strong> For accelerated inference on production servers</li>
+        </ul>
+
+        <h3>3.4.5. Supported Platforms & Applications</h3>
+
+        <p>DOCUGRAPH is designed as a <strong>cross-platform application</strong> accessible through multiple channels:</p>
+
+        <h4>3.4.5.1. Web Browser Platforms</h4>
+        <p>DOCUGRAPH is primarily delivered as a web application optimized for modern browsers:</p>
+
+        <div class="table-responsive">
+          <table>
+            <tr>
+              <th>Browser</th>
+              <th>Minimum Version</th>
+              <th>Platform Support</th>
+            </tr>
+            <tr>
+              <td><strong>Google Chrome</strong></td>
+              <td>Version 90+</td>
+              <td>Windows, macOS, Linux, Android, iOS</td>
+            </tr>
+            <tr>
+              <td><strong>Mozilla Firefox</strong></td>
+              <td>Version 88+</td>
+              <td>Windows, macOS, Linux, Android</td>
+            </tr>
+            <tr>
+              <td><strong>Safari</strong></td>
+              <td>Version 14+</td>
+              <td>macOS, iOS</td>
+            </tr>
+            <tr>
+              <td><strong>Microsoft Edge</strong></td>
+              <td>Version 90+</td>
+              <td>Windows, macOS, Linux</td>
+            </tr>
+            <tr>
+              <td><strong>Opera</strong></td>
+              <td>Version 76+</td>
+              <td>Windows, macOS, Linux, Android</td>
+            </tr>
+          </table>
+        </div>
+
+        <h4>3.4.5.2. Mobile Platform Support</h4>
+
+        <h5>iOS Devices</h5>
+        <ul>
+          <li><strong>Minimum iOS Version:</strong> iOS 13.0</li>
+          <li><strong>Recommended iOS Version:</strong> iOS 16.0+</li>
+          <li><strong>Supported Devices:</strong> iPhone 8 and newer, all iPad models (iPad Air, iPad Pro, iPad Mini)</li>
+          <li><strong>Screen Sizes:</strong> 4.7" - 12.9"</li>
+          <li><strong>RAM Requirement:</strong> 2 GB minimum (4 GB recommended for optimal performance)</li>
+          <li><strong>Storage:</strong> 100 MB free space</li>
+          <li><strong>Camera:</strong> Required for document capture (rear camera preferred)</li>
+          <li><strong>Internet:</strong> WiFi or cellular connection required for upload and processing</li>
+          <li><strong>Access Methods:</strong> 
+            <ul>
+              <li>Safari browser (web app)</li>
+              <li>Native iOS app (available on App Store) — future enhancement</li>
+            </ul>
+          </li>
+        </ul>
+
+        <h5>Android Devices</h5>
+        <ul>
+          <li><strong>Minimum Android Version:</strong> Android 7.0 (API 24)</li>
+          <li><strong>Recommended Android Version:</strong> Android 11.0+</li>
+          <li><strong>Supported Devices:</strong> All Android smartphones and tablets</li>
+          <li><strong>Screen Sizes:</strong> 4.5" - 7.0" (phones), 7.0"+ (tablets)</li>
+          <li><strong>RAM Requirement:</strong> 2 GB minimum (4 GB recommended)</li>
+          <li><strong>Storage:</strong> 100 MB free space</li>
+          <li><strong>Camera:</strong> Required for document capture</li>
+          <li><strong>Processor Architectures Supported:</strong> ARM64, ARM, x86, x86_64</li>
+          <li><strong>Internet:</strong> WiFi or cellular connection required</li>
+          <li><strong>Access Methods:</strong>
+            <ul>
+              <li>Chrome, Firefox, or other Android browsers (web app)</li>
+              <li>Native Android app (available on Google Play Store) — future enhancement</li>
+            </ul>
+          </li>
+        </ul>
+
+        <h4>3.4.5.3. Desktop Platform Support</h4>
+
+        <h5>Windows Desktop/Laptop</h5>
+        <ul>
+          <li><strong>Minimum OS Version:</strong> Windows 10 (Build 1909) or later</li>
+          <li><strong>Recommended OS Version:</strong> Windows 11</li>
+          <li><strong>Architecture:</strong> 64-bit (x86-64)</li>
+          <li><strong>RAM:</strong> 4 GB minimum (8 GB recommended)</li>
+          <li><strong>Storage:</strong> 500 MB free space</li>
+          <li><strong>Browser Support:</strong> Chrome, Edge, Firefox</li>
+          <li><strong>Optional Desktop App:</strong> Electron-based native application with offline support</li>
+          <li><strong>Peripherals:</strong> Scanner support for direct document input (optional)</li>
+        </ul>
+
+        <h5>macOS Desktop/Laptop</h5>
+        <ul>
+          <li><strong>Minimum OS Version:</strong> macOS 10.15 (Catalina) or later</li>
+          <li><strong>Recommended OS Version:</strong> macOS 13+</li>
+          <li><strong>Architecture:</strong> Intel (x86-64) and Apple Silicon (ARM64)</li>
+          <li><strong>RAM:</strong> 4 GB minimum (8 GB recommended)</li>
+          <li><strong>Storage:</strong> 500 MB free space</li>
+          <li><strong>Browser Support:</strong> Safari, Chrome, Firefox</li>
+          <li><strong>Optional Desktop App:</strong> Native macOS application (Electron or Swift)</li>
+          <li><strong>Peripherals:</strong> Scanner support for document import</li>
+        </ul>
+
+        <h5>Linux Desktop/Workstation</h5>
+        <ul>
+          <li><strong>Supported Distributions:</strong> Ubuntu 20.04+, Fedora 35+, Debian 11+, and other modern distributions</li>
+          <li><strong>Architecture:</strong> x86-64</li>
+          <li><strong>RAM:</strong> 4 GB minimum</li>
+          <li><strong>Storage:</strong> 500 MB free space</li>
+          <li><strong>Browser Support:</strong> Chrome, Firefox</li>
+          <li><strong>Optional Desktop App:</strong> AppImage or Snap package for easy installation</li>
+        </ul>
+
+        <h4>3.4.5.4. Tablet & Hybrid Devices</h4>
+
+        <ul>
+          <li><strong>iPad Models:</strong> iPad Air (3rd gen+), iPad Pro (all), iPad (6th gen+), iPad Mini (5th gen+)</li>
+          <li><strong>Android Tablets:</strong> 7.0"+ screen, Android 7.0+, 2 GB+ RAM</li>
+          <li><strong>Screen Optimization:</strong> Responsive design for tablets (landscape and portrait modes)</li>
+          <li><strong>Touch Interface:</strong> Optimized for touch input with larger buttons and gestures</li>
+          <li><strong>Stylus Support:</strong> Optional support for digital pens on compatible devices</li>
+        </ul>
+
+        <h4>3.4.5.5. Device Requirements Summary</h4>
+
+        <div class="table-responsive">
+          <table>
+            <tr>
+              <th>Device Type</th>
+              <th>Minimum Requirements</th>
+              <th>Recommended Requirements</th>
+            </tr>
+            <tr>
+              <td><strong>Smartphone</strong></td>
+              <td>2 GB RAM, 100 MB storage, 4.5"+ screen</td>
+              <td>4 GB+ RAM, 500+ MB storage, modern processor</td>
+            </tr>
+            <tr>
+              <td><strong>Tablet</strong></td>
+              <td>2 GB RAM, 100 MB storage, 7"+ screen</td>
+              <td>4 GB+ RAM, 500+ MB storage, modern processor</td>
+            </tr>
+            <tr>
+              <td><strong>Laptop/Desktop</strong></td>
+              <td>4 GB RAM, 500 MB storage, modern browser</td>
+              <td>8 GB+ RAM, 1+ GB storage, dedicated GPU optional</td>
+            </tr>
+            <tr>
+              <td><strong>All Devices</strong></td>
+              <td>Stable internet connection, built-in or external camera</td>
+              <td>High-speed internet, modern hardware</td>
+            </tr>
+          </table>
+        </div>
+
+        <h4>3.4.5.6. Future Enhancement: Native Applications</h4>
+
+        <p>While DOCUGRAPH initially launches as a web application, future development may include native applications:</p>
+
+        <ul>
+          <li><strong>iOS Native App:</strong> Developed using Swift for App Store distribution</li>
+          <li><strong>Android Native App:</strong> Developed using Kotlin/Java for Google Play Store distribution</li>
+          <li><strong>Windows Desktop App:</strong> Electron-based or C#/.NET application with offline functionality</li>
+          <li><strong>macOS Desktop App:</strong> Native Swift/SwiftUI application</li>
+          <li><strong>Linux Desktop App:</strong> Electron or GTK-based application with package managers</li>
+        </ul>
+
+        <p>These native applications would provide enhanced offline capabilities, deeper device integration, and optimized performance while maintaining the same backend processing engine.</p>
+      </div>
+
+      <!-- 3.5 Development Methodology -->
+      <div class="methodology-section">
+        <h2>3.5. Methods in Developing Software</h2>
+
+        <p>The development of DOCUGRAPH follows a <strong>structured, iterative software development approach</strong> to ensure reliability, usability, and correctness of system functionality.</p>
+
+        <h3>3.5.1. Agile/Scrum Methodology</h3>
+
+        <p>The system development follows <strong>Agile principles</strong> with iterative design cycles:</p>
+
+        <ul>
+          <li><strong>Sprint-Based Development:</strong> Features are developed in 1-2 week sprints</li>
+          <li><strong>Continuous Integration/Deployment (CI/CD):</strong> Changes are tested and deployed incrementally</li>
+          <li><strong>Feedback Loops:</strong> User feedback is incorporated into subsequent sprints</li>
+          <li><strong>Iterative Refinement:</strong> Layout detection accuracy and OCR performance are continuously improved</li>
+        </ul>
+
+        <p>The development team is responsible for:</p>
+        <ol>
+          <li>Image preprocessing and normalization</li>
+          <li>Graph Neural Network model design and training</li>
+          <li>OCR integration and post-processing</li>
+          <li>Frontend UI/UX implementation</li>
+          <li>Backend API development and optimization</li>
+          <li>Testing and quality assurance</li>
+        </ol>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    SPRINT DEVELOPMENT STRUCTURE                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+PROJECT TIMELINE: 16 weeks (4 sprints of 4 weeks each)
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SPRINT 1 (Weeks 1-4): Foundation & Infrastructure                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│ • Project setup & environment configuration                              │
+│ • Web application scaffolding (HTML/CSS/JS)                             │
+│ • Firebase authentication integration                                    │
+│ • Basic image upload functionality                                       │
+│ • Backend API framework setup (Flask/FastAPI)                           │
+│ Deliverables: Working web app with user auth + image upload            │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        ↓ Code Review & Testing
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SPRINT 2 (Weeks 5-8): Image Processing & Graph Construction            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ • Image preprocessing module development                                 │
+│ • Text block detection algorithm                                         │
+│ • Graph construction from document images                                │
+│ • Feature extraction pipeline                                            │
+│ • Unit testing for preprocessing components                              │
+│ Deliverables: End-to-end image → graph pipeline                        │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        ↓ User Feedback & Integration
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SPRINT 3 (Weeks 9-12): GNN Model & OCR Integration                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│ • Graph Neural Network model design                                      │
+│ • Model training on annotated dataset                                    │
+│ • OCR integration with Tesseract                                         │
+│ • Post-processing algorithm implementation                               │
+│ • Structure reconstruction module                                        │
+│ Deliverables: Working GNN + OCR pipeline                               │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        ↓ Performance Optimization
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SPRINT 4 (Weeks 13-16): UI/UX Polish & Deployment                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ • Frontend results display interface                                     │
+│ • User dashboard and history                                             │
+│ • Performance optimization & caching                                     │
+│ • Full system testing (unit, integration, acceptance)                    │
+│ • Deployment preparation & documentation                                 │
+│ Deliverables: Production-ready DOCUGRAPH system                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+DAILY STANDUP (15 minutes)
+└─ Each team member reports:
+   1. What was completed yesterday?
+   2. What will be done today?
+   3. Are there blockers?
+
+SPRINT REVIEW & RETROSPECTIVE (End of each sprint)
+└─ Demo working features to stakeholders
+└─ Gather feedback & adjust backlog
+└─ Team discusses improvements for next sprint
+
+KEY METRICS
+├─ Velocity: User stories completed per sprint
+├─ Code Coverage: Target 85%+
+├─ Bug Escape Rate: <2% of deployed features
+└─ Performance: Process 1-5 pages in <2 seconds
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 7.</strong> Sprint Development Structure for DOCUGRAPH Project</p>
+
+        <h3>3.5.2. Algorithm Design Approach</h3>
+
+        <p>DOCUGRAPH employs multiple specialized algorithms:</p>
+
+        <h4>1. Image Preprocessing Algorithm</h4>
+        <p>Prepares document images for analysis through normalization, deskewing, and enhancement.</p>
+
+        <div style="background: var(--off); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--ink-700);">
+<pre>
+ALGORITHM: ImagePreprocessing
+INPUT: raw_image (captured/uploaded document)
+OUTPUT: processed_image (normalized and enhanced)
+
+1. LoadImage(raw_image)
+   if image.format ∉ {JPEG, PNG, PDF} then
+      return ERROR("Invalid image format")
+   end if
+
+2. Deskew(image)
+   angle ← DetectSkewAngle(image)
+   if |angle| > threshold then
+      image ← RotateImage(image, angle)
+   end if
+
+3. GrayscaleConversion(image)
+   image ← ConvertToGray(image)
+   // Preserve structural information
+
+4. NoiseReduction(image)
+   image ← ApplyGaussianBlur(image, kernel=3×3)
+   image ← ApplyMedianFilter(image, kernel=5×5)
+
+5. ContrastEnhancement(image)
+   // Adaptive histogram equalization
+   image ← ApplyCLAHE(image, clipLimit=2.0)
+
+6. Thresholding(image)
+   threshold ← OtsuThreshold(image)
+   image ← ApplyBinaryThreshold(image, threshold)
+
+7. Normalization(image)
+   image.size ← StandardizeSize(image)
+   image.dpi ← NormalizeDPI(image)
+
+8. return processed_image
+
+Complexity: O(w × h) where w, h = image dimensions
+Typical Processing Time: 100-500ms per image
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 3.</strong> Image Preprocessing Algorithm Pseudocode</p>
+
+        <h4>2. Graph Construction Algorithm</h4>
+        <p>Builds graph representation from preprocessed document image.</p>
+
+        <div style="background: var(--off); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--ink-700);">
+<pre>
+ALGORITHM: GraphConstruction
+INPUT: processed_image
+OUTPUT: G = (V, E) - Document graph representation
+
+1. TextBlockDetection(image)
+   // Detect connected components as potential text regions
+   blocks ← FindConnectedComponents(image)
+   blocks ← FilterBySize(blocks, min_size, max_size)
+   return blocks
+
+2. FeatureExtraction(block)
+   for each block ∈ blocks do
+      feature ← {
+         bbox: GetBoundingBox(block),
+         position: (x, y) coordinates,
+         size: (width, height),
+         density: TextDensity(block),
+         intensity: MeanIntensity(block),
+         shape: AspectRatio(block)
+      }
+      V ← V ∪ {feature}
+   end for
+
+3. SpatialRelationshipMapping(blocks)
+   for each pair (block_i, block_j) ∈ blocks × blocks do
+      if AreAdjacent(block_i, block_j) then
+         distance ← EuclideanDistance(block_i, block_j)
+         direction ← ComputeDirection(block_i, block_j)
+         
+         edge ← {
+            source: block_i,
+            target: block_j,
+            weight: 1/distance,
+            type: direction  // {LEFT, RIGHT, ABOVE, BELOW}
+         }
+         
+         E ← E ∪ {edge}
+      end if
+   end for
+
+4. return G = (V, E)
+
+Graph Complexity: |V| = O(number_of_blocks)
+                  |E| = O(|V|²) worst case, typically O(|V|)
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 4.</strong> Graph Construction Algorithm from Document Image</p>
+
+        <h4>3. Graph Neural Network Algorithm</h4>
+        <p>Analyzes document structure through graph-based neural inference.</p>
+
+        <div style="background: var(--off); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--ink-700);">
+<pre>
+ALGORITHM: GraphNeuralNetworkInference
+INPUT: G = (V, E) - Document graph
+OUTPUT: predictions - Layout classifications and reading order
+
+1. NodeEmbedding(V)
+   for each node v ∈ V do
+      h_v^(0) ← FeatureEmbedding(v.features)
+      // Initial node embedding from visual features
+   end for
+
+2. GraphConvolution(iterations=L)
+   for layer ℓ = 1 to L do
+      for each node v ∈ V do
+         // Aggregate neighbor information
+         a_v ← AGGREGATE({h_u^(ℓ-1) : u ∈ N(v)})
+         
+         // Update node representation
+         h_v^(ℓ) ← ReLU(W^(ℓ) · [h_v^(ℓ-1) || a_v])
+         // Concatenate self and neighbor embeddings
+      end for
+   end for
+
+3. ReadingOrderPrediction()
+   // Topological sort based on learned node importance
+   scores ← ClassificationHead(h_v^(L) for all v)
+   // MLP: (node_embedding) → [0, 1]
+   
+   reading_order ← TopologicalSort(G, scores)
+   return reading_order
+
+4. LayoutClassification()
+   for each node v ∈ V do
+      class_v ← ClassifyNode(h_v^(L))
+      // Classify as: HEADER, BODY, FOOTER, FIGURE, TABLE, etc.
+   end for
+
+5. ConfidenceScoring()
+   for each prediction do
+      confidence ← SoftmaxScore(scores)
+      // Normalized probability [0, 1]
+   end for
+
+6. return {layout_classifications, reading_order, confidence_scores}
+
+Model Complexity: O(L × |E|) where L = number of GNN layers
+Inference Time: 200-800ms for typical document
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 5.</strong> Graph Neural Network Layout Analysis Algorithm</p>
+
+        <h4>4. OCR Post-Processing & Structure Reconstruction Algorithm</h4>
+        <p>Integrates OCR output with layout analysis for accurate text reconstruction.</p>
+
+        <div style="background: var(--off); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--ink-700);">
+<pre>
+ALGORITHM: OCRAndStructureReconstruction
+INPUT: image, layout_predictions, reading_order
+OUTPUT: structured_document (text + metadata + layout)
+
+1. RegionBasedOCR(image, layout_predictions)
+   for each region ∈ layout_predictions do
+      // Extract OCR parameters based on predicted class
+      if region.class = HEADER then
+         ocr_config ← HEADER_CONFIG  // Higher sensitivity
+      else if region.class = TABLE then
+         ocr_config ← TABLE_CONFIG   // Preserve spacing
+      else
+         ocr_config ← DEFAULT_CONFIG
+      end if
+      
+      text_result ← TesseractOCR(image[region.bbox], ocr_config)
+      confidence_score ← text_result.confidence
+      
+      // Only keep high-confidence extractions
+      if confidence_score > threshold then
+         region.text ← text_result.text
+         region.confidence ← confidence_score
+      end if
+   end for
+
+2. PostProcessing(regions)
+   for each region do
+      // Remove common OCR errors
+      text ← RemoveArtifacts(region.text)
+      text ← CorrectCommonErrors(text)
+      text ← FixHyphenation(text)
+      
+      // Spell check with context awareness
+      text ← ContextualSpellCheck(text, region.context)
+      
+      region.text_processed ← text
+   end for
+
+3. StructureReconstruction(regions, reading_order)
+   document ← CreateDocument()
+   
+   // Sort regions according to predicted reading order
+   sorted_regions ← Sort(regions, by=reading_order)
+   
+   for each region ∈ sorted_regions do
+      element ← CreateElement(
+         type=region.class,
+         content=region.text_processed,
+         position=region.bbox,
+         confidence=region.confidence
+      )
+      document.Add(element)
+   end for
+   
+   return document
+
+4. MetadataGeneration(document)
+   document.metadata ← {
+      creation_date: Now(),
+      processing_time: elapsed_time,
+      accuracy_score: CalculateAccuracy(document),
+      layout_confidence: Mean(all_region_confidences),
+      page_count: CountPages(document)
+   }
+
+5. return structured_document
+
+Total Processing Time: 500-2000ms per page
+OCR Accuracy Improvement: Typically 15-25% over baseline Tesseract
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 6.</strong> OCR Integration and Structure Reconstruction Algorithm</p>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│              GNN MODEL TRAINING & VALIDATION WORKFLOW                    │
+└──────────────────────────────────────────────────────────────────────────┘
+
+STAGE 1: DATA PREPARATION
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  Annotated Dataset (5,000 documents)                                  │
+│        └─ Each document has:                                          │
+│           • Layout annotations (text blocks, layout class)            │
+│           • Ground truth reading order                                │
+│           • OCR reference text                                        │
+│                                                                        │
+│  Train/Val/Test Split                                                │
+│        ├─ Training: 3,500 documents (70%)                            │
+│        ├─ Validation: 750 documents (15%)                            │
+│        └─ Testing: 750 documents (15%)                               │
+│                                                                        │
+│  Data Augmentation (Training Set)                                     │
+│        ├─ Rotation: ±5° random angle                                 │
+│        ├─ Scaling: 0.9-1.1× zoom                                     │
+│        ├─ Noise injection: Gaussian σ=0.01                           │
+│        └─ Elastic distortion (simulate scanning artifacts)           │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+STAGE 2: MODEL ARCHITECTURE
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  Input: Graph G = (V, E)                                             │
+│       └─ |V| nodes (text blocks), |E| edges (spatial relations)     │
+│                                                                        │
+│  GraphConvolution Layers: 3 layers                                    │
+│       ├─ Layer 1: 64 features                                        │
+│       ├─ Layer 2: 128 features                                       │
+│       └─ Layer 3: 256 features                                       │
+│       └─ Activation: ReLU with Dropout (p=0.2)                      │
+│                                                                        │
+│  Readout Layer (Graph Pooling)                                        │
+│       └─ GlobalMeanPooling → 256 dims                                │
+│                                                                        │
+│  Classification Head: MLP                                             │
+│       ├─ Dense(512) → ReLU                                           │
+│       ├─ Dropout(p=0.3)                                              │
+│       ├─ Dense(128) → ReLU                                           │
+│       └─ Dense(num_classes) → Softmax                                │
+│                                                                        │
+│  Model Parameters: ~1.2M weights                                      │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+STAGE 3: TRAINING LOOP
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  Hyperparameters:                                                      │
+│       ├─ Optimizer: Adam (lr=0.001, β₁=0.9, β₂=0.999)                │
+│       ├─ Loss Function: CrossEntropyLoss                             │
+│       ├─ Batch Size: 32                                              │
+│       ├─ Epochs: 100 (early stopping at patience=10)                │
+│       └─ Learning Rate Schedule: ExponentialDecay(γ=0.95)           │
+│                                                                        │
+│  For each epoch:                                                       │
+│       1. Shuffle training data                                        │
+│       2. For each batch:                                              │
+│          • Forward pass: ŷ = Model(G)                                │
+│          • Loss calculation: L = CrossEntropy(ŷ, y_true)            │
+│          • Backward pass: ∇θ ← backprop(L)                          │
+│          • Update: θ ← θ - α·∇θ                                      │
+│       3. Validation on val_set                                       │
+│       4. Early stopping if val_loss increases                        │
+│                                                                        │
+│  Training Time: ~2-4 hours on GPU (NVIDIA RTX 3090)                 │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+STAGE 4: EVALUATION & VALIDATION
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  Metrics on Test Set:                                                 │
+│       ├─ Accuracy: % correct predictions                             │
+│       ├─ Precision: Correct positives / predicted positives          │
+│       ├─ Recall: Correct positives / all positives                   │
+│       ├─ F1-Score: 2·(Precision·Recall)/(Precision+Recall)          │
+│       └─ Confusion Matrix: Per-class analysis                        │
+│                                                                        │
+│  Cross-Validation (5-Fold):                                          │
+│       └─ Ensures stable performance across document types            │
+│                                                                        │
+│  Target Performance:                                                  │
+│       ├─ Layout Classification Accuracy: > 92%                       │
+│       ├─ Reading Order Correctness: > 88%                            │
+│       └─ OCR Enhancement Improvement: > 15%                          │
+│                                                                        │
+│  Performance by Document Type:                                        │
+│       ├─ Single-column: 95% accuracy                                 │
+│       ├─ Multi-column: 88% accuracy                                  │
+│       ├─ Tables/Charts: 82% accuracy                                 │
+│       └─ Mixed layout: 85% accuracy                                  │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+STAGE 5: MODEL DEPLOYMENT & MONITORING
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  Model Versioning:                                                     │
+│       ├─ v1.0: Initial release                                       │
+│       ├─ v1.1: Improved multi-column handling                        │
+│       └─ v1.2+: Continuous improvements from user feedback           │
+│                                                                        │
+│  Inference Time: 200-500ms per document graph                        │
+│                                                                        │
+│  Production Monitoring:                                               │
+│       ├─ Accuracy drift detection                                    │
+│       ├─ User correction feedback                                    │
+│       ├─ Performance bottleneck analysis                             │
+│       └─ Retraining trigger: If accuracy_drop > 3%                  │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 9.</strong> GNN Model Training, Validation, and Deployment Pipeline</p>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│              PREPROCESSING OPERATORS & DATA FLOW                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+INPUT DOCUMENT
+     │
+     ├─→ [LOAD] ──────────────→ Read image file (JPEG/PNG/PDF)
+     │
+     ├─→ [RESIZE] ─────────→ Normalize to standard dimensions
+     │   └─ Target: 2048×2560 pixels (A4 standard)
+     │
+     ├─→ [GRAYSCALE] ──────→ Convert RGB → 8-bit grayscale
+     │   └─ Reduces noise, speeds up processing
+     │
+     ├─→ [DESKEW] ──────────→ Correct document rotation
+     │   └─ Detect angle: Hough Transform
+     │   └─ Rotate if |angle| > 0.5°
+     │
+     ├─→ [DENOISE] ──────────→ Remove noise and artifacts
+     │   └─ Gaussian Blur: σ=0.5
+     │   └─ Median Filter: kernel=5×5
+     │
+     ├─→ [CONTRAST] ─────────→ Enhance text visibility
+     │   └─ CLAHE (Contrast Limited Adaptive Histogram Equalization)
+     │   └─ ClipLimit = 2.0, tileSize = 8×8
+     │
+     ├─→ [THRESHOLDING] ──────→ Convert to binary image
+     │   └─ Method: Otsu's method
+     │   └─ Output: Black text on white background
+     │
+     ├─→ [MORPHOLOGY] ───────→ Clean up binary image
+     │   └─ Erosion: Remove small artifacts
+     │   └─ Dilation: Fill text gaps
+     │   └─ Kernel: 3×3 rectangle
+     │
+     └─→ [OUTPUT] ──────────→ Preprocessed image ready for analysis
+
+OUTPUT STATISTICS
+├─ Image size: typically 2-5 MB
+├─ Processing time: 100-500ms
+├─ Quality score: 0.0-1.0 (based on contrast & clarity)
+└─ Compression ratio: Original → Processed (typically 20-30% reduction)
+
+QUALITY GATES
+├─ ✓ If quality_score > 0.7: Proceed to GNN analysis
+├─ ⚠ If 0.5 < quality_score ≤ 0.7: Flag for manual review
+└─ ✗ If quality_score ≤ 0.5: Request user to recapture image
+
+EXAMPLE METRICS
+└─ High-quality document (scanned): 0.92 quality score
+└─ Mobile phone photo: 0.78 quality score  
+└─ Very poor lighting: 0.45 quality score (flag for retry)
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 8.</strong> Image Preprocessing Operators and Quality Assessment Pipeline</p>
+      </div>
+
+      <!-- 3.6 Evaluation Methods -->
+      <div class="methodology-section">
+        <h2>3.6. Methods in Evaluating the System</h2>
+
+        <p>DOCUGRAPH will be evaluated based on layout detection accuracy, OCR enhancement performance, processing efficiency, and user experience. The evaluation focuses on five key areas:</p>
+
+        <h3>3.6.1. Specific Metrics</h3>
+
+        <h4>1. Layout Detection Accuracy</h4>
+        <div class="formula-box">
+          Layout Accuracy (%) = (Correctly Detected Elements / Total Elements) × 100
+        </div>
+
+        <h4>2. OCR Enhancement Metrics</h4>
+        <div class="formula-box">
+          Character Accuracy (%) = (Correctly Recognized Characters / Total Characters) × 100<br>
+          Word Accuracy (%) = (Correctly Recognized Words / Total Words) × 100
+        </div>
+
+        <h4>3. Processing Performance</h4>
+        <div class="formula-box">
+          Average Processing Time = Σ Processing Times / Number of Documents<br>
+          Throughput (docs/hour) = 3600 / Average Processing Time
+        </div>
+
+        <h4>4. Reading Order Correctness</h4>
+        <p>Evaluation of whether the system correctly predicts the logical reading order of document elements, especially in multi-column and complex layouts.</p>
+
+        <h4>5. Usability & User Experience</h4>
+        <p>User testing with researchers and institutions to assess ease of use, clarity of output, and overall satisfaction using Likert scale surveys.</p>
+
+        <h3>3.6.2. Quality Model Framework (ISO/IEC 25010)</h3>
+
+        <p>The system is assessed based on eight characteristics of the ISO/IEC 25010 Software Quality Model:</p>
+
+        <ol>
+          <li><strong>Functional Suitability:</strong> Accurate layout detection, OCR enhancement, and structured output generation</li>
+          <li><strong>Performance Efficiency:</strong> Processing speed, memory usage, and scalability for large documents</li>
+          <li><strong>Compatibility:</strong> Browser compatibility, document format support (PDF, images)</li>
+          <li><strong>Usability:</strong> Interface clarity, documentation, ease of document upload and result interpretation</li>
+          <li><strong>Reliability:</strong> Consistent performance across document types, error handling, recovery mechanisms</li>
+          <li><strong>Security:</strong> User authentication, document privacy, secure data storage</li>
+          <li><strong>Maintainability:</strong> Modular code design, ability to update models and algorithms</li>
+          <li><strong>Portability:</strong> Cross-browser compatibility, responsive design, API accessibility</li>
+        </ol>
+      </div>
+
+      <!-- 3.7 Testing Methods -->
+      <div class="methodology-section">
+        <h2>3.7. Testing Methods</h2>
+
+        <p>The following software testing methods ensure the system functions correctly and consistently:</p>
+
+        <h3>3.7.1. Unit Testing</h3>
+        <p>Testing individual components in isolation: image preprocessing, graph construction, OCR integration, output formatting.</p>
+        <div class="formula-box">
+          Component Success Rate (%) = (Passed Tests / Total Tests) × 100
+        </div>
+
+        <h3>3.7.2. Integration Testing</h3>
+        <p>Verifying that modules work smoothly in sequence: Image Upload → Preprocessing → Layout Analysis → OCR → Output Generation.</p>
+        <div class="formula-box">
+          Integration Success Rate (%) = (Successful Pipeline Runs / Total Runs) × 100
+        </div>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│         END-TO-END INTEGRATION TEST SCENARIOS & DATA FLOW                │
+└──────────────────────────────────────────────────────────────────────────┘
+
+TEST SCENARIO 1: SINGLE-COLUMN DOCUMENT
+┌────────────────────────────────────────────────────────────────────────┐
+│ Input: Scanned PDF or image of standard single-column document        │
+│                                                                        │
+│  1. Upload ──→ 2. Preprocess ──→ 3. Graph Build ──→ 4. GNN Inference │
+│     ✓ Accept      ✓ Quality>0.8    ✓ 200 nodes      ✓ Confidence>0.9  │
+│                   ✓ Time<500ms     ✓ 400 edges      ✓ Time<300ms      │
+│                                                                        │
+│  5. OCR ──────→ 6. Reconstruct ──→ 7. Validate ──→ 8. Output        │
+│     ✓ Accuracy>94%  ✓ Ordered       ✓ Structure OK    ✓ JSON/PDF      │
+│     ✓ Time<800ms    ✓ Time<200ms    ✓ Time<100ms      ✓ Confidence    │
+│                                                                        │
+│ Expected Output: Structured document with 95%+ accuracy               │
+│ Total Processing Time: ~2 seconds                                     │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+TEST SCENARIO 2: MULTI-COLUMN DOCUMENT
+┌────────────────────────────────────────────────────────────────────────┐
+│ Input: Research paper or magazine layout (2-3 columns)                │
+│                                                                        │
+│  Graph Complexity Higher:                                              │
+│     ├─ More nodes: ~400 nodes (vs. 200 for single-column)            │
+│     └─ More edges: ~800 edges (higher spatial complexity)            │
+│                                                                        │
+│  GNN Challenge: Predict correct reading order (L→R, top→bottom)      │
+│     ├─ Column 1 → Column 2 → Column 3                                │
+│     ├─ Expected accuracy: 88% (vs. 95% for single-column)           │
+│     └─ Confidence score lower: 0.82-0.90                             │
+│                                                                        │
+│ Total Processing Time: ~2.5 seconds                                   │
+│ User Manual Verification Required: ~30% of cases                      │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+TEST SCENARIO 3: TABLE/CHART HEAVY DOCUMENT
+┌────────────────────────────────────────────────────────────────────────┐
+│ Input: Document with tables, figures, and mixed content               │
+│                                                                        │
+│  Classification Challenges:                                            │
+│     ├─ Table detection: 85% accuracy                                  │
+│     ├─ Chart recognition: 78% accuracy                                │
+│     ├─ Caption extraction: 92% accuracy                               │
+│     └─ Spatial layout: Complex edge relationships                     │
+│                                                                        │
+│  Special Handling:                                                     │
+│     ├─ Tables: Preserve spacing for OCR alignment                    │
+│     ├─ Figures: Extract caption + metadata                            │
+│     ├─ Charts: Mark as non-text for manual review                    │
+│     └─ Footnotes: Identify and tag properly                          │
+│                                                                        │
+│ Total Processing Time: ~3.5 seconds                                   │
+│ Manual Review Recommended: ~40% of cases                              │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+QUALITY GATES AT EACH STAGE
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│ GATE 1 (After Upload):                                                │
+│    ├─ File size < 50 MB? ✓                                           │
+│    ├─ Format valid (JPG/PNG/PDF)? ✓                                  │
+│    └─ Continue → YES / → REJECT                                      │
+│                                                                        │
+│ GATE 2 (After Preprocessing):                                         │
+│    ├─ Quality score > 0.7? ✓                                         │
+│    ├─ Image dimensions normalized? ✓                                 │
+│    └─ Continue → YES / → Request retry → NO                          │
+│                                                                        │
+│ GATE 3 (After Layout Analysis):                                       │
+│    ├─ GNN confidence > 0.75? ✓                                       │
+│    ├─ Reading order coherent? ✓                                      │
+│    ├─ All regions detected? ✓                                        │
+│    └─ Continue → YES / → Manual review → NO                          │
+│                                                                        │
+│ GATE 4 (After OCR):                                                   │
+│    ├─ OCR accuracy > 85%? ✓                                          │
+│    ├─ Confidence average > 0.80? ✓                                   │
+│    └─ Continue → YES / → Flag regions → Manual review → NO           │
+│                                                                        │
+│ GATE 5 (Final Output):                                                │
+│    ├─ Structure valid? ✓                                             │
+│    ├─ Metadata complete? ✓                                           │
+│    ├─ All checks passed? ✓                                           │
+│    └─ Return to user → YES / → Error → NO                            │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+PERFORMANCE EXPECTATIONS BY DOCUMENT TYPE
+┌────────────────────────────────────────────────────────────────────────┐
+│ Document Type      │ Layout Acc. │ OCR Acc. │ Time   │ Confidence   │
+├────────────────────────────────────────────────────────────────────────┤
+│ Single-Column      │ 95%         │ 94%      │ 2.0s   │ 0.92         │
+│ Multi-Column       │ 88%         │ 89%      │ 2.5s   │ 0.85         │
+│ Tables/Charts      │ 82%         │ 85%      │ 3.5s   │ 0.78         │
+│ Mixed Content      │ 85%         │ 87%      │ 2.8s   │ 0.82         │
+│ Handwritten        │ 72%         │ 68%      │ 4.0s   │ 0.65         │
+│ Poor Quality Image │ 65%         │ 60%      │ 4.5s   │ 0.58         │
+└────────────────────────────────────────────────────────────────────────┘
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 10.</strong> End-to-End Integration Testing with Quality Gates and Performance Expectations</p>
+
+        <h3>3.7.3. Functional Testing</h3>
+        <p>End-to-end testing of complete workflows with various document types and complexity levels.</p>
+        <div class="formula-box">
+          Completion Rate (%) = (Successfully Processed Documents / Total Documents) × 100
+        </div>
+
+        <h3>3.7.4. Usability Testing</h3>
+        <p>Small group testing to evaluate user experience, especially the upload interface and output display.</p>
+        <div class="formula-box">
+          Task Success Rate (%) = (Users Completing Tasks Successfully / Total Users) × 100
+        </div>
+
+        <h3>3.7.5. Performance Testing</h3>
+        <p>Checking processing speed, memory usage, and system stability under various document sizes and types.</p>
+        <div class="formula-box">
+          Mean Response Time = Σ Processing Times / Number of Documents<br>
+          Reliability (%) = (Successful Runs / Total Runs) × 100
+        </div>
+
+        <h3>3.7.6. Acceptance Testing</h3>
+        <p>Final validation confirming all system requirements are met and performance targets achieved.</p>
+        <div class="formula-box">
+          Requirement Satisfaction (%) = (Met Requirements / Total Requirements) × 100
+        </div>
+      </div>
+
+      <!-- 3.8 Data Gathering Procedures -->
+      <div class="methodology-section">
+        <h2>3.8. Data Gathering Procedures</h2>
+
+        <p>Data gathering for this study focuses on collecting performance metrics and usage data generated by DOCUGRAPH during document processing and analysis.</p>
+
+        <h3>3.8.1. Quantitative Data Collected</h3>
+
+        <ul>
+          <li><strong>Layout Detection Results:</strong> Detected elements, confidence scores, bounding box accuracy</li>
+          <li><strong>OCR Performance Data:</strong> Character accuracy, word accuracy, confidence scores</li>
+          <li><strong>Processing Metrics:</strong> Processing time, memory usage, CPU utilization</li>
+          <li><strong>Document Metadata:</strong> Document type, size, complexity, number of pages</li>
+          <li><strong>Error Logs:</strong> Failed analyses, error types, recovery success</li>
+        </ul>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│          PERFORMANCE METRICS & EVALUATION DASHBOARD LAYOUT               │
+└──────────────────────────────────────────────────────────────────────────┘
+
+METRIC COLLECTION PIPELINE
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│ Each document processing generates:                                    │
+│                                                                        │
+│ ┌─ LAYOUT METRICS                                                     │
+│ │  ├─ Total blocks detected: N                                       │
+│ │  ├─ Layout classification accuracy: 0.0-1.0                        │
+│ │  ├─ Reading order correctness: TRUE/FALSE                          │
+│ │  ├─ Edge detection confidence: 0.0-1.0                             │
+│ │  └─ Graph complexity score: O(|V|²) or O(|V|)                     │
+│ │                                                                     │
+│ ├─ OCR METRICS                                                        │
+│ │  ├─ Character accuracy: 85-99%                                     │
+│ │  ├─ Word accuracy: 80-95%                                          │
+│ │  ├─ Confidence distribution: [mean, std_dev, min, max]            │
+│ │  ├─ Regions flagged for manual review: count                       │
+│ │  └─ Error categories: [substitution%, deletion%, insertion%]       │
+│ │                                                                     │
+│ ├─ PERFORMANCE METRICS                                                │
+│ │  ├─ Preprocessing time: ms                                         │
+│ │  ├─ Graph construction time: ms                                    │
+│ │  ├─ GNN inference time: ms                                         │
+│ │  ├─ OCR processing time: ms                                        │
+│ │  ├─ Reconstruction time: ms                                        │
+│ │  ├─ Total pipeline time: ms                                        │
+│ │  ├─ Memory usage: MB                                               │
+│ │  └─ CPU utilization: %                                             │
+│ │                                                                     │
+│ ├─ DOCUMENT METADATA                                                  │
+│ │  ├─ Document type: [single-column, multi-column, table, etc.]     │
+│ │  ├─ File size: bytes                                               │
+│ │  ├─ Image dimensions: pixels                                       │
+│ │  ├─ Number of pages: count                                         │
+│ │  ├─ Text block count: N                                            │
+│ │  ├─ Language detected: [EN, ES, FR, etc.]                         │
+│ │  └─ Quality assessment: 0.0-1.0                                   │
+│ │                                                                     │
+│ ├─ ERROR & RECOVERY DATA                                             │
+│ │  ├─ Errors encountered: [type1_count, type2_count, ...]           │
+│ │  ├─ Recovery attempts: count                                       │
+│ │  ├─ Success rate: %                                                │
+│ │  ├─ Fallback activation: TRUE/FALSE                                │
+│ │  └─ Manual review required: TRUE/FALSE                             │
+│ │                                                                     │
+│ └─ USER INTERACTION DATA                                             │
+│    ├─ User corrections: count                                        │
+│    ├─ Manual modifications: [region1, region2, ...]                  │
+│    ├─ User confidence rating: 1-5                                    │
+│    ├─ Session duration: seconds                                      │
+│    └─ Export format requested: [JSON, PDF, TEXT]                     │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+AGGREGATED METRICS (Per Week)
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│ Documents Processed                    │ 245 documents               │
+│ Total Processing Hours                 │ 8.2 hours                  │
+│ Average Processing Time                │ 2.1 seconds/doc            │
+│ Success Rate                           │ 96.3%                      │
+│ Average Layout Accuracy                │ 89.4%                      │
+│ Average OCR Accuracy                   │ 90.7%                      │
+│ Manual Review Required                 │ 3.7% of documents         │
+│                                                                        │
+│ Performance Percentiles:                                               │
+│   ├─ 50th percentile (median):         1.8 seconds                  │
+│   ├─ 75th percentile:                  2.4 seconds                  │
+│   ├─ 90th percentile:                  3.2 seconds                  │
+│   └─ 99th percentile:                  4.8 seconds                  │
+│                                                                        │
+│ Error Distribution:                                                    │
+│   ├─ Preprocessing failures:           0.4%                         │
+│   ├─ GNN inference errors:             0.8%                         │
+│   ├─ OCR misrecognition:               2.1%                         │
+│   ├─ Layout misclassification:         1.2%                         │
+│   └─ Other errors:                     0.4%                         │
+│                                                                        │
+│ By Document Type:                                                      │
+│   ├─ Single-column (180 docs):         95.2% accuracy              │
+│   ├─ Multi-column (45 docs):           87.8% accuracy              │
+│   ├─ Mixed layout (20 docs):           82.5% accuracy              │
+│   └─ Handwritten (5 docs):             68.0% accuracy              │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+KEY PERFORMANCE INDICATORS (KPIs)
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│ KPI                          Target    Current   Status               │
+│ ────────────────────────────────────────────────────────────────────  │
+│ Layout Detection Accuracy    > 92%      89.4%     ⚠ Below target     │
+│ OCR Accuracy Improvement     > 15%      18.2%     ✓ Above target     │
+│ Processing Speed             < 2.5s     2.1s      ✓ Above target     │
+│ Manual Review Rate           < 5%       3.7%      ✓ Above target     │
+│ System Uptime                > 99.5%    99.8%     ✓ Above target     │
+│ User Satisfaction            > 4.2/5    4.5/5     ✓ Above target     │
+│ Error Recovery Success       > 95%      96.3%     ✓ Above target     │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+CONTINUOUS MONITORING & ALERTS
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│ Metric Thresholds with Alerts:                                        │
+│                                                                        │
+│ ALERT LEVEL  │ Condition                      │ Action                │
+│ ─────────────┼────────────────────────────────┼─────────────────      │
+│ CRITICAL     │ Processing time > 8s           │ Scale up servers      │
+│              │ Error rate > 10%               │ Halt processing       │
+│              │ Uptime < 99%                   │ Emergency response    │
+│              │                                                        │
+│ WARNING      │ Processing time > 5s           │ Monitor closely       │
+│              │ Error rate > 5%                │ Log details           │
+│              │ Accuracy drift > 3%            │ Retrain model         │
+│              │                                                        │
+│ INFO         │ Processing time > 3s           │ Log for analysis      │
+│              │ Accuracy drift 1-3%            │ Plan optimization     │
+│              │ Manual review > 4%             │ Review patterns       │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 11.</strong> Comprehensive Performance Metrics Collection, Aggregation, and Monitoring Dashboard</p>
+
+        <h3>3.8.2. Qualitative Data Collected</h3>
+
+        <ul>
+          <li><strong>User Surveys:</strong> Using Likert scale (1-5 scale) for usability assessment</li>
+          <li><strong>User Interviews:</strong> Semi-structured interviews with researchers and users</li>
+          <li><strong>Feedback Comments:</strong> User suggestions and observations</li>
+        </ul>
+
+        <h3>3.8.3. Data Storage & Privacy</h3>
+
+        <ul>
+          <li>All data is stored securely in cloud storage with encryption</li>
+          <li>User documents are anonymized and separated from user accounts</li>
+          <li>Performance metrics are logged without personally identifiable information</li>
+          <li>Users can request data deletion at any time</li>
+        </ul>
+      </div>
+
+      <!-- 3.9 Respondents & Sampling -->
+      <div class="methodology-section">
+        <h2>3.9. Respondents and Sampling Techniques</h2>
+
+        <p>The respondents of this study consist of individuals who regularly work with complex documents and can evaluate the system's document analysis capabilities.</p>
+
+        <h3>3.9.1. Target User Groups</h3>
+
+        <ol>
+          <li><strong>Researchers:</strong> Academic researchers processing research papers, technical documents, and complex PDFs</li>
+          <li><strong>Students:</strong> Graduate students working with thesis and dissertation documents</li>
+          <li><strong>Institutions:</strong> Digital archives, libraries, and documentation centers</li>
+          <li><strong>Document Processing Professionals:</strong> Those involved in document digitalization and data extraction</li>
+        </ol>
+
+        <h3>3.9.2. Sampling Technique</h3>
+
+        <p>A <strong>purposive sampling technique</strong> will be used to select participants who:</p>
+        <ul>
+          <li>Regularly work with complex or multi-column documents</li>
+          <li>Have experience with OCR systems and document analysis</li>
+          <li>Can provide informed feedback on system performance</li>
+          <li>Represent diverse document types and use cases</li>
+        </ul>
+
+        <p>The sample size is appropriate for a prototype system evaluation, with anticipated participation from 15-25 users during the pilot testing phase.</p>
+      </div>
+
+      <!-- 3.10 Statistical Treatment -->
+      <div class="methodology-section">
+        <h2>3.10. Statistical Treatment of Data</h2>
+
+        <p>Data collected from DOCUGRAPH will be analyzed using descriptive statistics, appropriate for summarizing system performance and user experience during evaluation.</p>
+
+        <h3>3.10.1. Quantitative Analysis Methods</h3>
+
+        <h4>1. Accuracy Metrics</h4>
+        <p>Calculation of detection accuracy, OCR accuracy, and reading order correctness rates.</p>
+
+        <h4>2. Performance Metrics</h4>
+        <p>Computation of mean processing time, throughput, memory usage, and other efficiency measures.</p>
+        <div class="formula-box">
+          Mean = Σ Values / n<br>
+          Standard Deviation = √(Σ(Value - Mean)² / n)
+        </div>
+
+        <h4>3. Success Rates</h4>
+        <p>Percentage of successful document processing across different complexity levels and document types.</p>
+
+        <h3>3.10.2. Qualitative Analysis Methods</h3>
+
+        <h4>1. Likert Scale Analysis</h4>
+        <p>User survey responses on a 1-5 scale for usability, clarity, and satisfaction.</p>
+
+        <div class="table-responsive">
+          <table>
+            <tr>
+              <th>Scale</th>
+              <th>Meaning</th>
+            </tr>
+            <tr>
+              <td><strong>1</strong></td>
+              <td>Strongly Disagree</td>
+            </tr>
+            <tr>
+              <td><strong>2</strong></td>
+              <td>Disagree</td>
+            </tr>
+            <tr>
+              <td><strong>3</strong></td>
+              <td>Neutral</td>
+            </tr>
+            <tr>
+              <td><strong>4</strong></td>
+              <td>Agree</td>
+            </tr>
+            <tr>
+              <td><strong>5</strong></td>
+              <td>Strongly Agree</td>
+            </tr>
+          </table>
+        </div>
+
+        <h4>2. Thematic Analysis</h4>
+        <p>Analysis of interview responses and user feedback for common themes and patterns.</p>
+
+        <h3>3.10.3. Comparison Analysis</h3>
+
+        <p>Performance comparison of DOCUGRAPH with baseline OCR systems (Tesseract without layout analysis) to quantify the benefit of graph-based layout analysis.</p>
+
+        <div class="info-box">
+          <strong>Expected Outcome:</strong> Quantitative demonstration that graph-based layout analysis improves OCR accuracy and document structure understanding compared to traditional OCR approaches.
+        </div>
+      </div>
+
+      <!-- 3.11 Expected Outcomes -->
+      <div class="methodology-section">
+        <h2>3.11. Expected Outcomes & Deliverables</h2>
+
+        <div style="background: var(--off); padding: 2rem; border-radius: var(--radius-md); margin: 2rem 0; overflow-x: auto;">
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; color: var(--ink-700);">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│            COMPLETE METHODOLOGY OVERVIEW & RESEARCH FRAMEWORK             │
+└──────────────────────────────────────────────────────────────────────────┘
+
+RESEARCH METHODOLOGY FLOW
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  PHASE 1: DESIGN & PLANNING (Weeks 1-2)                              │
+│  ├─ Research objectives definition                                     │
+│  ├─ Literature review & baseline studies                               │
+│  ├─ Dataset acquisition & annotation                                   │
+│  ├─ System architecture design                                         │
+│  └─ Technology stack selection                                         │
+│                     ↓                                                  │
+│  PHASE 2: DEVELOPMENT (Weeks 3-12)                                   │
+│  ├─ Sprint 1: Infrastructure & Authentication                          │
+│  ├─ Sprint 2: Image Processing & Graph Construction                   │
+│  ├─ Sprint 3: GNN Model & OCR Integration                             │
+│  ├─ Sprint 4: UI/UX & System Optimization                             │
+│  └─ Continuous Integration & Testing                                   │
+│                     ↓                                                  │
+│  PHASE 3: EVALUATION & VALIDATION (Weeks 13-16)                      │
+│  ├─ Unit Testing (Components)                                          │
+│  ├─ Integration Testing (Pipeline)                                     │
+│  ├─ Functional Testing (End-to-end)                                   │
+│  ├─ Performance Testing (Speed & Efficiency)                           │
+│  ├─ User Acceptance Testing (Real-world)                              │
+│  └─ Data Collection & Analysis                                         │
+│                     ↓                                                  │
+│  PHASE 4: REPORTING & DEPLOYMENT (Final Week)                         │
+│  ├─ Results compilation & analysis                                     │
+│  ├─ Thesis document finalization                                       │
+│  ├─ System deployment to production                                    │
+│  └─ Documentation & knowledge transfer                                 │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+EVALUATION FRAMEWORK COMPONENTS
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  1. TECHNICAL PERFORMANCE METRICS                                     │
+│     ├─ Accuracy: Layout detection, OCR quality                        │
+│     ├─ Efficiency: Processing time, resource usage                    │
+│     ├─ Reliability: Error rates, recovery success                     │
+│     └─ Scalability: Throughput, concurrent users                      │
+│                                                                        │
+│  2. QUALITY ATTRIBUTES (ISO/IEC 25010)                                │
+│     ├─ Functional Suitability                                         │
+│     ├─ Performance Efficiency                                         │
+│     ├─ Compatibility                                                  │
+│     ├─ Usability                                                      │
+│     ├─ Reliability                                                    │
+│     ├─ Security                                                       │
+│     ├─ Maintainability                                                │
+│     └─ Portability                                                    │
+│                                                                        │
+│  3. USER EXPERIENCE METRICS                                           │
+│     ├─ Usability Score (Task Success Rate)                            │
+│     ├─ User Satisfaction (Likert Scale 1-5)                          │
+│     ├─ System Ease of Use                                             │
+│     └─ Adoption Rate                                                  │
+│                                                                        │
+│  4. BUSINESS/RESEARCH METRICS                                         │
+│     ├─ Time to Solution vs. Baseline                                  │
+│     ├─ Cost Efficiency                                                │
+│     ├─ Accuracy Improvement over Baseline                             │
+│     └─ Research Publication Impact                                    │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+KEY ASSUMPTIONS & CONSTRAINTS
+┌────────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│  ASSUMPTIONS                                                           │
+│  ├─ Document quality varies widely (scanned, phone photos, PDFs)      │
+│  ├─ Diverse document layouts (single, multi-column, tables, charts)   │
+│  ├─ User base includes researchers, students, organizations           │
+│  ├─ Internet connectivity available for cloud processing              │
+│  └─ GNN will generalize across document types                         │
+│                                                                        │
+│  CONSTRAINTS                                                           │
+│  ├─ Development timeline: 16 weeks                                    │
+│  ├─ Computing resources: Standard GPU (NVIDIA RTX 3090)               │
+│  ├─ Dataset size: ~5,000 annotated documents                          │
+│  ├─ Team size: 1 developer (thesis project)                           │
+│  ├─ No real-time processing required (batch processing okay)          │
+│  └─ Production deployment: Cloud-based (AWS/Google Cloud/Azure)       │
+│                                                                        │
+│  RISKS & MITIGATION                                                    │
+│  ├─ Risk: GNN model may not generalize well                           │
+│     Mitigation: Extensive cross-validation & transfer learning        │
+│  ├─ Risk: Dataset annotation may take longer than planned             │
+│     Mitigation: Use semi-automated annotation tools                   │
+│  ├─ Risk: OCR errors propagate to downstream modules                  │
+│     Mitigation: Implement human-in-the-loop verification              │
+│  ├─ Risk: Processing time exceeds acceptable limits                   │
+│     Mitigation: Model optimization & inference caching                │
+│  └─ Risk: User adoption may be slow                                   │
+│     Mitigation: Pilot testing & iterative UI improvements             │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+VALIDATION CHECKLIST
+┌────────────────────────────────────────────────────────────────────────┐
+│  Requirement                              Status    Target            │
+│  ─────────────────────────────────────────────────────────────────   │
+│  □ System processes documents             Ongoing   100% success      │
+│  □ Layout accuracy > 90%                  Ongoing   95%+ by week 16   │
+│  □ OCR improvement > 15%                  Ongoing   18%+ by week 16   │
+│  □ Processing time < 2.5s per page       Ongoing   2.1s by week 16   │
+│  □ Manual review rate < 5%                Ongoing   <4% by week 16   │
+│  □ User satisfaction > 4.0/5              Pending   4.2+ in testing  │
+│  □ System uptime > 99%                    Pending   99.5% in prod    │
+│  □ Cross-platform support verified        Pending   All major OSs    │
+│  □ Security & privacy standards met       Pending   GDPR compliant   │
+│  □ Documentation complete                 Pending   Full thesis +code │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+</pre>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--ink-500); margin-top: 1rem;"><strong>Figure 12.</strong> Complete Methodology Framework with Research Phases, Evaluation Components, and Validation Checklist</p>
+
+        <h3>Primary Deliverables</h3>
+        <ol>
+          <li><strong>Web Application:</strong> Fully functional DOCUGRAPH platform with user authentication and document processing capabilities</li>
+          <li><strong>Trained GNN Model:</strong> Graph Neural Network model trained on annotated document dataset</li>
+          <li><strong>API Documentation:</strong> Complete backend API specification for third-party integration</li>
+          <li><strong>User Documentation:</strong> Comprehensive guide for researchers and institutions using DOCUGRAPH</li>
+          <li><strong>Research Report:</strong> Thesis document with methodology, results, and findings</li>
+        </ol>
+
+        <h3>Evaluation Outcomes</h3>
+        <ul>
+          <li>Demonstrated improvement in OCR accuracy through graph-based layout analysis</li>
+          <li>Quantified performance metrics (processing time, throughput, accuracy rates)</li>
+          <li>User feedback on usability and practical value</li>
+          <li>Recommendations for future enhancements and scalability</li>
+        </ul>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<footer style="margin-top: 6rem; padding: 3rem 0; border-top: 1px solid var(--line); text-align: center; color: var(--ink-500); font-size: 0.9rem;">
+  <p>DOCUGRAPH — Undergraduate Thesis Research 2026 · Graph-Based Document Layout Analysis</p>
+</footer>
+
+<script src="assets/main.js"></script>
+
+</body>
+</html>
