@@ -314,7 +314,54 @@ User Action: Upload Document
           <li><strong>Reading Order Prediction:</strong> Network predicts optimal reading order and logical grouping of content</li>
         </ul>
 
-        <h3>3.2.3. OCR Integration Design</h3>
+        <h3>3.2.3. Multi-Structured Document Handling</h3>
+
+        <p>One of DOCUGRAPH's most advanced capabilities is its ability to intelligently process multi-structured documents where content spans multiple columns or is organized into separate sections. Unlike traditional linear text processing systems, DOCUGRAPH uses its Graph Neural Network to maintain coherence and logical flow even when document structure is complex.</p>
+
+        <h4>3.2.3.1. Paragraph Continuity Across Columns</h4>
+
+        <p>When a paragraph is cut off in one column and continues in the next, DOCUGRAPH's GNN-based system automatically:</p>
+
+        <ul>
+          <li><strong>Detects column boundaries:</strong> Identifies vertical spacing and layout structure to recognize multi-column layouts</li>
+          <li><strong>Tracks paragraph continuity:</strong> Uses spatial relationships and text coherence to determine which text blocks belong to the same paragraph, even when separated by columns</li>
+          <li><strong>Reconstructs logical flow:</strong> Applies the predicted reading order to connect paragraph fragments and reassemble them in the correct sequence</li>
+          <li><strong>Maintains context:</strong> Preserves the semantic relationship between fragmented content, ensuring OCR output reflects the intended document flow</li>
+        </ul>
+
+        <p>This is a significant advancement over traditional OCR systems, which process text linearly and often fail to recognize that a paragraph continues in the next column, resulting in jumbled or out-of-order text.</p>
+
+        <h4>3.2.3.2. Automatic Section and Box Separation</h4>
+
+        <p>Documents often contain enclosed "boxes" or distinct sections (sidebars, callout boxes, inset text, tables, or highlighted sections) that should be kept separate from the main content flow. DOCUGRAPH's system automatically:</p>
+
+        <ul>
+          <li><strong>Identifies enclosed structures:</strong> Uses visual analysis to detect bordered or highlighted sections that are spatially or semantically distinct from the main content</li>
+          <li><strong>Classifies section type:</strong> Leverages the GNN to classify sections as primary content, sidebar, callout, table, figure caption, footer, header, or other structural elements</li>
+          <li><strong>Separates content streams:</strong> Prevents content from different sections from being mixed together in the output</li>
+          <li><strong>Preserves hierarchical relationships:</strong> Maintains metadata about section types and relationships, allowing for structured output that reflects the original document organization</li>
+          <li><strong>Enables selective processing:</strong> Allows users to focus on specific sections or control how different content types are processed and extracted</li>
+        </ul>
+
+        <p>This prevents the common OCR problem where sidebar text, captions, or other secondary content gets mixed with the main narrative, creating confusing or incorrect output.</p>
+
+        <h4>3.2.3.3. Advanced Graph-Based Analysis for Complex Layouts</h4>
+
+        <p>The graph representation of the document enables DOCUGRAPH to handle complex structural scenarios:</p>
+
+        <ul>
+          <li><strong>Spatial node analysis:</strong> Each text block is a node with features describing its position, size, and visual properties</li>
+          <li><strong>Relational edge mapping:</strong> Edges represent spatial relationships (left, right, above, below) and semantic connections between blocks</li>
+          <li><strong>Neural relationship inference:</strong> The GNN learns which spatial relationships indicate content continuity vs. section separation</li>
+          <li><strong>Adaptive reading order prediction:</strong> The system dynamically determines reading order based on layout type (single-column sequential, multi-column columnar, or nested hierarchical structures)</li>
+        </ul>
+
+      </div>
+
+      <!-- 3.2.4 OCR Integration Design -->
+      <div class="methodology-section">
+
+        <h3>3.2.4. OCR Integration Design</h3>
 
         <p>The system integrates layout analysis with OCR through a <strong>layout-guided OCR pipeline:</strong></p>
 

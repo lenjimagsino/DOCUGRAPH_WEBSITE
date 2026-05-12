@@ -4,10 +4,396 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
-<title>Results — DOCUGRAPH</title>
 <link rel="icon" type="image/png" href="assets/logo.png">
 <link rel="stylesheet" href="assets/style.css">
-</head>
+<style>
+  /* ===== RESULTS PAGE CUSTOM STYLES ===== */
+  main { padding-top: 80px; padding-bottom: 60px; }
+  
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 48px;
+    margin-top: 48px;
+  }
+  
+  .result-doc {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .result-doc h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--ink-900);
+    margin-bottom: 20px;
+  }
+  
+  .doc-render {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: radial-gradient(ellipse at bottom, var(--green-50), var(--white));
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .doc-render img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  .bbox-container {
+    position: absolute;
+    inset: 0;
+  }
+  
+  .bbox {
+    position: absolute;
+    border: 2px solid;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+  }
+  
+  .bbox.header {
+    border-color: var(--green-700);
+    background: rgba(28, 122, 57, 0.15);
+    color: var(--green-900);
+  }
+  
+  .bbox.para {
+    border-color: var(--green-500);
+    background: rgba(62, 200, 92, 0.12);
+    color: var(--green-700);
+  }
+  
+  .bbox.table {
+    border-color: #d97706;
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400e;
+  }
+  
+  .bbox.figure {
+    border-color: #7c3aed;
+    background: rgba(124, 58, 237, 0.12);
+    color: #5b21b6;
+  }
+  
+  .bbox.shape {
+    border-color: #ec4899;
+    background: rgba(236, 72, 153, 0.12);
+    color: #be185d;
+  }
+  
+  .confidence-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, var(--green-600), var(--green-700));
+    color: white;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(42, 168, 74, 0.3);
+  }
+
+  .confidence-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .confidence-high { background-color: #10b981; }
+  .confidence-medium { background-color: #f59e0b; }
+  .confidence-low { background-color: #ef4444; }
+
+  .quality-metrics {
+    background: var(--green-50);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .quality-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .quality-metric-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green-700);
+    font-family: var(--font-mono);
+  }
+
+  .quality-metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-500);
+  }
+  
+  .doc-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+    color: var(--ink-500);
+    font-weight: 500;
+  }
+  
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--green-700);
+  }
+  
+  /* ===== TABS & OUTPUT ===== */
+  .result-output {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--off);
+  }
+  
+  .tabs button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-700);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  
+  .tabs button:hover {
+    color: var(--green-700);
+  }
+  
+  .tabs button.active {
+    color: var(--green-700);
+    border-bottom-color: var(--green-600);
+  }
+  
+  .tab-body {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: 500px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-700);
+  }
+  
+  .tab-body pre {
+    background: var(--off);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    overflow-x: auto;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    line-height: 1.5;
+  }
+  
+  .tab-body h2 {
+    margin: 0 0 12px 0;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink-900);
+  }
+  
+  .tab-body h3 {
+    margin: 16px 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-900);
+  }
+  
+  .tab-body p {
+    margin: 0 0 12px 0;
+  }
+  
+  .tab-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 12px;
+  }
+  
+  .tab-body table th {
+    background: var(--off);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-800);
+  }
+  
+  .tab-body table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  
+  .result-actions {
+    display: flex;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid var(--line);
+    background: var(--off);
+  }
+  
+  /* ===== LEGEND ===== */
+  .legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    justify-content: flex-start;
+  }
+  
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--ink-700);
+  }
+  
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+  
+  /* ===== RESPONSIVE ===== */
+  /* ===== LAYOUT VISUALIZATION ===== */
+  .layout-visualization-section {
+    margin-bottom: 48px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .layout-visualization-section h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--ink-900);
+    margin-bottom: 20px;
+  }
+
+  #layoutVisualization {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border: 2px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    min-height: 600px;
+    overflow: visible;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #layoutVisualization svg {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .region-box {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
+  }
+
+  .region-box:hover {
+    fill-opacity: 0.4 !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  }
+
+  @media (max-width: 1024px) {
+    .results-grid {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    .tab-body {
+      max-height: 400px;
+    }
+    .layout-visualization-section {
+      padding: 20px;
+    }
+  }
+</style>
 <body>
 
 <header class="nav">
@@ -39,8 +425,8 @@
     <div class="page-head reveal">
       <div>
         <span class="s-tag" style="margin-bottom:14px">Results</span>
-        <h1>Structured <span style="background:linear-gradient(120deg,var(--green-700),var(--green-500)); -webkit-background-clip:text; background-clip:text; color:transparent;">output</span> ready</h1>
-        <p>Detected 4 region types · 12 text blocks · 1 table · 1 figure — confidence 96.8%</p>
+        <h1>Analysis <span style="background:linear-gradient(120deg,var(--green-700),var(--green-500)); -webkit-background-clip:text; background-clip:text; color:transparent;">complete</span></h1>
+        <p id="page-summary">Upload a document to begin analysis</p>
       </div>
       <a href="try.html" class="btn btn-ghost">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -49,58 +435,60 @@
     </div>
 
     <!-- Legend -->
-    <div class="reveal" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:24px;">
-      <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; background:var(--white); border:1px solid var(--line); border-radius:999px; font-size:13px; color:var(--ink-700);">
-        <span style="width:12px; height:12px; background:var(--green-700); border-radius:3px;"></span> Headers
+    <div class="reveal" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:24px; justify-content:flex-start;">
+      <div style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; background:var(--white); border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--ink-700);">
+        <span style="width:10px; height:10px; background:var(--green-700); border-radius:2px;"></span> Headers
       </div>
-      <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; background:var(--white); border:1px solid var(--line); border-radius:999px; font-size:13px; color:var(--ink-700);">
-        <span style="width:12px; height:12px; background:var(--green-500); border-radius:3px;"></span> Paragraphs
+      <div style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; background:var(--white); border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--ink-700);">
+        <span style="width:10px; height:10px; background:var(--green-500); border-radius:2px;"></span> Paragraphs
       </div>
-      <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; background:var(--white); border:1px solid var(--line); border-radius:999px; font-size:13px; color:var(--ink-700);">
-        <span style="width:12px; height:12px; background:#d97706; border-radius:3px;"></span> Tables
+      <div style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; background:var(--white); border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--ink-700);">
+        <span style="width:10px; height:10px; background:#d97706; border-radius:2px;"></span> Tables
       </div>
-      <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; background:var(--white); border:1px solid var(--line); border-radius:999px; font-size:13px; color:var(--ink-700);">
-        <span style="width:12px; height:12px; background:#7c3aed; border-radius:3px;"></span> Figures
+      <div style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; background:var(--white); border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--ink-700);">
+        <span style="width:10px; height:10px; background:#7c3aed; border-radius:2px;"></span> Figures
       </div>
+      <div style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; background:var(--white); border:1px solid var(--line); border-radius:6px; font-size:12px; color:var(--ink-700);">
+        <span style="width:10px; height:10px; background:#ec4899; border-radius:2px;"></span> Shapes/Flowcharts
+      </div>
+    </div>
+
+    <!-- Full-width Layout Visualization (Phase 7 - Hierarchical Structure) -->
+    <div class="layout-visualization-section reveal" id="layout-section" style="display:none;">
+      <h3>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; margin-right:8px; vertical-align:-2px;"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 6v6m-3-3h6"/></svg>
+        Document Structure & Hierarchy (Phase 7)
+      </h3>
+      <div id="layoutVisualization" style="min-height: 300px; padding: 20px; overflow-x: auto;"></div>
     </div>
 
     <div class="results-grid">
 
       <!-- Left: Document with bounding boxes -->
       <div class="result-doc reveal">
-        <h3>📄 Original Document with Detected Regions</h3>
-        <div class="doc-render">
-
-          <div class="bbox header" data-label="HEADER · 99.2%">
-            <strong style="font-size:18px; color:var(--ink-900); font-family:var(--font-display);">Graph Neural Networks for Document Understanding</strong>
+        <h3 id="doc-title">Document Analysis</h3>
+        <div class="doc-render" id="doc-render">
+          <!-- Dynamic content will be inserted here -->
+        </div>
+        <div class="confidence-badge" id="confidence-badge" style="position: absolute; top: 24px; right: 24px;">
+          Confidence: <span id="result-confidence">0%</span>
+        </div>
+        <div class="doc-stats" id="doc-stats">
+          <div class="stat-item">
+            <span class="stat-label">Regions Found</span>
+            <span class="stat-value" id="stat-total">0</span>
           </div>
-
-          <div class="bbox para" data-label="PARAGRAPH · 97.8%">
-            Document layout analysis remains a foundational task in computer vision and natural-language processing. Traditional CNN-based pipelines treat pages as flat pixel grids and miss the relational structure between visual regions.
+          <div class="stat-item">
+            <span class="stat-label">Headers</span>
+            <span class="stat-value" id="stat-headers">0</span>
           </div>
-
-          <div class="bbox header" data-label="HEADER · 98.5%">
-            <strong style="font-size:15px; color:var(--ink-900); font-family:var(--font-display);">2. Methodology</strong>
+          <div class="stat-item">
+            <span class="stat-label">Tables</span>
+            <span class="stat-value" id="stat-tables">0</span>
           </div>
-
-          <div class="bbox para" data-label="PARAGRAPH · 96.4%">
-            We model each page as a graph where nodes represent visual regions detected by a backbone CNN, and edges encode spatial proximity and reading-order relationships. A two-layer Graph Attention Network propagates context.
-          </div>
-
-          <div class="bbox table" data-label="TABLE · 95.1%">
-            <table class="fake-table">
-              <tr><th>Method</th><th>F1</th><th>mAP</th></tr>
-              <tr><td>CNN baseline</td><td>0.891</td><td>0.842</td></tr>
-              <tr><td>DOCUGRAPH (ours)</td><td><b>0.974</b></td><td><b>0.928</b></td></tr>
-            </table>
-          </div>
-
-          <div class="bbox figure" data-label="FIGURE · 94.7%">
-            <div class="fake-fig">📊 Figure 1 · Pipeline overview</div>
-          </div>
-
-          <div class="bbox para" data-label="PARAGRAPH · 96.1%">
-            Results on the PubLayNet benchmark show consistent improvement across all region categories, with the most significant gains on tables and figures.
+          <div class="stat-item">
+            <span class="stat-label">Shapes</span>
+            <span class="stat-value" id="stat-shapes">0</span>
           </div>
         </div>
       </div>
@@ -108,9 +496,9 @@
       <!-- Right: Structured output with tabs -->
       <div class="result-output reveal" style="transition-delay:.1s">
         <div class="tabs">
-          <button class="active" data-tab="text">📝 Text</button>
-          <button data-tab="json">{ } JSON</button>
-          <button data-tab="markdown">Ⓜ️ Markdown</button>
+          <button class="active" data-tab="text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Text</button>
+          <button data-tab="json"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg> JSON</button>
+          <button data-tab="markdown"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><rect x="4" y="7" width="16" height="10" rx="2"/><polyline points="4 17 4 20 20 20 20 17"/><line x1="9" y1="11" x2="9" y2="15"/><polyline points="12 11 15 14 12 17"/></svg> Markdown</button>
         </div>
 
         <div class="tab-body" id="tab-text">
@@ -205,11 +593,11 @@ improvement across all region categories.</pre>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             Copy Text
           </button>
-          <button class="btn btn-ghost">
+          <button class="btn btn-ghost" id="download-pdf-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download PDF
           </button>
-          <button class="btn btn-ghost">
+          <button class="btn btn-ghost" id="download-docx-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download DOCX
           </button>
@@ -221,7 +609,315 @@ improvement across all region categories.</pre>
 </main>
 
 <script src="assets/main.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.min.js"></script>
 <script>
+  // Global storage for analysis data
+  let currentAnalysisData = null;
+
+  // Load analysis data from sessionStorage (from try.html)
+  document.addEventListener('DOMContentLoaded', () => {
+    const analysisDataStr = sessionStorage.getItem('analysisData');
+    
+    if (analysisDataStr) {
+      try {
+        currentAnalysisData = JSON.parse(analysisDataStr);
+        displayUploadedImageResults(currentAnalysisData);
+      } catch (e) {
+        console.error('Error parsing analysis data:', e);
+      }
+    }
+  });
+
+  function displayUploadedImageResults(data) {
+    const docRender = document.getElementById('doc-render');
+    const docTitle = document.getElementById('doc-title');
+    const confidenceBadge = document.getElementById('result-confidence');
+    const pageSummary = document.getElementById('page-summary');
+    
+    // Calculate quality metrics
+    const qualityMetrics = data.qualityMetrics || {};
+    const avgConfidence = qualityMetrics.averageConfidence || 
+      (data.regions && data.regions.length > 0 
+        ? data.regions.reduce((a, r) => a + r.conf, 0) / data.regions.length
+        : 0.85);
+    const highConfidence = data.regions ? data.regions.filter(r => r.conf > 0.85).length : 0;
+    const mediumConfidence = data.regions ? data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length : 0;
+    const lowConfidence = data.regions ? data.regions.filter(r => r.conf < 0.7).length : 0;
+    
+    // Update title with filename
+    const filename = data.filename.replace(/\.[^/.]+$/, '');
+    docTitle.textContent = filename;
+    confidenceBadge.textContent = (data.confidence * 100).toFixed(1) + '%';
+    
+    // Update statistics
+    const stats = {
+      total: data.regions ? data.regions.length : 0,
+      headers: data.regions ? data.regions.filter(r => r.type === 'header').length : 0,
+      tables: data.regions ? data.regions.filter(r => r.type === 'table').length : 0,
+      shapes: data.regions ? data.regions.filter(r => r.type === 'shape').length : 0,
+      paragraphs: data.regions ? data.regions.filter(r => r.type === 'para').length : 0,
+      figures: data.regions ? data.regions.filter(r => r.type === 'figure').length : 0
+    };
+    
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-headers').textContent = stats.headers;
+    document.getElementById('stat-tables').textContent = stats.tables;
+    document.getElementById('stat-shapes').textContent = stats.shapes;
+    
+    // Add quality metrics visualization before page summary
+    let qualityHTML = '<div class="quality-metrics">';
+    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${(avgConfidence * 100).toFixed(1)}%</div><div class="quality-metric-label">Avg Confidence</div></div>`;
+    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${highConfidence}</div><div class="quality-metric-label">High (>85%)</div></div>`;
+    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${mediumConfidence}</div><div class="quality-metric-label">Medium (70-85%)</div></div>`;
+    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${lowConfidence}</div><div class="quality-metric-label">Low (<70%)</div></div>`;
+    qualityHTML += '</div>';
+    
+    // Insert quality metrics after page summary
+    if (!document.getElementById('quality-metrics-container')) {
+      pageSummary.insertAdjacentHTML('afterend', `<div id="quality-metrics-container">${qualityHTML}</div>`);
+    } else {
+      document.getElementById('quality-metrics-container').innerHTML = qualityHTML;
+    }
+    
+    // Update page summary
+    const detections = [];
+    if (stats.headers > 0) detections.push(`${stats.headers} header${stats.headers !== 1 ? 's' : ''}`);
+    if (stats.paragraphs > 0) detections.push(`${stats.paragraphs} paragraph${stats.paragraphs !== 1 ? 's' : ''}`);
+    if (stats.tables > 0) detections.push(`${stats.tables} table${stats.tables !== 1 ? 's' : ''}`);
+    if (stats.figures > 0) detections.push(`${stats.figures} figure${stats.figures !== 1 ? 's' : ''}`);
+    if (stats.shapes > 0) detections.push(`${stats.shapes} shape${stats.shapes !== 1 ? 's' : ''}`);
+    
+    const summaryText = detections.length > 0 
+      ? `${detections.join(' · ')} — confidence ${(data.confidence * 100).toFixed(1)}%`
+      : `${stats.total} elements detected — confidence ${(data.confidence * 100).toFixed(1)}%`;
+    
+    pageSummary.textContent = summaryText;
+    
+    // Update tab content with actual data
+    updateTabContent(data);
+    
+    // If image data exists, display it
+    if (data.imageBase64 || data.imageData) {
+      const imageSource = data.imageBase64 || data.imageData;
+      const img = document.createElement('img');
+      img.src = imageSource;
+      img.alt = data.filename;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '100%';
+      img.style.objectFit = 'contain';
+      docRender.innerHTML = '';
+      docRender.appendChild(img);
+      
+      // Add bounding boxes overlay
+      const bboxContainer = document.createElement('div');
+      bboxContainer.className = 'bbox-container';
+      
+      // Calculate image dimensions for bbox positioning
+      img.onload = () => {
+        const imgWidth = img.naturalWidth;
+        const imgHeight = img.naturalHeight;
+        const containerWidth = docRender.offsetWidth;
+        const containerHeight = docRender.offsetHeight;
+        
+        // Calculate scale factors
+        const scaleX = containerWidth / imgWidth;
+        const scaleY = containerHeight / imgHeight;
+        const scale = Math.min(scaleX, scaleY);
+        
+        const displayWidth = imgWidth * scale;
+        const displayHeight = imgHeight * scale;
+        const offsetX = (containerWidth - displayWidth) / 2;
+        const offsetY = (containerHeight - displayHeight) / 2;
+        
+        // Render bounding boxes
+        data.regions.forEach((region, idx) => {
+          const bbox = document.createElement('div');
+          bbox.className = `bbox ${region.type}`;
+          
+          // Parse bbox coordinates (percentage format)
+          const [x1, y1, x2, y2] = region.bbox;
+          
+          // Convert from percentage to pixels on original image
+          const left = (x1 / 100) * imgWidth;
+          const top = (y1 / 100) * imgHeight;
+          const width = ((x2 - x1) / 100) * imgWidth;
+          const height = ((y2 - y1) / 100) * imgHeight;
+          
+          // Scale to display size
+          bbox.style.left = (offsetX + left * scale) + 'px';
+          bbox.style.top = (offsetY + top * scale) + 'px';
+          bbox.style.width = (width * scale) + 'px';
+          bbox.style.height = (height * scale) + 'px';
+          
+          // Add label
+          const confidence = region.conf ? (region.conf * 100).toFixed(0) : '0';
+          bbox.innerHTML = `<strong>${region.type.toUpperCase()}</strong> · ${confidence}%`;
+          
+          bboxContainer.appendChild(bbox);
+        });
+        
+        docRender.appendChild(bboxContainer);
+      };
+    } else {
+      // Demo mode - show placeholder with regions
+      docRender.innerHTML = '<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--ink-500); font-size:14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg> Demo results from test case</div>';
+    }
+  }
+
+  function updateTabContent(data) {
+    // Generate formatted document content from regions
+    const filename = data.filename.replace(/\.[^/.]+$/, ''); // Remove extension
+    
+    // Calculate quality metrics
+    const qualityMetrics = data.qualityMetrics || {};
+    const lowConfidenceCount = qualityMetrics.lowConfidenceRegions || 
+      (data.regions ? data.regions.filter(r => r.conf < 0.7).length : 0);
+    const avgConfidence = qualityMetrics.averageConfidence || 
+      (data.regions && data.regions.length > 0 
+        ? data.regions.reduce((a, r) => a + r.conf, 0) / data.regions.length
+        : 0.85);
+    
+    // Text Tab - Plain formatted text
+    let textContent = `${filename.toUpperCase()}\n`;
+    textContent += `${'='.repeat(filename.length)}\n\n`;
+    textContent += `Analysis Date: ${new Date(data.timestamp).toLocaleString()}\n`;
+    textContent += `Confidence Score: ${(data.confidence * 100).toFixed(1)}%\n`;
+    textContent += `Average Region Confidence: ${(avgConfidence * 100).toFixed(1)}%\n`;
+    textContent += `Low-Confidence Regions: ${lowConfidenceCount}\n`;
+    
+    // Add advanced metadata if available
+    if (data.metadata) {
+      textContent += `\nANALYSIS METADATA:\n`;
+      textContent += `  • Method: ${data.metadata.analysisMethod || 'Smart OCR Recognition'}\n`;
+      textContent += `  • Language: ${data.metadata.language || 'English'}\n`;
+      textContent += `  • Segmentation: ${data.metadata.segmentationLevel || 'Basic'}\n`;
+      textContent += `  • Preprocessing: ${data.metadata.preprocessingApplied ? 'Yes' : 'No'}\n`;
+      if (data.metadata.detectedFlowchart) {
+        textContent += `  • Flowchart Detected: Yes\n`;
+      }
+      if (data.metadata.detectedTable) {
+        textContent += `  • Table Detected: Yes\n`;
+      }
+      textContent += `\n`;
+    }
+    
+    textContent += `Total Regions Detected: ${data.regions.length}\n`;
+    textContent += `  • Headers: ${data.regions.filter(r => r.type === 'header').length}\n`;
+    textContent += `  • Paragraphs: ${data.regions.filter(r => r.type === 'para').length}\n`;
+    textContent += `  • Tables: ${data.regions.filter(r => r.type === 'table').length}\n`;
+    textContent += `  • Figures: ${data.regions.filter(r => r.type === 'figure').length}\n`;
+    textContent += `  • Shapes: ${data.regions.filter(r => r.type === 'shape').length}\n`;
+    
+    // Add confidence breakdown
+    textContent += `\nCONFIDENCE BREAKDOWN:\n`;
+    textContent += `  • High (>0.85): ${data.regions.filter(r => r.conf > 0.85).length} regions\n`;
+    textContent += `  • Medium (0.70-0.85): ${data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length} regions\n`;
+    textContent += `  • Low (<0.70): ${data.regions.filter(r => r.conf < 0.7).length} regions\n`;
+    textContent += `\n${'='.repeat(50)}\n\n`;
+    
+    data.regions.forEach((region, idx) => {
+      const conf = region.conf ? (region.conf * 100).toFixed(0) : '0';
+      const typeLabel = region.type.charAt(0).toUpperCase() + region.type.slice(1);
+      const confidenceColor = region.conf > 0.85 ? '✓' : region.conf >= 0.7 ? '◐' : '✗';
+      textContent += `[${idx + 1}] ${typeLabel} (Confidence: ${conf}%) ${confidenceColor}\n`;
+      
+      // Special handling for tables
+      if (region.type === 'table' && typeof region.text === 'string' && region.text.includes('Table')) {
+        textContent += `${region.text}\n`;
+      } else if (region.text) {
+        textContent += `${region.text}\n`;
+      } else {
+        textContent += `[${typeLabel.toUpperCase()} REGION]\n`;
+      }
+      textContent += `\n`;
+    });
+    
+    document.getElementById('tab-text').innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(textContent)}</pre>`;
+    
+    // JSON Tab - Structured data with advanced metadata
+    const jsonData = {
+      document_id: 'doc_' + Date.now(),
+      filename: data.filename,
+      analysis_date: data.timestamp,
+      confidence: data.confidence,
+      regions_detected: data.regions.length,
+      quality_metrics: {
+        average_confidence: avgConfidence,
+        low_confidence_regions: lowConfidenceCount,
+        high_confidence: data.regions.filter(r => r.conf > 0.85).length,
+        medium_confidence: data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length
+      },
+      regions: data.regions,
+      stats: data.stats || {},
+      advanced_analysis: data.metadata ? {
+        method: data.metadata.analysisMethod,
+        language: data.metadata.language,
+        segmentation: data.metadata.segmentationLevel,
+        preprocessing_applied: data.metadata.preprocessingApplied || false,
+        detected_flowchart: data.metadata.detectedFlowchart || false,
+        detected_table: data.metadata.detectedTable || false,
+        layout_type: data.metadata.layoutType || 'single',
+        detected_scripts: data.metadata.scriptTypes || {}
+      } : null
+    };
+    document.getElementById('tab-json').innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${JSON.stringify(jsonData, null, 2)}</pre>`;
+    
+    // Markdown Tab with metadata
+    let markdownContent = `# ${filename}\n\n`;
+    markdownContent += `**Analysis Date:** ${new Date(data.timestamp).toLocaleString()}\n`;
+    markdownContent += `**Confidence Score:** ${(data.confidence * 100).toFixed(1)}%\n`;
+    markdownContent += `**Average Region Confidence:** ${(avgConfidence * 100).toFixed(1)}%\n\n`;
+    
+    if (data.metadata) {
+      markdownContent += `## Analysis Information\n`;
+      markdownContent += `- **Method:** ${data.metadata.analysisMethod || 'Smart OCR Recognition'}\n`;
+      markdownContent += `- **Language:** ${data.metadata.language || 'English'}\n`;
+      markdownContent += `- **Segmentation:** ${data.metadata.segmentationLevel || 'Basic'}\n`;
+      markdownContent += `- **Preprocessing:** ${data.metadata.preprocessingApplied ? 'Applied' : 'Not Applied'}\n`;
+      if (data.metadata.detectedFlowchart) {
+        markdownContent += `- **Flowchart:** Yes (detected ${data.regions.filter(r => r.type === 'shape').length} shapes)\n`;
+      }
+      if (data.metadata.detectedTable) {
+        markdownContent += `- **Table:** Yes (${data.regions.filter(r => r.type === 'table').length} table(s))\n`;
+      }
+      markdownContent += `\n`;
+    }
+    
+    markdownContent += `## Quality Assessment\n`;
+    markdownContent += `- **High Confidence (>85%):** ${data.regions.filter(r => r.conf > 0.85).length} regions\n`;
+    markdownContent += `- **Medium Confidence (70-85%):** ${data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length} regions\n`;
+    markdownContent += `- **Low Confidence (<70%):** ${lowConfidenceCount} regions\n\n`;
+    
+    markdownContent += `## Document Summary\n`;
+    markdownContent += `- **Total Elements:** ${data.regions.length}\n`;
+    markdownContent += `- **Headers:** ${data.regions.filter(r => r.type === 'header').length}\n`;
+    markdownContent += `- **Paragraphs:** ${data.regions.filter(r => r.type === 'para').length}\n`;
+    markdownContent += `- **Tables:** ${data.regions.filter(r => r.type === 'table').length}\n`;
+    markdownContent += `- **Figures:** ${data.regions.filter(r => r.type === 'figure').length}\n`;
+    markdownContent += `- **Flowchart Elements:** ${data.regions.filter(r => r.type === 'shape').length}\n\n`;
+    markdownContent += `---\n\n`;
+    
+    data.regions.forEach((region, idx) => {
+      const conf = region.conf ? (region.conf * 100).toFixed(0) : '0';
+      const typeLabel = region.type.charAt(0).toUpperCase() + region.type.slice(1);
+      const confidenceLevel = region.conf > 0.85 ? 'High' : region.conf >= 0.7 ? 'Medium' : 'Low';
+      markdownContent += `### ${idx + 1}. ${typeLabel} *(${conf}% confidence - ${confidenceLevel})*\n`;
+      if (region.text) {
+        markdownContent += `${region.text}\n`;
+      }
+      markdownContent += `\n`;
+    });
+    
+    document.getElementById('tab-markdown').innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(markdownContent)}</pre>`;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   // Tab switching
   const tabs = document.querySelectorAll('.tabs button');
   const bodies = { text: document.getElementById('tab-text'), json: document.getElementById('tab-json'), markdown: document.getElementById('tab-markdown') };
@@ -241,9 +937,110 @@ improvement across all region categories.</pre>
     navigator.clipboard.writeText(text).then(() => {
       const btn = e.currentTarget;
       const original = btn.innerHTML;
-      btn.innerHTML = '✓ Copied';
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
+    }).catch(() => {
+      alert('Failed to copy text. Please try again.');
     });
+  });
+
+  // Download PDF
+  document.getElementById('download-pdf-btn').addEventListener('click', e => {
+    if (!currentAnalysisData) {
+      alert('No analysis data available for download');
+      return;
+    }
+    
+    const btn = e.currentTarget;
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
+    
+    setTimeout(() => {
+      const element = document.getElementById('tab-text');
+      const filename = currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-analysis.pdf';
+      const opt = {
+        margin: 10,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      };
+      html2pdf().set(opt).from(element).save().then(() => {
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }).catch(() => {
+        alert('Error generating PDF. Please try again.');
+        btn.innerHTML = original;
+        btn.disabled = false;
+      });
+    }, 300);
+  });
+
+  // Download DOCX
+  document.getElementById('download-docx-btn').addEventListener('click', e => {
+    if (!currentAnalysisData) {
+      alert('No analysis data available for download');
+      return;
+    }
+    
+    const btn = e.currentTarget;
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
+    
+    setTimeout(() => {
+      const text = bodies.text.innerText;
+      const filename = currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-analysis.docx';
+      
+      // Create a simple but proper DOCX file
+      // DOCX is a ZIP file with XML inside
+      const docContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>`;
+      
+      // Split text into paragraphs and create proper XML
+      text.split('\n').forEach(line => {
+        if (line.trim()) {
+          const escapedLine = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          docContent += `
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rStyle w:val="DefaultParagraphFont"/>
+        </w:rPr>
+        <w:t>${escapedLine}</w:t>
+      </w:r>
+    </w:p>`;
+        } else {
+          docContent += `
+    <w:p/>`;
+        }
+      });
+      
+      docContent += `
+  </w:body>
+</w:document>`;
+
+      // Create blob and download
+      const blob = new Blob([docContent], { 
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      btn.innerHTML = original;
+      btn.disabled = false;
+    }, 300);
   });
 </script>
 </body>
