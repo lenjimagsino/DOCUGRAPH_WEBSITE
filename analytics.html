@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Analytics — DOCUGRAPH</title>
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/enhancements.css">
+<style>
+  body.loading main, body.loading header { visibility: hidden; }
+  .auth-loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--white); z-index: 9999; }
+  .auth-loading .spinner { width: 44px; height: 44px; border: 3px solid var(--green-200); border-top-color: var(--green-600); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  body:not(.loading) .auth-loading { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="loading">
+
+<div class="auth-loading"><div class="spinner"></div></div>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="assets/logo.png" alt="DOCUGRAPH">
+      <span><b>DOCU</b><em>GRAPH</em></span>
+    </a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="try.html">Analyze</a></li>
+        <li><a href="results.html">Results</a></li>
+        <li><a href="analytics.html" class="active">Analytics</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+    </nav>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="nav-user" id="nav-user">
+        <button class="nav-user-btn" id="user-btn">
+          <span class="avatar-sm" id="user-avatar">U</span>
+          <span class="name" id="user-name">User</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-user-menu">
+          <div class="menu-head">
+            <div class="menu-name" id="menu-name">User</div>
+            <div class="menu-email" id="menu-email">user@example.com</div>
+          </div>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="settings.html">Settings</a>
+          <div class="menu-divider"></div>
+          <button class="logout" id="logout-btn">Sign out</button>
+        </div>
+      </div>
+      <button class="nav-toggle" aria-label="Toggle navigation"><span></span></button>
+    </div>
+  </div>
+</header>
+
+<main class="dash-wrap">
+  <div class="wrap">
+
+    <div class="dash-greet reveal">
+      <h1><span class="grad">Analytics</span></h1>
+      <p>Deep view into your DOCUGRAPH usage, accuracy, and processing performance.</p>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="dash-stats">
+      <div class="dash-stat reveal">
+        <div class="label">Total Documents</div>
+        <div class="value"><span data-counter="0" id="kpi-docs">0</span></div>
+        <div class="delta" id="kpi-docs-delta">All time</div>
+      </div>
+      <div class="dash-stat reveal" data-delay="1">
+        <div class="label">Total Pages</div>
+        <div class="value"><span data-counter="0" id="kpi-pages">0</span></div>
+        <div class="delta">Processed</div>
+      </div>
+      <div class="dash-stat reveal" data-delay="2">
+        <div class="label">Avg. Confidence</div>
+        <div class="value"><span class="accent" data-counter="97.4" data-decimals="1">0</span>%</div>
+        <div class="delta">Across all regions</div>
+      </div>
+      <div class="dash-stat reveal" data-delay="3">
+        <div class="label">Time Saved</div>
+        <div class="value"><span data-counter="0" id="kpi-time">0</span> min</div>
+        <div class="delta">vs. manual extraction</div>
+      </div>
+    </div>
+
+    <!-- Charts grid -->
+    <div class="analytics-grid" style="margin-top:24px;">
+
+      <div class="chart-card reveal">
+        <h3>Documents per Day</h3>
+        <p class="sub">Last 30 days · running total</p>
+        <svg class="chart" id="chart-docs" viewBox="0 0 600 240" preserveAspectRatio="none" style="height:240px;"></svg>
+        <div class="legend-row">
+          <span class="legend-item"><span class="swatch" style="background:var(--green-600)"></span> Daily uploads</span>
+          <span class="legend-item"><span class="swatch" style="background:var(--green-300)"></span> 7-day moving avg</span>
+        </div>
+      </div>
+
+      <div class="chart-card reveal" data-delay="1">
+        <h3>Region Type Distribution</h3>
+        <p class="sub">What DOCUGRAPH found in your documents</p>
+        <svg class="chart" id="chart-donut" viewBox="0 0 240 240" style="height:240px; width:auto; max-width:240px; margin:0 auto;"></svg>
+        <div class="legend-row" id="donut-legend"></div>
+      </div>
+
+      <div class="chart-card wide reveal" data-delay="2">
+        <h3>Accuracy by Stage</h3>
+        <p class="sub">F1-score across the 6-stage DOCUGRAPH pipeline</p>
+        <svg class="chart" id="chart-stages" viewBox="0 0 760 200" preserveAspectRatio="none" style="height:200px;"></svg>
+      </div>
+
+      <div class="chart-card third reveal">
+        <h3>Avg. Processing Time</h3>
+        <p class="sub">Per page</p>
+        <div style="display:flex; align-items:center; justify-content:center; padding:18px 0;">
+          <svg class="progress-ring" viewBox="0 0 120 120" width="140" height="140">
+            <circle class="track" cx="60" cy="60" r="52" stroke-width="10"/>
+            <circle class="bar" cx="60" cy="60" r="52" stroke-width="10"
+                    stroke-dasharray="326.7"
+                    stroke-dashoffset="326.7" id="ring-bar"/>
+          </svg>
+          <div style="position:absolute; text-align:center;">
+            <div style="font: 700 28px var(--font-display); color:var(--ink-900);"><span data-counter="8.2" data-decimals="1">0</span>s</div>
+            <div style="font-size:12px; color:var(--ink-500); margin-top:2px;">PER PAGE</div>
+          </div>
+        </div>
+        <div style="text-align:center; font-size:12.5px; color:var(--ink-500);">68% faster than baseline</div>
+      </div>
+
+      <div class="chart-card third reveal" data-delay="1">
+        <h3>Layout F1</h3>
+        <p class="sub">vs. competing models</p>
+        <div style="display:flex; flex-direction:column; gap:14px; padding-top:8px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--ink-900); margin-bottom:4px;"><span>DOCUGRAPH</span><span class="accent" style="color:var(--green-700);">97.4%</span></div>
+            <div class="confidence-bar"><div class="fill" data-target="97.4" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--ink-700); margin-bottom:4px;"><span>LayoutLM v3</span><span>92.1%</span></div>
+            <div class="confidence-bar"><div class="fill" data-target="92.1" style="width:0%; background:linear-gradient(90deg, #6ddc83, #2aa84a);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--ink-700); margin-bottom:4px;"><span>CNN baseline</span><span>83.7%</span></div>
+            <div class="confidence-bar"><div class="fill" data-target="83.7" style="width:0%; background:linear-gradient(90deg, #a8eab6, #6ddc83);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--ink-700); margin-bottom:4px;"><span>Plain OCR</span><span>71.3%</span></div>
+            <div class="confidence-bar"><div class="fill" data-target="71.3" style="width:0%; background:linear-gradient(90deg, #d4f5db, #a8eab6);"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card third reveal" data-delay="2">
+        <h3>File Types</h3>
+        <p class="sub">Last 30 days</p>
+        <div style="display:flex; flex-direction:column; gap:12px; padding-top:8px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--green-50); border-radius:10px;">
+            <span style="display:inline-flex; align-items:center; gap:10px; font-weight:500; font-size:14px; color:var(--ink-900);">
+              <span style="background:#dc2626; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">PDF</span>
+              PDF documents
+            </span>
+            <span style="font-family:var(--font-mono); color:var(--ink-500); font-size:13px;" id="ft-pdf">0</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--green-50); border-radius:10px;">
+            <span style="display:inline-flex; align-items:center; gap:10px; font-weight:500; font-size:14px; color:var(--ink-900);">
+              <span style="background:#2563eb; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">JPG</span>
+              JPEG images
+            </span>
+            <span style="font-family:var(--font-mono); color:var(--ink-500); font-size:13px;" id="ft-jpg">0</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--green-50); border-radius:10px;">
+            <span style="display:inline-flex; align-items:center; gap:10px; font-weight:500; font-size:14px; color:var(--ink-900);">
+              <span style="background:#7c3aed; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">PNG</span>
+              PNG images
+            </span>
+            <span style="font-family:var(--font-mono); color:var(--ink-500); font-size:13px;" id="ft-png">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card wide reveal" data-delay="3">
+        <h3>Recent Activity</h3>
+        <p class="sub">Your last 10 events on DOCUGRAPH</p>
+        <div class="timeline" id="activity-timeline">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script src="assets/main.js"></script>
+<script type="module">
+  import { auth, onAuthStateChanged, logout } from "./assets/auth.js";
+
+  function getInitials(u){ const s=u.displayName||u.email||'U'; const p=s.trim().split(/[\s@.]+/).filter(Boolean); return (p.length>=2?(p[0][0]+p[1][0]):s.slice(0,2)).toUpperCase(); }
+
+  onAuthStateChanged(auth, user => {
+    if (!user) { window.location.href = 'login.html'; return; }
+    document.getElementById('user-avatar').textContent = getInitials(user);
+    document.getElementById('user-name').textContent = user.displayName || user.email.split('@')[0];
+    document.getElementById('menu-name').textContent = user.displayName || 'DOCUGRAPH user';
+    document.getElementById('menu-email').textContent = user.email || '';
+    document.body.classList.remove('loading');
+    buildAll();
+  });
+
+  document.getElementById('user-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('nav-user').classList.toggle('open');
+  });
+  document.addEventListener('click', () => document.getElementById('nav-user').classList.remove('open'));
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'login.html';
+  });
+
+  function buildAll() {
+    // Pull data from localStorage – fall back to demo
+    const docCount = parseInt(localStorage.getItem('docugraph:doc-count') || '0', 10);
+    const pages    = parseInt(localStorage.getItem('docugraph:page-count') || '0', 10);
+    const timeMin  = Math.round(pages * 1.2); // rough estimate: 1.2 min/page saved
+    document.getElementById('kpi-docs').dataset.counter = docCount;
+    document.getElementById('kpi-pages').dataset.counter = pages;
+    document.getElementById('kpi-time').dataset.counter = timeMin;
+
+    if (docCount === 0) {
+      document.getElementById('kpi-docs-delta').textContent = 'No analyses yet';
+    }
+
+    buildLineChart();
+    buildDonut();
+    buildStagesChart();
+    buildProgressRing();
+    buildTimeline();
+    buildFileTypes(docCount);
+
+    // Trigger animation
+    setTimeout(() => {
+      document.querySelectorAll('.confidence-bar .fill[data-target]').forEach(el => {
+        el.style.width = el.dataset.target + '%';
+      });
+    }, 400);
+  }
+
+  // --- Line chart ---
+  function buildLineChart() {
+    let data;
+    try { data = JSON.parse(localStorage.getItem('docugraph:activity-30') || 'null'); } catch(_){}
+    if (!Array.isArray(data) || data.length !== 30) {
+      data = new Array(30).fill(0); // empty for new users
+    }
+    const W = 600, H = 240, padL = 30, padR = 10, padT = 16, padB = 28;
+    const max = Math.max(...data, 4);
+    const stepX = (W - padL - padR) / 29;
+    const pts = data.map((v, i) => [padL + i*stepX, H - padB - (v/max)*(H - padT - padB)]);
+    // Moving avg
+    const ma = data.map((_, i) => {
+      const slice = data.slice(Math.max(0, i-6), i+1);
+      return slice.reduce((a,b)=>a+b,0)/slice.length;
+    });
+    const maPts = ma.map((v, i) => [padL + i*stepX, H - padB - (v/max)*(H - padT - padB)]);
+
+    const linePath = pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const areaPath = linePath + ` L ${pts[29][0]},${H-padB} L ${pts[0][0]},${H-padB} Z`;
+    const maPath = maPts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+
+    document.getElementById('chart-docs').innerHTML = `
+      <defs>
+        <linearGradient id="grad-docs" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--green-500)" stop-opacity=".35"/>
+          <stop offset="100%" stop-color="var(--green-500)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g stroke="var(--line)" stroke-width="1">
+        <line x1="${padL}" y1="${padT+50}" x2="${W-padR}" y2="${padT+50}"/>
+        <line x1="${padL}" y1="${padT+110}" x2="${W-padR}" y2="${padT+110}"/>
+        <line x1="${padL}" y1="${padT+170}" x2="${W-padR}" y2="${padT+170}"/>
+      </g>
+      <path d="${areaPath}" fill="url(#grad-docs)"/>
+      <path d="${maPath}" fill="none" stroke="var(--green-300)" stroke-width="2" stroke-dasharray="4 4"/>
+      <path d="${linePath}" fill="none" stroke="var(--green-700)" stroke-width="2.5" stroke-linejoin="round"/>
+      <g font-size="10" fill="var(--ink-500)" font-family="var(--font-mono)" text-anchor="middle">
+        <text x="${padL}" y="${H-8}">30d ago</text>
+        <text x="${(padL+(W-padR))/2}" y="${H-8}">15d ago</text>
+        <text x="${W-padR}" y="${H-8}">today</text>
+      </g>
+    `;
+  }
+
+  // --- Donut chart ---
+  function buildDonut() {
+    const empty = (parseInt(localStorage.getItem('docugraph:doc-count') || '0', 10) === 0);
+    let segments;
+    try { segments = JSON.parse(localStorage.getItem('docugraph:regions') || 'null'); } catch(_){}
+    if (!segments || empty) {
+      // Demo distribution (typical research paper)
+      segments = [
+        { label: 'Text',       value: 48, color: 'var(--green-700)' },
+        { label: 'Title',      value: 8,  color: 'var(--green-600)' },
+        { label: 'Figure',     value: 14, color: 'var(--green-500)' },
+        { label: 'Table',      value: 12, color: 'var(--green-400)' },
+        { label: 'List',       value: 10, color: 'var(--green-300)' },
+        { label: 'Footnote',   value: 8,  color: 'var(--green-200)' }
+      ];
+    }
+    const total = segments.reduce((a, s) => a + s.value, 0);
+    let acc = 0;
+    const cx = 120, cy = 120, r = 78, sw = 28;
+    const arcs = segments.map(s => {
+      const start = (acc / total) * 2 * Math.PI;
+      acc += s.value;
+      const end = (acc / total) * 2 * Math.PI;
+      const large = end - start > Math.PI ? 1 : 0;
+      const x1 = cx + r * Math.cos(start - Math.PI/2);
+      const y1 = cy + r * Math.sin(start - Math.PI/2);
+      const x2 = cx + r * Math.cos(end - Math.PI/2);
+      const y2 = cy + r * Math.sin(end - Math.PI/2);
+      return `<path d="M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}"
+                    fill="none" stroke="${s.color}" stroke-width="${sw}" stroke-linecap="butt"/>`;
+    }).join('');
+
+    document.getElementById('chart-donut').innerHTML = `
+      ${arcs}
+      <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="22" font-weight="700" fill="var(--ink-900)" font-family="var(--font-display)">${total}</text>
+      <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="11" fill="var(--ink-500)" font-family="var(--font-mono)">REGIONS</text>
+    `;
+    document.getElementById('donut-legend').innerHTML = segments.map(s =>
+      `<span class="legend-item"><span class="swatch" style="background:${s.color}"></span> ${s.label} <strong style="color:var(--ink-900);">${s.value}</strong></span>`
+    ).join('');
+  }
+
+  // --- Stages bar chart ---
+  function buildStagesChart() {
+    const stages = [
+      { name: 'Input',       v: 100 },
+      { name: 'Preprocess',  v: 99.2 },
+      { name: 'Graph Build', v: 96.8 },
+      { name: 'GNN Layout',  v: 97.4 },
+      { name: 'OCR',         v: 95.1 },
+      { name: 'Output',      v: 99.9 }
+    ];
+    const W = 760, H = 200, padL = 30, padR = 10, padT = 20, padB = 36;
+    const bw = (W - padL - padR) / stages.length;
+    const max = 100;
+    const bars = stages.map((s, i) => {
+      const h = ((s.v/max) * (H - padT - padB));
+      const x = padL + i*bw + bw*0.18;
+      const y = H - padB - h;
+      const w = bw * 0.64;
+      return `
+        <g>
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="url(#grad-bar)"/>
+          <text x="${x+w/2}" y="${y-6}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink-900)" font-family="var(--font-mono)">${s.v}%</text>
+          <text x="${x+w/2}" y="${H-12}" text-anchor="middle" font-size="11" fill="var(--ink-500)" font-family="var(--font-body)">${s.name}</text>
+        </g>`;
+    }).join('');
+    document.getElementById('chart-stages').innerHTML = `
+      <defs>
+        <linearGradient id="grad-bar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--green-600)"/>
+          <stop offset="100%" stop-color="var(--green-400)"/>
+        </linearGradient>
+      </defs>
+      ${bars}
+    `;
+  }
+
+  // --- Progress ring ---
+  function buildProgressRing() {
+    const r = 52, c = 2*Math.PI*r;
+    const pct = 0.68; // 68% faster shown filled
+    const bar = document.getElementById('ring-bar');
+    bar.setAttribute('stroke-dasharray', c.toFixed(2));
+    bar.setAttribute('stroke-dashoffset', c.toFixed(2));
+    setTimeout(() => bar.setAttribute('stroke-dashoffset', (c * (1 - pct)).toFixed(2)), 300);
+  }
+
+  // --- Timeline ---
+  function buildTimeline() {
+    let events;
+    try { events = JSON.parse(localStorage.getItem('docugraph:events') || 'null'); } catch(_){}
+    if (!Array.isArray(events) || !events.length) {
+      events = [
+        { type: 'system', title: 'Welcome to DOCUGRAPH!', sub: 'Account created · just now' },
+        { type: 'tip',    title: 'Try a sample document', sub: 'Upload any PDF or image to begin' }
+      ];
+    }
+    const ICONS = {
+      analyze: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/></svg>',
+      result:  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+      system:  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+      tip:     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 3-2 5-3 6.5V18H8v-2.5C7 14 5 12 5 9a7 7 0 0 1 7-7z"/></svg>'
+    };
+    document.getElementById('activity-timeline').innerHTML = events.map(e => `
+      <div class="tl-item">
+        <div class="tl-dot">${ICONS[e.type] || ICONS.system}</div>
+        <div class="tl-content">
+          <div class="tl-title">${e.title}</div>
+          <div class="tl-sub">${e.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // --- File types breakdown (demo split) ---
+  function buildFileTypes(total) {
+    if (total === 0) {
+      document.getElementById('ft-pdf').textContent = '—';
+      document.getElementById('ft-jpg').textContent = '—';
+      document.getElementById('ft-png').textContent = '—';
+      return;
+    }
+    document.getElementById('ft-pdf').textContent = Math.round(total * 0.62);
+    document.getElementById('ft-jpg').textContent = Math.round(total * 0.24);
+    document.getElementById('ft-png').textContent = Math.round(total * 0.14);
+  }
+</script>
+<script src="assets/enhancements.js" defer></script>
+</body>
+</html>

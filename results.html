@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/enhancements.css">
 <style>
   /* ===== RESULTS PAGE CUSTOM STYLES ===== */
   main { padding-top: 80px; padding-bottom: 60px; }
@@ -404,12 +406,11 @@
     </a>
     <nav>
       <ul class="nav-links">
-        <li><a href="index.html#home">Home</a></li>
-        <li><a href="index.html#features">Features</a></li>
-        <li><a href="index.html#how">How It Works</a></li>
-        <li><a href="index.html#about">About Research</a></li>
-        <li><a href="index.html#team">Team</a></li>
-        <li><a href="index.html#contact">Contact</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="try.html">Analyze</a></li>
+        <li><a href="results.html" class="active">Results</a></li>
+        <li><a href="analytics.html">Analytics</a></li>
+        <li><a href="methodology.html">Methodology</a></li>
       </ul>
     </nav>
     <div style="display:flex; align-items:center; gap:10px;">
@@ -428,10 +429,30 @@
         <h1>Analysis <span style="background:linear-gradient(120deg,var(--green-700),var(--green-500)); -webkit-background-clip:text; background-clip:text; color:transparent;">complete</span></h1>
         <p id="page-summary">Upload a document to begin analysis</p>
       </div>
-      <a href="try.html" class="btn btn-ghost">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Process Another
-      </a>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="export-bar" id="export-bar" style="display:none;">
+          <button data-export="json" title="Download as JSON">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            JSON
+          </button>
+          <button data-export="md" title="Download as Markdown">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            MD
+          </button>
+          <button data-export="txt" title="Download as plain text">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            TXT
+          </button>
+          <button data-export="copy" title="Copy text to clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+        <a href="try.html" class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Process Another
+        </a>
+      </div>
     </div>
 
     <!-- Legend -->
@@ -623,9 +644,71 @@ improvement across all region categories.</pre>
       try {
         currentAnalysisData = JSON.parse(analysisDataStr);
         displayUploadedImageResults(currentAnalysisData);
+        // Reveal the export bar now that we have data
+        const expBar = document.getElementById('export-bar');
+        if (expBar) expBar.style.display = 'inline-flex';
       } catch (e) {
         console.error('Error parsing analysis data:', e);
       }
+    }
+  });
+
+  // ---------- Export functions ----------
+  function downloadBlob(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  function baseFilename() {
+    if (!currentAnalysisData?.filename) return 'docugraph-results';
+    return currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-docugraph';
+  }
+  function toMarkdown(d) {
+    let md = `# ${d.filename || 'Document'}\n\n`;
+    md += `**Confidence:** ${((d.confidence || 0) * 100).toFixed(1)}%  \n`;
+    md += `**Regions:** ${d.regions?.length || 0}\n\n---\n\n`;
+    (d.regions || []).forEach((r, i) => {
+      md += `## Region ${i + 1} · ${r.type || 'text'}\n`;
+      md += `> Confidence: ${((r.conf || 0) * 100).toFixed(1)}%\n\n`;
+      if (r.text) md += `${r.text}\n\n`;
+    });
+    return md;
+  }
+  function toText(d) {
+    let txt = `${d.filename || 'Document'}\n${'='.repeat((d.filename || 'Document').length)}\n\n`;
+    (d.regions || []).forEach((r, i) => {
+      txt += `[${(r.type || 'text').toUpperCase()}] (conf ${((r.conf || 0) * 100).toFixed(1)}%)\n`;
+      if (r.text) txt += r.text + '\n';
+      txt += '\n';
+    });
+    return txt;
+  }
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-export]');
+    if (!b) return;
+    if (!currentAnalysisData) { window.Toast?.error('No analysis data to export'); return; }
+    const kind = b.dataset.export;
+    const base = baseFilename();
+    try {
+      if (kind === 'json') {
+        downloadBlob(JSON.stringify(currentAnalysisData, null, 2), base + '.json', 'application/json');
+        window.Toast?.success('Downloaded ' + base + '.json');
+      } else if (kind === 'md') {
+        downloadBlob(toMarkdown(currentAnalysisData), base + '.md', 'text/markdown');
+        window.Toast?.success('Downloaded ' + base + '.md');
+      } else if (kind === 'txt') {
+        downloadBlob(toText(currentAnalysisData), base + '.txt', 'text/plain');
+        window.Toast?.success('Downloaded ' + base + '.txt');
+      } else if (kind === 'copy') {
+        await navigator.clipboard.writeText(toText(currentAnalysisData));
+        window.Toast?.success('Copied text to clipboard');
+      }
+    } catch (err) {
+      window.Toast?.error('Export failed: ' + (err.message || 'unknown'));
     }
   });
 
@@ -1043,5 +1126,6 @@ improvement across all region categories.</pre>
     }, 300);
   });
 </script>
+<script src="assets/enhancements.js" defer></script>
 </body>
 </html>

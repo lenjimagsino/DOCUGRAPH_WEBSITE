@@ -13,12 +13,14 @@ gunicorn>=21.2.0
 transformers>=4.33.0
 nltk>=3.8
 
+# OCR Engine (Optional - requires Rust compiler, disabled for now)
+
 # PyTorch (Optional - uncomment for GPU acceleration)
 # torch>=2.0.0
 # torchvision>=0.15.0
 
-# Advanced Layout Analysis (Optional - uncomment for LayoutParser)
-# layoutparser>=0.3.4
+# Advanced Layout Analysis
+layoutparser>=0.3.4
 
 # Google Translation (Optional - uncomment for backend translation)
 # google-cloud-translate>=3.12.0

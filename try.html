@@ -3615,6 +3615,176 @@
     });
   }
 
+  async function performOCR(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+
+      reader.onload = async (event) => {
+        try {
+          const formData = new FormData();
+          formData.append('image', file);
+          formData.append('languages', 'en');
+
+          // Try multiple backend URL options
+          const backendUrls = [
+            '/api/v1/ocr/extract',  // Via proxy/same origin
+            'http://localhost:5000/api/v1/ocr/extract',  // Local development
+            'http://127.0.0.1:5000/api/v1/ocr/extract'   // Local alternative
+          ];
+
+          let lastError = null;
+
+          for (const url of backendUrls) {
+            try {
+              console.log(`🔄 Attempting OCR at: ${url}`);
+              
+              const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+              });
+
+              if (!response.ok) {
+                console.warn(`⚠ OCR endpoint returned ${response.status}: ${response.statusText}`);
+                lastError = `OCR API error: ${response.status} ${response.statusText}`;
+                continue;
+              }
+
+              const ocrResult = await response.json();
+              console.log('✓ OCR response received:', ocrResult);
+
+              if (!ocrResult.success) {
+                console.warn('⚠ OCR reported failure:', ocrResult.error);
+                lastError = ocrResult.error || 'OCR failed';
+                continue;
+              }
+
+              // Format OCR results for display
+              const imageData = event.target.result;
+              const img = new Image();
+              
+              img.onerror = () => {
+                reject(new Error('Failed to load image'));
+              };
+
+              img.onload = () => {
+                const formattedData = {
+                  filename: file.name,
+                  imageBase64: imageData,
+                  width: img.width,
+                  height: img.height,
+                  regions: ocrResult.regions.map(r => ({
+                    type: 'text',
+                    bbox: r.bbox,
+                    conf: r.confidence,
+                    text: r.text
+                  })),
+                  confidence: ocrResult.average_confidence || 0.85,
+                  timestamp: new Date().toISOString(),
+                  fullText: ocrResult.full_text,
+                  metadata: {
+                    language: 'English',
+                    analysisMethod: 'Smart OCR Recognition',
+                    segmentationLevel: 'Word-level',
+                    preprocessingApplied: true,
+                    detectedFlowchart: false,
+                    detectedTable: false
+                  },
+                  stats: {
+                    total: ocrResult.region_count || ocrResult.regions.length,
+                    headers: 0,
+                    paragraphs: ocrResult.region_count || ocrResult.regions.length,
+                    tables: 0,
+                    figures: 0,
+                    shapes: 0
+                  },
+                  qualityMetrics: {
+                    lowConfidenceRegions: ocrResult.regions.filter(r => r.confidence < 0.7).length || 0,
+                    averageConfidence: ocrResult.average_confidence || 0.85,
+                    processingTime: new Date().toISOString()
+                  }
+                };
+                
+                console.log('✓ OCR completed successfully');
+                resolve(formattedData);
+              };
+              
+              img.src = imageData;
+              return;  // Success - exit the loop
+
+            } catch (err) {
+              console.warn(`⚠ Failed with ${url}:`, err.message);
+              lastError = err;
+            }
+          }
+
+          // All URLs failed
+          reject(lastError || new Error('OCR service unavailable - backend not responding'));
+        } catch (err) {
+          console.error('❌ OCR error:', err);
+          reject(err);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function displayOCRResults(data, file) {
+    const placeholder = document.getElementById('preview-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+
+    // Display image if available
+    if (data.imageBase64) {
+      const img = document.createElement('img');
+      img.src = data.imageBase64;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '100%';
+      img.style.objectFit = 'contain';
+      const preview = document.querySelector('.output-preview');
+      const existingImg = preview.querySelector('img');
+      if (existingImg) existingImg.remove();
+      preview.insertBefore(img, elements.bboxContainer);
+    }
+
+    // Render bounding boxes
+    renderBoundingBoxes(data.regions);
+
+    // Update statistics
+    elements.confidenceScore.textContent = (data.confidence * 100).toFixed(1) + '%';
+    elements.regionCount.textContent = data.stats.total;
+    elements.headerCount.textContent = data.stats.headers;
+    elements.paraCount.textContent = data.stats.paragraphs;
+    elements.tableCount.textContent = data.stats.tables;
+    elements.layoutAccuracy.textContent = (data.confidence * 100).toFixed(1) + '%';
+
+    // Show results
+    showState('results');
+
+    // Store OCR analysis for results page
+    const analysisData = {
+      timestamp: data.timestamp || new Date().toISOString(),
+      source: file ? 'upload' : 'demo',
+      filename: file ? file.name : data.filename,
+      regions: data.regions,
+      confidence: data.confidence,
+      stats: data.stats,
+      metadata: data.metadata || null,
+      imageBase64: data.imageBase64 || null,
+      fullText: data.fullText || '',
+      analysisType: 'ocr'
+    };
+
+    sessionStorage.setItem('analysisData', JSON.stringify(analysisData));
+
+    // Enable results actions
+    elements.viewResultsBtn.style.display = 'inline-flex';
+    elements.newDocumentBtn.style.display = 'inline-flex';
+  }
+
   function processDocument(testCase) {
     // Show processing state
     showState('processing');
@@ -3759,12 +3929,41 @@
   });
 
   // OCR button
-  elements.ocr.addEventListener('click', () => {
+  elements.ocr.addEventListener('click', async () => {
     if (!currentFile && !currentTest) {
       alert('Please upload a file or select a test case first.');
       return;
     }
-    alert('OCR processing is currently in demo mode. Upload a file to see text extraction results.');
+    
+    // Show processing state
+    showState('processing');
+    
+    try {
+      if (currentFile) {
+        // Extract OCR from uploaded file
+        const ocrData = await performOCR(currentFile);
+        const placeholder = document.getElementById('preview-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+        displayOCRResults(ocrData, currentFile);
+      } else if (currentTest) {
+        // Extract OCR from test case
+        const testData = TEST_CASES[currentTest];
+        const placeholder = document.getElementById('preview-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+        displayOCRResults(testData, null);
+      }
+    } catch (err) {
+      console.error('OCR error:', err);
+      const errorMsg = err.message || 'Unknown error occurred';
+      
+      // Check if backend is unavailable
+      if (errorMsg.includes('unavailable') || errorMsg.includes('not responding')) {
+        alert(`OCR Service Error:\n\n${errorMsg}\n\nMake sure the backend server is running on port 5000.\n\nRun: python -m flask run`);
+      } else {
+        alert(`Error extracting text:\n\n${errorMsg}\n\nPlease try again or use a different image.`);
+      }
+      showState('initial');
+    }
   });
 
   // Test case buttons

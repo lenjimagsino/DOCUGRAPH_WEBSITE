@@ -224,6 +224,108 @@ class SemanticEmbeddingEngine:
         return float(similarity)
 
 
+class OCREngine:
+    """Enterprise OCR with EasyOCR and text extraction"""
+    
+    def __init__(self):
+        """Initialize OCR engine"""
+        try:
+            import easyocr
+            # Determine GPU availability safely
+            use_gpu = False
+            if HAS_TORCH:
+                try:
+                    use_gpu = torch.cuda.is_available()
+                except:
+                    use_gpu = False
+            
+            print(f"🔧 Initializing OCR engine (GPU: {use_gpu})...")
+            self.reader = easyocr.Reader(['en'], gpu=use_gpu, verbose=False)
+            self.initialized = True
+            print("✓ OCR engine initialized successfully")
+        except ImportError as e:
+            print(f"⚠ EasyOCR not installed: {e}")
+            print("  Install with: pip install easyocr")
+            self.reader = None
+            self.initialized = False
+        except Exception as e:
+            print(f"⚠ OCR engine initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
+            self.reader = None
+            self.initialized = False
+    
+    def extract_text(self, image_array, languages=['en']):
+        """
+        Extract text from image using EasyOCR
+        
+        Args:
+            image_array: numpy array (H×W×C)
+            languages: list of language codes (e.g., ['en', 'es'])
+        
+        Returns:
+            dict with OCR results including text, confidence, and bounding boxes
+        """
+        if not self.initialized or self.reader is None:
+            return {
+                'success': False,
+                'error': 'OCR engine not available',
+                'regions': []
+            }
+        
+        try:
+            # Run OCR
+            results = self.reader.readtext(image_array)
+            
+            regions = []
+            full_text = []
+            
+            for (bbox, text, confidence) in results:
+                # Extract bounding box coordinates
+                # bbox is a list of 4 points (top-left, top-right, bottom-right, bottom-left)
+                x_coords = [point[0] for point in bbox]
+                y_coords = [point[1] for point in bbox]
+                
+                x_min = min(x_coords)
+                y_min = min(y_coords)
+                x_max = max(x_coords)
+                y_max = max(y_coords)
+                
+                # Convert to percentage coordinates
+                img_height, img_width = image_array.shape[:2]
+                x1_pct = (x_min / img_width) * 100
+                y1_pct = (y_min / img_height) * 100
+                x2_pct = (x_max / img_width) * 100
+                y2_pct = (y_max / img_height) * 100
+                
+                region = {
+                    'type': 'text',
+                    'bbox': [x1_pct, y1_pct, x2_pct, y2_pct],
+                    'text': text,
+                    'confidence': float(confidence)
+                }
+                
+                regions.append(region)
+                full_text.append(text)
+            
+            return {
+                'success': True,
+                'full_text': '\n'.join(full_text),
+                'regions': regions,
+                'region_count': len(regions),
+                'average_confidence': np.mean([r['confidence'] for r in regions]) if regions else 0,
+                'languages': languages
+            }
+        
+        except Exception as e:
+            print(f"OCR extraction error: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'regions': []
+            }
+
+
 # ===========================
 # API Endpoints
 # ===========================
@@ -231,6 +333,25 @@ class SemanticEmbeddingEngine:
 # Initialize models
 layout_analyzer = LayoutAnalyzer()
 embedding_engine = SemanticEmbeddingEngine()
+ocr_engine = OCREngine()
+
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint - API welcome message"""
+    return jsonify({
+        'service': 'DOCUGRAPH Backend API',
+        'version': '1.0.0',
+        'status': 'running',
+        'endpoints': {
+            'health': '/health',
+            'diagnostics': '/diagnostics',
+            'layout_analyze': '/api/v1/layout/analyze',
+            'ocr_extract': '/api/v1/ocr/extract',
+            'embeddings_generate': '/api/v1/embeddings/generate',
+            'embeddings_similarity': '/api/v1/embeddings/similarity',
+            'batch_analyze': '/api/v1/batch/analyze'
+        }
+    })
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -241,9 +362,66 @@ def health():
         'phase': 'Phase 6: Python Backend',
         'models': {
             'layoutparser': layout_analyzer.initialized,
-            'embeddings': embedding_engine.model is not None
+            'embeddings': embedding_engine.model is not None,
+            'ocr': ocr_engine.initialized
         }
     })
+
+
+@app.route('/diagnostics', methods=['GET'])
+def diagnostics():
+    """Diagnostics endpoint - returns detailed system information"""
+    import sys
+    
+    diagnostics_data = {
+        'python_version': sys.version,
+        'installed_packages': {},
+        'models': {
+            'layoutparser': {
+                'available': HAS_LAYOUTPARSER,
+                'initialized': layout_analyzer.initialized if HAS_LAYOUTPARSER else False
+            },
+            'torch': {
+                'available': HAS_TORCH,
+                'cuda_available': torch.cuda.is_available() if HAS_TORCH else False
+            },
+            'ocr': {
+                'available': True,
+                'initialized': ocr_engine.initialized,
+                'reason': 'Check server logs for initialization details'
+            },
+            'embeddings': {
+                'available': True,
+                'initialized': embedding_engine.model is not None
+            }
+        },
+        'recommendations': []
+    }
+    
+    # Check package versions
+    packages_to_check = ['easyocr', 'torch', 'cv2', 'layoutparser', 'transformers']
+    for pkg_name in packages_to_check:
+        try:
+            if pkg_name == 'cv2':
+                import cv2
+                diagnostics_data['installed_packages']['opencv'] = cv2.__version__
+            else:
+                mod = __import__(pkg_name)
+                if hasattr(mod, '__version__'):
+                    diagnostics_data['installed_packages'][pkg_name] = mod.__version__
+                else:
+                    diagnostics_data['installed_packages'][pkg_name] = 'installed (version unknown)'
+        except ImportError:
+            diagnostics_data['installed_packages'][pkg_name] = 'NOT INSTALLED'
+            if pkg_name == 'easyocr':
+                diagnostics_data['recommendations'].append('Install EasyOCR: pip install easyocr')
+            elif pkg_name == 'torch':
+                diagnostics_data['recommendations'].append('Install PyTorch: pip install torch torchvision (optional for GPU)')
+    
+    if not ocr_engine.initialized:
+        diagnostics_data['recommendations'].append('OCR engine failed to initialize - check logs')
+    
+    return jsonify(diagnostics_data)
 
 
 @app.route('/api/v1/layout/analyze', methods=['POST'])
@@ -272,6 +450,58 @@ def analyze_layout():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/v1/ocr/extract', methods=['POST'])
+def extract_ocr():
+    """Extract text from document using OCR"""
+    try:
+        if 'image' not in request.files:
+            print("❌ No image file provided")
+            return jsonify({'error': 'No image provided', 'success': False}), 400
+        
+        image_file = request.files['image']
+        languages = request.form.getlist('languages', ['en'])
+        
+        print(f"📄 Processing image: {image_file.filename}, Languages: {languages}")
+        
+        # Read image
+        image_bytes = image_file.read()
+        image_array = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        
+        if image_array is None:
+            print("❌ Invalid image data")
+            return jsonify({'error': 'Invalid image format', 'success': False}), 400
+        
+        print(f"✓ Image loaded: {image_array.shape}")
+        
+        # Check if OCR engine is initialized
+        if not ocr_engine.initialized:
+            print("⚠ OCR engine not initialized")
+            return jsonify({
+                'error': 'OCR engine not available. Please ensure easyocr is installed: pip install easyocr',
+                'success': False
+            }), 503
+        
+        # Extract OCR
+        print("🔄 Running OCR extraction...")
+        result = ocr_engine.extract_text(image_array, languages)
+        
+        if result.get('success'):
+            print(f"✓ OCR completed: {result.get('region_count', 0)} regions detected")
+        else:
+            print(f"⚠ OCR failed: {result.get('error', 'Unknown error')}")
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        print(f"❌ OCR error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'OCR processing failed: {str(e)}', 'success': False}), 500
 
 
 @app.route('/api/v1/embeddings/generate', methods=['POST'])

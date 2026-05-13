@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Settings — DOCUGRAPH</title>
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/enhancements.css">
+<style>
+  body.loading main, body.loading header { visibility: hidden; }
+  .auth-loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--white); z-index: 9999; }
+  .auth-loading .spinner { width: 44px; height: 44px; border: 3px solid var(--green-200); border-top-color: var(--green-600); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  body:not(.loading) .auth-loading { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .field-row { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
+  .field-row label { font-size: 13px; font-weight: 600; color: var(--ink-900); }
+  .field-row input,
+  .field-row select,
+  .field-row textarea {
+    padding: 10px 14px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-raised);
+    color: var(--text-strong);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    outline: 0;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field-row input:focus,
+  .field-row select:focus { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(28,122,57,.12); }
+  .field-row .hint { font-size: 12px; color: var(--text-muted); }
+  .danger-zone { border-color: rgba(217,45,32,.3); }
+  .danger-zone h2 { color: var(--danger); }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    padding: 9px 16px; border-radius: 10px;
+    font-size: 13.5px; font-weight: 500;
+    transition: background .15s, color .15s;
+  }
+  .btn-danger:hover { background: var(--danger); color: white; }
+  .btn-save {
+    padding: 9px 18px;
+    background: var(--brand); color: var(--brand-on);
+    border-radius: 10px; font-size: 13.5px; font-weight: 600;
+    transition: background .15s, transform .1s;
+  }
+  .btn-save:hover { background: var(--brand-hover); }
+  .btn-save:active { transform: scale(.97); }
+
+  .avatar-block { display: flex; align-items: center; gap: 16px; padding: 18px 0; }
+  .avatar-lg {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--green-700), var(--green-500));
+    color: white; font-weight: 700; font-size: 24px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--font-display);
+  }
+</style>
+</head>
+<body class="loading">
+
+<div class="auth-loading"><div class="spinner"></div></div>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="assets/logo.png" alt="DOCUGRAPH">
+      <span><b>DOCU</b><em>GRAPH</em></span>
+    </a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="try.html">Analyze</a></li>
+        <li><a href="results.html">Results</a></li>
+        <li><a href="analytics.html">Analytics</a></li>
+        <li><a href="settings.html" class="active">Settings</a></li>
+      </ul>
+    </nav>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="nav-user" id="nav-user">
+        <button class="nav-user-btn" id="user-btn">
+          <span class="avatar-sm" id="user-avatar">U</span>
+          <span class="name" id="user-name">User</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-user-menu">
+          <div class="menu-head">
+            <div class="menu-name" id="menu-name">User</div>
+            <div class="menu-email" id="menu-email">user@example.com</div>
+          </div>
+          <a href="dashboard.html">Dashboard</a>
+          <a href="analytics.html">Analytics</a>
+          <div class="menu-divider"></div>
+          <button class="logout" id="logout-btn">Sign out</button>
+        </div>
+      </div>
+      <button class="nav-toggle" aria-label="Toggle navigation"><span></span></button>
+    </div>
+  </div>
+</header>
+
+<main class="dash-wrap">
+  <div class="wrap">
+
+    <div class="dash-greet reveal">
+      <h1><span class="grad">Settings</span></h1>
+      <p>Manage your profile, appearance, notifications, and data.</p>
+    </div>
+
+    <div class="settings-grid" style="margin-top:24px;">
+
+      <aside class="settings-side">
+        <a href="#profile"        class="active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Profile
+        </a>
+        <a href="#appearance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20"/></svg>
+          Appearance
+        </a>
+        <a href="#notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+        </a>
+        <a href="#accessibility">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="8" r="2"/><path d="M12 10v6m-3-3h6"/></svg>
+          Accessibility
+        </a>
+        <a href="#data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Data & Privacy
+        </a>
+        <a href="#danger" style="color:var(--danger);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Danger Zone
+        </a>
+      </aside>
+
+      <div>
+
+        <!-- PROFILE -->
+        <section class="settings-card reveal" id="profile">
+          <h2>Profile</h2>
+          <p class="desc">Your public information shown across DOCUGRAPH.</p>
+
+          <div class="avatar-block">
+            <div class="avatar-lg" id="big-avatar">U</div>
+            <div>
+              <div style="font-weight:600; font-size:15px;" id="big-name">DOCUGRAPH User</div>
+              <div style="font-size:13px; color:var(--text-muted); font-family:var(--font-mono);" id="big-email">user@example.com</div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label for="set-name">Display name</label>
+            <input id="set-name" type="text" placeholder="Your name">
+            <span class="hint">Used in your dashboard greeting and exports.</span>
+          </div>
+
+          <div class="field-row">
+            <label for="set-affiliation">Affiliation (optional)</label>
+            <input id="set-affiliation" type="text" placeholder="e.g. PUP — Computer Engineering">
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:22px; justify-content:flex-end;">
+            <button class="btn-save" id="save-profile">Save profile</button>
+          </div>
+        </section>
+
+        <!-- APPEARANCE -->
+        <section class="settings-card reveal" id="appearance">
+          <h2>Appearance</h2>
+          <p class="desc">Customize how DOCUGRAPH looks on this device.</p>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Theme</div>
+              <div class="setting-row-sub">Light, dark, or follow your system preference.</div>
+            </div>
+            <div class="segmented" id="theme-segmented" role="radiogroup">
+              <button data-theme="light" role="radio">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                Light
+              </button>
+              <button data-theme="dark" role="radio">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                Dark
+              </button>
+              <button data-theme="system" role="radio">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                System
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Animations</div>
+              <div class="setting-row-sub">Smooth reveal & hover transitions. Disable for performance.</div>
+            </div>
+            <button class="switch" id="sw-anim" role="switch" aria-checked="true" aria-label="Animations"></button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Compact mode</div>
+              <div class="setting-row-sub">Tighter spacing for higher information density.</div>
+            </div>
+            <button class="switch" id="sw-compact" role="switch" aria-checked="false" aria-label="Compact mode"></button>
+          </div>
+        </section>
+
+        <!-- NOTIFICATIONS -->
+        <section class="settings-card reveal" id="notifications">
+          <h2>Notifications</h2>
+          <p class="desc">Choose what DOCUGRAPH tells you about.</p>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Analysis completion</div>
+              <div class="setting-row-sub">Toast when a document finishes processing.</div>
+            </div>
+            <button class="switch" id="sw-notif-done" role="switch" aria-checked="true"></button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Error alerts</div>
+              <div class="setting-row-sub">Notify on processing failures or low confidence.</div>
+            </div>
+            <button class="switch" id="sw-notif-err" role="switch" aria-checked="true"></button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Research updates</div>
+              <div class="setting-row-sub">Periodic in-app news about DOCUGRAPH research.</div>
+            </div>
+            <button class="switch" id="sw-notif-news" role="switch" aria-checked="false"></button>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:22px;">
+            <button class="btn-save" id="test-toast">Test notification</button>
+          </div>
+        </section>
+
+        <!-- ACCESSIBILITY -->
+        <section class="settings-card reveal" id="accessibility">
+          <h2>Accessibility</h2>
+          <p class="desc">Make DOCUGRAPH more comfortable to use.</p>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Reduced motion</div>
+              <div class="setting-row-sub">Minimize transitions for vestibular comfort.</div>
+            </div>
+            <button class="switch" id="sw-reduced" role="switch" aria-checked="false"></button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">High contrast</div>
+              <div class="setting-row-sub">Stronger borders and text contrast (WCAG AAA).</div>
+            </div>
+            <button class="switch" id="sw-contrast" role="switch" aria-checked="false"></button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Font size</div>
+              <div class="setting-row-sub">Scales body text across all pages.</div>
+            </div>
+            <select id="font-size" style="padding:8px 14px; border-radius:10px; border:1px solid var(--border-soft); background:var(--surface-raised); color:var(--text-strong); font-size:14px;">
+              <option value="0.95">Small</option>
+              <option value="1" selected>Default</option>
+              <option value="1.075">Large</option>
+              <option value="1.15">Extra large</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- DATA -->
+        <section class="settings-card reveal" id="data">
+          <h2>Data & Privacy</h2>
+          <p class="desc">Export, clear, or manage data stored locally on this device.</p>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Export local data</div>
+              <div class="setting-row-sub">Download a JSON file with your preferences and history.</div>
+            </div>
+            <button class="btn-save" id="export-data" style="background:transparent; color:var(--brand); border:1px solid var(--brand);">Download</button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Clear analysis history</div>
+              <div class="setting-row-sub">Removes counters, charts, and recent items on this device.</div>
+            </div>
+            <button class="btn-danger" id="clear-history">Clear</button>
+          </div>
+        </section>
+
+        <!-- DANGER ZONE -->
+        <section class="settings-card danger-zone reveal" id="danger">
+          <h2>Danger Zone</h2>
+          <p class="desc">These actions are permanent. Please be sure.</p>
+
+          <div class="setting-row">
+            <div class="setting-row-text">
+              <div class="setting-row-title">Sign out of all devices</div>
+              <div class="setting-row-sub">You'll be signed out everywhere and need to log in again.</div>
+            </div>
+            <button class="btn-danger" id="signout-all">Sign out everywhere</button>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/main.js"></script>
+<script type="module">
+  import { auth, onAuthStateChanged, logout } from "./assets/auth.js";
+  import { updateProfile } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+  let currentUser = null;
+  const PREFS_KEY = 'docugraph:prefs';
+  const defaultPrefs = {
+    animations: true,
+    compact: false,
+    notifDone: true,
+    notifErr: true,
+    notifNews: false,
+    reduced: false,
+    contrast: false,
+    fontSize: '1',
+    affiliation: ''
+  };
+  function loadPrefs() {
+    try {
+      return { ...defaultPrefs, ...(JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')) };
+    } catch (_) { return { ...defaultPrefs }; }
+  }
+  function savePrefs(p) { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); }
+
+  let prefs = loadPrefs();
+
+  function getInitials(u){ const s=u.displayName||u.email||'U'; const p=s.trim().split(/[\s@.]+/).filter(Boolean); return (p.length>=2?(p[0][0]+p[1][0]):s.slice(0,2)).toUpperCase(); }
+
+  onAuthStateChanged(auth, user => {
+    if (!user) { window.location.href = 'login.html'; return; }
+    currentUser = user;
+    const initials = getInitials(user);
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-name').textContent = user.displayName || user.email.split('@')[0];
+    document.getElementById('menu-name').textContent = user.displayName || 'DOCUGRAPH user';
+    document.getElementById('menu-email').textContent = user.email || '';
+    document.getElementById('big-avatar').textContent = initials;
+    document.getElementById('big-name').textContent  = user.displayName || 'DOCUGRAPH User';
+    document.getElementById('big-email').textContent = user.email || '';
+    document.getElementById('set-name').value        = user.displayName || '';
+    document.getElementById('set-affiliation').value = prefs.affiliation || '';
+    document.body.classList.remove('loading');
+    initUI();
+  });
+
+  document.getElementById('user-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('nav-user').classList.toggle('open');
+  });
+  document.addEventListener('click', () => document.getElementById('nav-user').classList.remove('open'));
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'login.html';
+  });
+
+  function initUI() {
+    // --- Theme segmented control ---
+    const seg = document.getElementById('theme-segmented');
+    function syncTheme() {
+      const pref = window.DocuTheme.preference;
+      seg.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.theme === pref);
+      });
+    }
+    seg.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        window.DocuTheme.set(b.dataset.theme);
+        syncTheme();
+        window.Toast.success(`Theme: ${b.dataset.theme}`);
+      });
+    });
+    syncTheme();
+
+    // --- Sidenav active state ---
+    const sideLinks = document.querySelectorAll('.settings-side a');
+    const sections = document.querySelectorAll('.settings-card');
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          const id = en.target.id;
+          sideLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+        }
+      });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    sections.forEach(s => obs.observe(s));
+
+    // --- Switch toggles ---
+    const switches = {
+      'sw-anim':       'animations',
+      'sw-compact':    'compact',
+      'sw-notif-done': 'notifDone',
+      'sw-notif-err':  'notifErr',
+      'sw-notif-news': 'notifNews',
+      'sw-reduced':    'reduced',
+      'sw-contrast':   'contrast'
+    };
+    Object.entries(switches).forEach(([id, key]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.setAttribute('aria-checked', prefs[key] ? 'true' : 'false');
+      el.addEventListener('click', () => {
+        prefs[key] = !prefs[key];
+        el.setAttribute('aria-checked', prefs[key] ? 'true' : 'false');
+        savePrefs(prefs);
+        applyPrefs();
+      });
+    });
+
+    // Font size
+    const fs = document.getElementById('font-size');
+    fs.value = prefs.fontSize;
+    fs.addEventListener('change', () => {
+      prefs.fontSize = fs.value;
+      savePrefs(prefs);
+      applyPrefs();
+      window.Toast.success('Font size updated');
+    });
+
+    applyPrefs();
+
+    // --- Save profile ---
+    document.getElementById('save-profile').addEventListener('click', async () => {
+      const name = document.getElementById('set-name').value.trim();
+      const aff  = document.getElementById('set-affiliation').value.trim();
+      try {
+        if (currentUser && name && name !== currentUser.displayName) {
+          await updateProfile(currentUser, { displayName: name });
+          document.getElementById('user-name').textContent = name;
+          document.getElementById('menu-name').textContent = name;
+          document.getElementById('big-name').textContent  = name;
+        }
+        prefs.affiliation = aff;
+        savePrefs(prefs);
+        window.Toast.success('Profile saved');
+      } catch (err) {
+        window.Toast.error('Could not save profile: ' + (err.message || err.code || 'unknown error'));
+      }
+    });
+
+    // --- Test toast ---
+    document.getElementById('test-toast').addEventListener('click', () => {
+      window.Toast.success('All systems operational ✓', 'DOCUGRAPH ready');
+    });
+
+    // --- Export data ---
+    document.getElementById('export-data').addEventListener('click', () => {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('docugraph:')) data[k] = localStorage.getItem(k);
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'docugraph-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      window.Toast.success('Data exported');
+    });
+
+    // --- Clear history ---
+    document.getElementById('clear-history').addEventListener('click', () => {
+      if (!confirm('Clear all local analysis history? This cannot be undone.')) return;
+      ['docugraph:doc-count','docugraph:page-count','docugraph:activity','docugraph:activity-30','docugraph:events','docugraph:regions']
+        .forEach(k => localStorage.removeItem(k));
+      window.Toast.success('History cleared');
+    });
+
+    // --- Sign out everywhere ---
+    document.getElementById('signout-all').addEventListener('click', async () => {
+      if (!confirm('Sign out of DOCUGRAPH on this device?')) return;
+      await logout();
+      window.location.href = 'login.html';
+    });
+  }
+
+  function applyPrefs() {
+    document.documentElement.style.setProperty('--font-scale', prefs.fontSize);
+    document.documentElement.style.fontSize = (parseFloat(prefs.fontSize) * 100) + '%';
+    document.documentElement.classList.toggle('no-anim', !prefs.animations);
+    document.documentElement.classList.toggle('compact', prefs.compact);
+    document.documentElement.classList.toggle('reduced-motion', prefs.reduced);
+    document.documentElement.classList.toggle('high-contrast', prefs.contrast);
+  }
+
+  // Apply on load too (across pages — pulled by enhancements.js too via localStorage)
+  applyPrefs();
+</script>
+
+<style>
+  /* Live preference effects */
+  html.no-anim *, html.no-anim *::before, html.no-anim *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  html.reduced-motion * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  html.compact .dash-stat { padding: 14px; }
+  html.compact .dash-card { padding: 18px; }
+  html.compact .settings-card { padding: 20px; }
+  html.high-contrast { --line: #999; --line-2: #666; --ink-500: #1a1a1a; }
+  html.high-contrast[data-theme="dark"] { --line: #777; --line-2: #aaa; --ink-500: #e9e9e9; }
+</style>
+
+<script src="assets/enhancements.js" defer></script>
+</body>
+</html>
