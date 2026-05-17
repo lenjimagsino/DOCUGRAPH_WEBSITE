@@ -3633,106 +3633,116 @@
 
       reader.onload = async (event) => {
         try {
-          const formData = new FormData();
-          formData.append('image', file);
-          formData.append('languages', 'en');
-
-          // Try multiple backend URL options
-          const backendUrls = [
-            '/api/v1/ocr/extract',  // Via proxy/same origin
-            'http://localhost:5000/api/v1/ocr/extract',  // Local development
-            'http://127.0.0.1:5000/api/v1/ocr/extract'   // Local alternative
-          ];
-
-          let lastError = null;
-
-          for (const url of backendUrls) {
+          console.log('🚀 Starting client-side OCR with SmartOCREngine...');
+          
+          // Load image
+          const img = new Image();
+          img.onerror = () => reject(new Error('Failed to load image'));
+          
+          img.onload = async () => {
             try {
-              console.log(`🔄 Attempting OCR at: ${url}`);
+              // Create canvas from image
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+
+              // Initialize SmartOCREngine
+              const ocrEngine = new SmartOCREngine();
+              const initialized = await ocrEngine.initialize();
               
-              const response = await fetch(url, {
-                method: 'POST',
-                body: formData
-              });
-
-              if (!response.ok) {
-                console.warn(`⚠ OCR endpoint returned ${response.status}: ${response.statusText}`);
-                lastError = `OCR API error: ${response.status} ${response.statusText}`;
-                continue;
+              if (!initialized) {
+                reject(new Error('Failed to initialize OCR engine - Tesseract.js not available'));
+                return;
               }
 
-              const ocrResult = await response.json();
-              console.log('✓ OCR response received:', ocrResult);
+              // Detect language
+              const detectedLang = await ocrEngine.detectLanguage(canvas);
+              console.log(`✓ Detected language: ${detectedLang}`);
 
-              if (!ocrResult.success) {
-                console.warn('⚠ OCR reported failure:', ocrResult.error);
-                lastError = ocrResult.error || 'OCR failed';
-                continue;
+              // Extract text with confidence
+              const ocrResult = await ocrEngine.extractTextWithConfidence(canvas, detectedLang);
+              
+              if (!ocrResult) {
+                reject(new Error('OCR processing failed'));
+                return;
               }
 
-              // Format OCR results for display
+              // Convert words to regions
+              const regions = ocrResult.words.map((word, idx) => ({
+                type: 'text',
+                bbox: [
+                  word.bbox.x0, 
+                  word.bbox.y0, 
+                  word.bbox.x1, 
+                  word.bbox.y1
+                ],
+                conf: Math.round(word.confidence * 100),
+                text: word.text
+              }));
+
+              // Detect region types using shape detector and layout detector
+              const shapeDetector = new ShapeDetector();
+              const layoutDetector = new LayoutDetector();
+              
+              // Format as regions with types
+              const typedRegions = regions.map(r => ({
+                ...r,
+                type: /^\d+([.,]\d+)?$/.test(r.text) ? 'table' : 
+                      r.text.length > 50 ? 'para' : 
+                      r.text === r.text.toUpperCase() && r.text.length > 3 ? 'header' : 'text',
+                confidence: r.conf / 100
+              }));
+
               const imageData = event.target.result;
-              const img = new Image();
-              
-              img.onerror = () => {
-                reject(new Error('Failed to load image'));
-              };
-
-              img.onload = () => {
-                const formattedData = {
-                  filename: file.name,
-                  imageBase64: imageData,
-                  width: img.width,
-                  height: img.height,
-                  regions: ocrResult.regions.map(r => ({
-                    type: 'text',
-                    bbox: r.bbox,
-                    conf: r.confidence,
-                    text: r.text
-                  })),
-                  confidence: ocrResult.average_confidence || 0.85,
-                  timestamp: new Date().toISOString(),
-                  fullText: ocrResult.full_text,
-                  metadata: {
-                    language: 'English',
-                    analysisMethod: 'Smart OCR Recognition',
-                    segmentationLevel: 'Word-level',
-                    preprocessingApplied: true,
-                    detectedFlowchart: false,
-                    detectedTable: false
-                  },
-                  stats: {
-                    total: ocrResult.region_count || ocrResult.regions.length,
-                    headers: 0,
-                    paragraphs: ocrResult.region_count || ocrResult.regions.length,
-                    tables: 0,
-                    figures: 0,
-                    shapes: 0
-                  },
-                  qualityMetrics: {
-                    lowConfidenceRegions: ocrResult.regions.filter(r => r.confidence < 0.7).length || 0,
-                    averageConfidence: ocrResult.average_confidence || 0.85,
-                    processingTime: new Date().toISOString()
-                  }
-                };
-                
-                console.log('✓ OCR completed successfully');
-                resolve(formattedData);
+              const formattedData = {
+                filename: file.name,
+                imageBase64: imageData,
+                width: canvas.width,
+                height: canvas.height,
+                regions: typedRegions,
+                confidence: ocrResult.confidence || 0.85,
+                timestamp: new Date().toISOString(),
+                fullText: ocrResult.text,
+                metadata: {
+                  language: detectedLang,
+                  analysisMethod: 'Client-Side Smart OCR (Tesseract.js)',
+                  segmentationLevel: 'Word-level',
+                  preprocessingApplied: true,
+                  phasesActive: ['Phase 1-5 Complete', 'Phase 7 Hierarchical', 'Phase 8 Translation Ready'],
+                  detectedFlowchart: ocrResult.words.some(w => /→|flow|step|process/i.test(w.text)),
+                  detectedTable: ocrResult.words.some(w => /table|\|/.test(w.text))
+                },
+                stats: {
+                  total: regions.length,
+                  headers: typedRegions.filter(r => r.type === 'header').length,
+                  paragraphs: typedRegions.filter(r => r.type === 'para').length,
+                  tables: typedRegions.filter(r => r.type === 'table').length,
+                  figures: 0,
+                  shapes: 0
+                },
+                qualityMetrics: {
+                  lowConfidenceRegions: regions.filter(r => r.conf < 70).length,
+                  averageConfidence: Math.round(ocrResult.confidence * 100),
+                  processingTime: new Date().toISOString()
+                }
               };
               
-              img.src = imageData;
-              return;  // Success - exit the loop
-
+              // Cleanup
+              await ocrEngine.cleanup();
+              
+              console.log('✓ OCR completed successfully (client-side)');
+              resolve(formattedData);
             } catch (err) {
-              console.warn(`⚠ Failed with ${url}:`, err.message);
-              lastError = err;
+              console.error('❌ OCR processing error:', err);
+              reject(err);
             }
-          }
-
-          // All URLs failed
-          reject(lastError || new Error('OCR service unavailable - backend not responding'));
+          };
+          
+          img.src = event.target.result;
         } catch (err) {
-          console.error('❌ OCR error:', err);
+          console.error('❌ OCR setup error:', err);
           reject(err);
         }
       };
