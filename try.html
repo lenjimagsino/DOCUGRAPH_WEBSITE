@@ -3675,6 +3675,7 @@
                 console.log('🔍 Running OCR on image...');
                 const result = await worker.recognize(canvas);
                 console.log('✓ OCR complete, processing results...');
+                console.log('Tesseract result:', result.data);
 
                 if (!result.data || !result.data.text) {
                   await worker.terminate();
@@ -3682,24 +3683,27 @@
                   return;
                 }
 
-                // Extract words
+                // Extract words from Tesseract result
                 const words = [];
-                const blocks = result.data.blocks || [];
                 
-                blocks.forEach(block => {
+                // Try different paths where Tesseract might store words
+                const blocks = result.data.blocks || [];
+                console.log('Blocks found:', blocks.length);
+                
+                blocks.forEach((block, blockIdx) => {
                   if (block.lines) {
-                    block.lines.forEach(line => {
+                    block.lines.forEach((line, lineIdx) => {
                       if (line.words) {
-                        line.words.forEach(word => {
+                        line.words.forEach((word, wordIdx) => {
                           if (word.text && word.text.trim()) {
                             words.push({
                               text: word.text,
-                              confidence: (word.confidence || 85) / 100,
+                              confidence: (word.confidence !== undefined ? word.confidence : 85) / 100,
                               bbox: {
-                                x0: word.bbox.x0,
-                                y0: word.bbox.y0,
-                                x1: word.bbox.x1,
-                                y1: word.bbox.y1
+                                x0: word.bbox?.x0 || 0,
+                                y0: word.bbox?.y0 || 0,
+                                x1: word.bbox?.x1 || 10,
+                                y1: word.bbox?.y1 || 10
                               }
                             });
                           }
@@ -3709,7 +3713,33 @@
                   }
                 });
 
-                console.log(`✓ Extracted ${words.length} words`);
+                console.log('Words extracted:', words.length);
+
+                // Fallback: if no words found, tokenize the full text
+                if (words.length === 0 && result.data.text) {
+                  console.log('No structured words found, tokenizing full text...');
+                  const textTokens = result.data.text.split(/\s+/);
+                  let xPos = 0;
+                  
+                  textTokens.forEach(token => {
+                    if (token.trim()) {
+                      words.push({
+                        text: token,
+                        confidence: 0.85,
+                        bbox: {
+                          x0: xPos,
+                          y0: 0,
+                          x1: xPos + token.length * 8,
+                          y1: 20
+                        }
+                      });
+                      xPos += token.length * 8 + 5;
+                    }
+                  });
+                  console.log('Created fallback words:', words.length);
+                }
+
+                console.log('Processing', words.length, 'words into regions...');
 
                 // Create typed regions
                 const typedRegions = words.map(w => ({
