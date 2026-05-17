@@ -2937,8 +2937,9 @@
         'hr': 'Croatian'
       };
       this.translationCache = new Map();
-      this.backendUrl = window.BACKEND_URL || 'http://localhost:5000';
-      console.log('✓ Translation engine initialized (' + Object.keys(this.supportedLanguages).length + ' languages)');
+      // Only use BACKEND_URL if explicitly set, don't default to localhost
+      this.backendUrl = window.BACKEND_URL || null;
+      console.log('✓ Translation engine initialized (' + Object.keys(this.supportedLanguages).length + ' languages) - Offline mode');
     }
 
     async translate(text, sourceLang, targetLang) {
@@ -2965,6 +2966,12 @@
 
     async translateViaBackend(text, sourceLang, targetLang) {
       try {
+        // Only attempt backend if explicitly set (no default localhost call)
+        if (!window.BACKEND_URL) {
+          console.log('ℹ Backend translation not configured (offline mode)');
+          return null;
+        }
+
         const response = await fetch(`${this.backendUrl}/api/v1/translate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2972,7 +2979,8 @@
             text: text,
             source_language: sourceLang,
             target_language: targetLang
-          })
+          }),
+          timeout: 3000
         });
 
         if (response.ok) {
@@ -2987,7 +2995,7 @@
           };
         }
       } catch (e) {
-        console.warn('Backend unavailable:', e);
+        console.log('Backend translation skipped (offline/unavailable)');
       }
       return null;
     }
