@@ -3633,7 +3633,7 @@
 
       reader.onload = async (event) => {
         try {
-          console.log('🚀 Starting client-side OCR with SmartOCREngine...');
+          console.log('🚀 Starting OCR processing...');
           
           // Load image
           const img = new Image();
@@ -3641,101 +3641,133 @@
           
           img.onload = async () => {
             try {
+              console.log('✓ Image loaded:', img.width, 'x', img.height);
+              
               // Create canvas from image
               const canvas = document.createElement('canvas');
               canvas.width = img.width;
               canvas.height = img.height;
               const ctx = canvas.getContext('2d');
               ctx.drawImage(img, 0, 0);
+              console.log('✓ Canvas created');
 
-              // Initialize SmartOCREngine
-              const ocrEngine = new SmartOCREngine();
-              const initialized = await ocrEngine.initialize();
-              
-              if (!initialized) {
-                reject(new Error('Failed to initialize OCR engine - Tesseract.js not available'));
+              // Check if Tesseract is available
+              if (typeof Tesseract === 'undefined') {
+                reject(new Error('Tesseract.js not loaded. Please refresh the page.'));
                 return;
               }
+              console.log('✓ Tesseract.js available');
 
-              // Detect language
-              const detectedLang = await ocrEngine.detectLanguage(canvas);
-              console.log(`✓ Detected language: ${detectedLang}`);
+              try {
+                // Initialize Tesseract worker
+                console.log('📦 Initializing Tesseract worker...');
+                const { createWorker } = Tesseract;
+                const worker = await createWorker();
+                console.log('✓ Worker created');
 
-              // Extract text with confidence
-              const ocrResult = await ocrEngine.extractTextWithConfidence(canvas, detectedLang);
-              
-              if (!ocrResult) {
-                reject(new Error('OCR processing failed'));
-                return;
-              }
+                // Load language
+                console.log('🌍 Loading English language...');
+                await worker.loadLanguage('eng');
+                await worker.initialize('eng');
+                console.log('✓ Language loaded');
 
-              // Convert words to regions
-              const regions = ocrResult.words.map((word, idx) => ({
-                type: 'text',
-                bbox: [
-                  word.bbox.x0, 
-                  word.bbox.y0, 
-                  word.bbox.x1, 
-                  word.bbox.y1
-                ],
-                conf: Math.round(word.confidence * 100),
-                text: word.text
-              }));
+                // Recognize text
+                console.log('🔍 Running OCR on image...');
+                const result = await worker.recognize(canvas);
+                console.log('✓ OCR complete, processing results...');
 
-              // Detect region types using shape detector and layout detector
-              const shapeDetector = new ShapeDetector();
-              const layoutDetector = new LayoutDetector();
-              
-              // Format as regions with types
-              const typedRegions = regions.map(r => ({
-                ...r,
-                type: /^\d+([.,]\d+)?$/.test(r.text) ? 'table' : 
-                      r.text.length > 50 ? 'para' : 
-                      r.text === r.text.toUpperCase() && r.text.length > 3 ? 'header' : 'text',
-                confidence: r.conf / 100
-              }));
-
-              const imageData = event.target.result;
-              const formattedData = {
-                filename: file.name,
-                imageBase64: imageData,
-                width: canvas.width,
-                height: canvas.height,
-                regions: typedRegions,
-                confidence: ocrResult.confidence || 0.85,
-                timestamp: new Date().toISOString(),
-                fullText: ocrResult.text,
-                metadata: {
-                  language: detectedLang,
-                  analysisMethod: 'Client-Side Smart OCR (Tesseract.js)',
-                  segmentationLevel: 'Word-level',
-                  preprocessingApplied: true,
-                  phasesActive: ['Phase 1-5 Complete', 'Phase 7 Hierarchical', 'Phase 8 Translation Ready'],
-                  detectedFlowchart: ocrResult.words.some(w => /→|flow|step|process/i.test(w.text)),
-                  detectedTable: ocrResult.words.some(w => /table|\|/.test(w.text))
-                },
-                stats: {
-                  total: regions.length,
-                  headers: typedRegions.filter(r => r.type === 'header').length,
-                  paragraphs: typedRegions.filter(r => r.type === 'para').length,
-                  tables: typedRegions.filter(r => r.type === 'table').length,
-                  figures: 0,
-                  shapes: 0
-                },
-                qualityMetrics: {
-                  lowConfidenceRegions: regions.filter(r => r.conf < 70).length,
-                  averageConfidence: Math.round(ocrResult.confidence * 100),
-                  processingTime: new Date().toISOString()
+                if (!result.data || !result.data.text) {
+                  await worker.terminate();
+                  reject(new Error('No text detected in image'));
+                  return;
                 }
-              };
-              
-              // Cleanup
-              await ocrEngine.cleanup();
-              
-              console.log('✓ OCR completed successfully (client-side)');
-              resolve(formattedData);
+
+                // Extract words
+                const words = [];
+                const blocks = result.data.blocks || [];
+                
+                blocks.forEach(block => {
+                  if (block.lines) {
+                    block.lines.forEach(line => {
+                      if (line.words) {
+                        line.words.forEach(word => {
+                          if (word.text && word.text.trim()) {
+                            words.push({
+                              text: word.text,
+                              confidence: (word.confidence || 85) / 100,
+                              bbox: {
+                                x0: word.bbox.x0,
+                                y0: word.bbox.y0,
+                                x1: word.bbox.x1,
+                                y1: word.bbox.y1
+                              }
+                            });
+                          }
+                        });
+                      }
+                    });
+                  }
+                });
+
+                console.log(`✓ Extracted ${words.length} words`);
+
+                // Create typed regions
+                const typedRegions = words.map(w => ({
+                  type: w.text === w.text.toUpperCase() && w.text.length > 2 ? 'header' : 
+                        w.text.length > 50 ? 'para' : 'text',
+                  bbox: [w.bbox.x0, w.bbox.y0, w.bbox.x1, w.bbox.y1],
+                  conf: Math.round(w.confidence * 100),
+                  text: w.text,
+                  confidence: w.confidence
+                }));
+
+                const avgConfidence = words.length > 0 
+                  ? words.reduce((a, w) => a + w.confidence, 0) / words.length 
+                  : 0.85;
+
+                const formattedData = {
+                  filename: file.name,
+                  imageBase64: event.target.result,
+                  width: canvas.width,
+                  height: canvas.height,
+                  regions: typedRegions,
+                  confidence: avgConfidence,
+                  timestamp: new Date().toISOString(),
+                  fullText: result.data.text,
+                  metadata: {
+                    language: 'English',
+                    analysisMethod: 'Client-Side Smart OCR (Tesseract.js)',
+                    segmentationLevel: 'Word-level',
+                    preprocessingApplied: true,
+                    detectedFlowchart: result.data.text.match(/step|process|start|end|→|flow/i) !== null,
+                    detectedTable: result.data.text.match(/table|\|\s|\s\|/i) !== null
+                  },
+                  stats: {
+                    total: words.length,
+                    headers: typedRegions.filter(r => r.type === 'header').length,
+                    paragraphs: typedRegions.filter(r => r.type === 'para').length,
+                    tables: 0,
+                    figures: 0,
+                    shapes: 0
+                  },
+                  qualityMetrics: {
+                    lowConfidenceRegions: words.filter(w => w.confidence < 0.7).length,
+                    averageConfidence: Math.round(avgConfidence * 100),
+                    processingTime: new Date().toISOString()
+                  }
+                };
+
+                // Cleanup
+                await worker.terminate();
+                console.log('✓ OCR completed successfully');
+                resolve(formattedData);
+
+              } catch (ocrErr) {
+                console.error('❌ Tesseract error:', ocrErr.message);
+                reject(new Error(`Tesseract.js error: ${ocrErr.message}`));
+              }
             } catch (err) {
-              console.error('❌ OCR processing error:', err);
+              console.error('❌ Canvas/processing error:', err);
               reject(err);
             }
           };
