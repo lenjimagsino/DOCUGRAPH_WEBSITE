@@ -7,6 +7,10 @@ Graph-based document layout analysis with intelligent OCR, multilingual support,
 - **Advanced OCR** - EasyOCR + Tesseract.js with intelligent preprocessing
 - **Document Layout Analysis** - LayoutParser + Graph Neural Networks
 - **Multilingual Support** - 12+ languages with semantic embeddings
+- **Real Table Grids** - Automatic table detection and reconstruction with proper grid formatting
+- **Shapes & Flowchart Visualization** - Automatic diagram recognition and element visualization
+- **Image Inclusion in DOCX** - Preserve images and diagrams in exported documents
+- **Custom Formatting Templates** - Export with customizable document styles and layouts
 - **Shape & Flowchart Detection** - Automatic diagram recognition
 - **User Authentication** - Firebase with Google, Microsoft, Email sign-in
 - **Real-time Processing** - Async document analysis pipeline

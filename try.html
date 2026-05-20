@@ -44,6 +44,9 @@
   .results-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
   .result-item { display: flex; justify-content: space-between; color: var(--ink-700); }
   .result-item strong { color: var(--green-700); }
+  
+  /* Ensure buttons are clickable */
+  #view-results-btn, #new-document-btn { position: relative; z-index: 100; pointer-events: auto; cursor: pointer; }
 </style>
 </head>
 <body class="loading">
@@ -256,11 +259,57 @@
             </div>
           </div>
 
+          <!-- Export & Visualization Options -->
+          <div id="export-options" style="display:none; margin-top: 20px; padding: 16px; background: var(--green-50); border-radius: 10px; border: 1px solid var(--green-200);">
+            <h4 style="margin: 0 0 16px 0; font-size: 14px; color: var(--ink-900);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Export & Visualization</h4>
+            
+            <!-- Table Grids Detection -->
+            <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" id="enable-table-grids" checked style="width: 18px; height: 18px; cursor: pointer;">
+              <label for="enable-table-grids" style="cursor: pointer; flex: 1; margin: 0;">
+                <strong style="color: var(--ink-900);">Real Table Grids</strong>
+                <div style="font-size: 12px; color: var(--ink-600); margin-top: 2px;">Auto-reconstruct tables with proper cell alignment</div>
+              </label>
+            </div>
+
+            <!-- Shapes & Flowchart Visualization -->
+            <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" id="enable-shapes" checked style="width: 18px; height: 18px; cursor: pointer;">
+              <label for="enable-shapes" style="cursor: pointer; flex: 1; margin: 0;">
+                <strong style="color: var(--ink-900);">Shapes & Flowcharts</strong>
+                <div style="font-size: 12px; color: var(--ink-600); margin-top: 2px;">Visualize detected diagrams and chart elements</div>
+              </label>
+            </div>
+
+            <!-- Image Inclusion in DOCX -->
+            <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" id="include-images" checked style="width: 18px; height: 18px; cursor: pointer;">
+              <label for="include-images" style="cursor: pointer; flex: 1; margin: 0;">
+                <strong style="color: var(--ink-900);">Include Images in DOCX</strong>
+                <div style="font-size: 12px; color: var(--ink-600); margin-top: 2px;">Embed all diagrams and photos in exported document</div>
+              </label>
+            </div>
+
+            <!-- Custom Formatting Template -->
+            <div style="margin-bottom: 0;">
+              <label for="format-template" style="display: block; margin-bottom: 6px;">
+                <strong style="color: var(--ink-900);">Formatting Template</strong>
+              </label>
+              <select id="format-template" style="width: 100%; padding: 10px; border: 1px solid var(--green-300); border-radius: 6px; background: white; color: var(--ink-700); font-size: 13px; cursor: pointer;">
+                <option value="standard">Standard - Clean and Professional</option>
+                <option value="academic">Academic - Research Paper Format</option>
+                <option value="minimal">Minimal - No Formatting</option>
+                <option value="corporate">Corporate - Business Document</option>
+                <option value="technical">Technical - Code & Diagram Friendly</option>
+              </select>
+            </div>
+          </div>
+
           <!-- Action buttons for results -->
           <div class="btn-row" style="margin-top: 16px;">
-            <button class="btn btn-primary" id="view-results-btn">
+            <button class="btn btn-primary" id="export-docx-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              View Full Results
+              Export as DOCX
             </button>
             <button class="btn btn-ghost" id="new-document-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -3965,6 +4014,12 @@
     elements.initialState.style.display = state === 'initial' ? 'block' : 'none';
     elements.processingState.style.display = state === 'processing' ? 'block' : 'none';
     elements.resultsState.style.display = state === 'results' ? 'block' : 'none';
+    
+    // Show export options only when results are displayed
+    const exportOptionsPanel = document.getElementById('export-options');
+    if (exportOptionsPanel) {
+      exportOptionsPanel.style.display = state === 'results' ? 'block' : 'none';
+    }
   }
 
   function clearUI() {
@@ -4617,6 +4672,11 @@
     
     // Show results
     showState('results');
+    console.log('✓ Results displayed:', {
+      regions: data.regions?.length || 0,
+      confidence: data.confidence,
+      text: data.text ? `${data.text.substring(0, 100)}...` : 'No text'
+    });
     
     // Store analysis for results page with all metadata
     const analysisData = {
@@ -4719,13 +4779,17 @@
       return;
     }
     
+    console.log('🟦 Starting OCR extraction with layout data:', currentLayoutData);
+    
     // Show processing state
     showState('processing');
     
     try {
       if (currentFile) {
         // Perform OCR on the uploaded file using already-detected regions
+        console.log('📄 Processing uploaded file...');
         const ocrData = await performOCRWithExistingLayout(currentFile, currentLayoutData);
+        console.log('✓ OCR completed:', ocrData);
         const placeholder = document.getElementById('preview-placeholder');
         if (placeholder) placeholder.style.display = 'none';
         analysisStage = 'ocr-complete';
@@ -4736,6 +4800,7 @@
         updateUIForStage();
       } else if (currentTest) {
         // For test cases, merge OCR text with layout
+        console.log('🧪 Processing test case...');
         const testData = TEST_CASES[currentTest];
         const placeholder = document.getElementById('preview-placeholder');
         if (placeholder) placeholder.style.display = 'none';
@@ -4747,7 +4812,7 @@
         updateUIForStage();
       }
     } catch (err) {
-      console.error('OCR error:', err);
+      console.error('❌ OCR error:', err);
       alert('Error during OCR extraction. Please try again.');
       showState('results');
     }
@@ -4776,9 +4841,57 @@
     });
   });
 
+  // Export options feature listeners
+  const tableGridsCheckbox = document.getElementById('enable-table-grids');
+  const shapesCheckbox = document.getElementById('enable-shapes');
+  const imagesCheckbox = document.getElementById('include-images');
+  const formatTemplate = document.getElementById('format-template');
+
+  if (tableGridsCheckbox) {
+    tableGridsCheckbox.addEventListener('change', () => {
+      console.log('Table Grids enabled:', tableGridsCheckbox.checked);
+      // Can add real-time preview update here
+    });
+  }
+
+  if (shapesCheckbox) {
+    shapesCheckbox.addEventListener('change', () => {
+      console.log('Shapes/Flowcharts enabled:', shapesCheckbox.checked);
+      // Can add real-time preview update here
+    });
+  }
+
+  if (imagesCheckbox) {
+    imagesCheckbox.addEventListener('change', () => {
+      console.log('Include Images enabled:', imagesCheckbox.checked);
+      // Can add real-time preview update here
+    });
+  }
+
+  if (formatTemplate) {
+    formatTemplate.addEventListener('change', () => {
+      console.log('Format template selected:', formatTemplate.value);
+      // Can apply template preview here
+    });
+  }
+
   // Results action buttons
+  elements.viewResultsBtn = document.getElementById('export-docx-btn');
   elements.viewResultsBtn.addEventListener('click', () => {
-    window.location.href = 'results.html?demo=1';
+    // Collect export options
+    const exportOptions = {
+      enableTableGrids: document.getElementById('enable-table-grids')?.checked ?? true,
+      enableShapes: document.getElementById('enable-shapes')?.checked ?? true,
+      includeImages: document.getElementById('include-images')?.checked ?? true,
+      formatTemplate: document.getElementById('format-template')?.value ?? 'standard'
+    };
+    
+    console.log('📤 Exporting DOCX with options:', exportOptions);
+    
+    // Store options in session for results page
+    sessionStorage.setItem('exportOptions', JSON.stringify(exportOptions));
+    
+    window.location.href = 'results.html?demo=1&export=docx';
   });
 
   elements.newDocumentBtn.addEventListener('click', () => {
@@ -4791,6 +4904,7 @@
     elements.fileInput.value = '';
     clearUI();
   });
+
 </script>
 </body>
 </html>
