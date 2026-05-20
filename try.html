@@ -609,7 +609,24 @@
             }
             
             // Use worker with timeout
-            const worker = await Tesseract.createWorker();
+            const workerCreateTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('OCR worker creation timeout')), 5000)
+            );
+            
+            let worker;
+            try {
+              worker = await Promise.race([
+                Tesseract.createWorker(),
+                workerCreateTimeout
+              ]);
+            } catch (workerErr) {
+              console.warn('⚠️ OCR worker creation failed:', workerErr.message);
+              ocrData.text = 'Document processed (OCR unavailable)';
+              ocrData.extractionMethod = 'Fallback - Worker Unavailable';
+              await worker?.terminate?.();
+              throw new Error('OCR worker failed');
+            }
+            
             this.ocrEngine.worker = worker;
             
             const timeoutPromise = new Promise((_, reject) => 
@@ -1895,6 +1912,16 @@
       const regionResults = [];
       let fullText = '';
 
+      // Initialize worker ONCE before processing all regions
+      try {
+        if (!this.isInitialized) await this.initialize();
+        await this.worker.loadLanguage(language);
+        await this.worker.initialize(language);
+      } catch (e) {
+        console.warn('Failed to initialize OCR worker:', e.message);
+        return { regions: [], text: 'OCR initialization failed' };
+      }
+
       for (const region of regions) {
         try {
           // Extract canvas region based on bbox coordinates
@@ -1917,14 +1944,18 @@
           // Apply context-aware preprocessing
           const preprocessedCanvas = await this.contextAwarePreprocess(regionCanvas, region.type);
 
-          // Run OCR on region
-          if (!this.isInitialized) await this.initialize();
-          await this.worker.loadLanguage(language);
-          await this.worker.initialize(language);
+          // Run OCR on region with timeout
+          const ocrTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Region OCR timeout')), 5000)
+          );
           
-          const result = await this.worker.recognize(preprocessedCanvas);
+          const result = await Promise.race([
+            this.worker.recognize(preprocessedCanvas),
+            ocrTimeout
+          ]);
+          
           const regionText = result.data.text || '';
-          const confidence = (result.data.confidence || 85) / 100;
+          const confidence = Math.max(0.5, Math.min(1, (result.data.confidence || 85) / 100));
 
           // Parse words from region
           const words = this.parseWordsFromRegion(result, regionCanvas.width, regionCanvas.height, x, y, canvas.width, canvas.height);
@@ -1942,8 +1973,17 @@
           });
 
           fullText += regionText + '\n';
+          console.log(`✅ Region ${region.type} complete - ${words.length} words, ${confidence.toFixed(2)} confidence`);
         } catch (e) {
-          console.warn(`Error extracting text from ${region.type} region:`, e.message);
+          console.warn(`⚠️ Error extracting text from ${region.type} region:`, e.message);
+          regionResults.push({
+            type: region.type,
+            bbox: region.bbox,
+            text: '[OCR Error]',
+            words: [],
+            confidence: 0.5,
+            error: e.message
+          });
         }
       }
 
@@ -6049,22 +6089,41 @@
 
             // If no shapes/tables, use GNN for general layout
             if (regions.length === 0) {
-              console.log('🎯 Starting layout detection with GNN...');
-              const gnnResult = gnnAnalyzer.analyzeLayout(imageData, canvas.width, canvas.height);
+              console.log('🎯 Starting layout detection with GNN (10s timeout)...');
               
-              if (gnnResult && gnnResult.regions && gnnResult.regions.length > 0) {
-                regions = gnnResult.regions.map((r, idx) => ({
-                  type: r.type || 'para',
-                  bbox: r.bbox,
-                  conf: r.confidence || 0.75,
-                  text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block'
-                }));
-                analysisMethod = 'GNN-Based Layout Detection';
-                confidence = gnnResult.confidence || 0.75;
-              } else {
-                // Fallback
+              // Wrap synchronous GNN analysis with timeout protection
+              const layoutTimeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Layout analysis timeout - using fallback')), 10000)
+              );
+              
+              const gnnPromise = Promise.resolve().then(() => {
+                console.time('GNN Layout Analysis');
+                const result = gnnAnalyzer.analyzeLayout(imageData, canvas.width, canvas.height);
+                console.timeEnd('GNN Layout Analysis');
+                return result;
+              });
+              
+              try {
+                const gnnResult = await Promise.race([gnnPromise, layoutTimeout]);
+                
+                if (gnnResult && gnnResult.regions && gnnResult.regions.length > 0) {
+                  regions = gnnResult.regions.map((r, idx) => ({
+                    type: r.type || 'para',
+                    bbox: r.bbox,
+                    conf: r.confidence || 0.75,
+                    text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block'
+                  }));
+                  analysisMethod = 'GNN-Based Layout Detection';
+                  confidence = gnnResult.confidence || 0.75;
+                  console.log('✅ GNN layout analysis complete:', regions.length, 'regions');
+                } else {
+                  throw new Error('No regions detected');
+                }
+              } catch (gnnErr) {
+                console.warn('⚠️ GNN analysis failed/timeout:', gnnErr.message);
                 regions = generateFallbackRegions().regions;
                 confidence = 0.65;
+                analysisMethod = 'Fallback Layout Detection (GNN timeout)';
               }
             }
 
