@@ -398,6 +398,14 @@
 </style>
 <body>
 
+<!-- Backend Configuration -->
+<script>
+  window.BACKEND_URL = 'https://docugraph.site:5000';
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.BACKEND_URL = 'http://localhost:5000';
+  }
+</script>
+
 <header class="nav">
   <div class="nav-inner">
     <a href="index.html" class="brand">

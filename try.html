@@ -48,6 +48,14 @@
 </head>
 <body class="loading">
 
+<!-- Backend Configuration -->
+<script>
+  window.BACKEND_URL = 'https://docugraph.site:5000';
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.BACKEND_URL = 'http://localhost:5000';
+  }
+</script>
+
 <div class="auth-loading"><div class="spinner"></div></div>
 
 <!-- ===== NAVBAR ===== -->
@@ -432,43 +440,33 @@
      * Apply all preprocessing filters to image for optimal OCR
      */
     async preprocessImage(canvas) {
-      console.log('🔧 Image Preprocessing Started');
       let ctx = canvas.getContext('2d');
       let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
       // Step 1: Convert to grayscale
       imageData = this.toGrayscale(imageData);
-      console.log('✓ Grayscale conversion');
 
       // Step 2: Adaptive contrast enhancement
       imageData = this.adaptiveContrastEnhancement(imageData);
-      console.log('✓ Adaptive contrast enhancement');
 
       // Step 2.5: Histogram equalization for additional contrast boost
       imageData = this.histogramEqualization(imageData);
-      console.log('✓ Histogram equalization');
 
       // Step 3: Noise reduction (median filter)
       imageData = this.medianFilter(imageData, canvas.width, canvas.height);
-      console.log('✓ Median filter noise reduction');
 
       // Step 4: Adaptive thresholding (CLAHE)
       imageData = this.claheThresholding(imageData);
-      console.log('✓ Adaptive CLAHE thresholding');
 
       // Step 5: Advanced morphological operations
       imageData = this.advancedMorphology(imageData, canvas.width, canvas.height);
-      console.log('✓ Advanced morphological operations (opening, closing, skeleton)');
 
       // Step 6: Detect and correct skew
       const deskewedCanvas = await this.detectAndCorrectSkew(canvas, imageData);
-      console.log('✓ Skew detection and correction');
 
       // Step 7: Document border detection and deskewing
       const finalCanvas = await this.deskewAndCrop(deskewedCanvas);
-      console.log('✓ Deskew and crop');
 
-      console.log('✅ Preprocessing Complete - Image ready for OCR');
       return finalCanvas;
     }
 
@@ -810,16 +808,13 @@
       // Step 1: Opening (erosion → dilation) - removes small objects
       let opened = this.morphErode(imageData, width, height);
       opened = this.morphDilate(opened, width, height);
-      console.log('  ✓ Morphological opening');
       
       // Step 2: Closing (dilation → erosion) - fills small holes
       let closed = this.morphDilate(opened, width, height);
       closed = this.morphErode(closed, width, height);
-      console.log('  ✓ Morphological closing');
       
       // Step 3: Top-hat transform (extract small details)
       const tophat = this.topHatTransform(imageData, closed);
-      console.log('  ✓ Top-hat transform');
       
       // Combine: closed image + extracted details
       return this.blendImages(closed, tophat, 0.2);
@@ -931,7 +926,6 @@
 
       // Apply rotation correction if skew detected
       if (Math.abs(skewAngle) > 0.5) {
-        console.log(`  Skew detected: ${skewAngle.toFixed(2)}° - Correcting...`);
         return this.rotateCanvas(canvas, skewAngle);
       }
 
@@ -1181,18 +1175,12 @@
         
         // Initialize enhanced components
         try {
-          console.log('Initializing enhanced OCR components (Phase 1-8)...');
           await this.bertCorrector.initialize();
           await this.multilingualLayer.initialize();
           await this.feedbackCollector.initializeDB();
-          console.log('✓ Phase 1-5 modules initialized');
-          console.log('✓ Phase 7 (Hierarchical GNN) ready');
-          console.log('✓ Phase 8 (Translation Engine) ready with ' + Object.keys(this.translationEngine.supportedLanguages).length + ' languages');
         } catch (e) {
-          console.warn('Some enhancement modules unavailable (will use fallbacks):', e.message);
+          // Some enhancement modules unavailable, will use fallbacks
         }
-        
-        console.log('✓ SmartOCREngine initialized (ALL PHASES 1-8 COMPLETE)');
         return true;
       } catch (e) {
         console.error('Failed to initialize SmartOCREngine:', e);
@@ -1232,14 +1220,13 @@
             if (result.data.confidence > bestConfidence) {
               bestConfidence = result.data.confidence;
               bestLang = result.data.lang || 'eng';
-              console.log(`🌍 Language candidate: ${bestLang} (${bestConfidence.toFixed(1)}%)`);
+
             }
           } catch (e) {
-            console.log(`Language pass failed: ${langs.join(',')}`);
+            // Language detection failed for this batch
           }
         }
 
-        console.log(`✓ Best language detected: ${bestLang} (${bestConfidence.toFixed(1)}%)`);
         return bestLang;
       } catch (e) {
         console.error('Language detection error:', e);
@@ -1252,7 +1239,6 @@
      */
     async extractTextWithConfidence(canvas, language = 'eng') {
       try {
-        console.log('🚀 Starting advanced OCR extraction');
         
         if (!this.isInitialized) {
           const initialized = await this.initialize();
@@ -1260,16 +1246,13 @@
         }
 
         // Step 1: Preprocess image for optimal OCR
-        console.log('📋 Preprocessing image...');
         const preprocessedCanvas = await this.preprocessor.preprocessImage(canvas);
 
         // Step 2: Load language
         await this.worker.loadLanguage(language);
         await this.worker.initialize(language);
-        console.log(`✓ Language loaded: ${language}`);
 
         // Step 3: Recognize text on preprocessed image
-        console.log('🔍 Performing OCR recognition...');
         const result = await this.worker.recognize(preprocessedCanvas);
         
         if (!result.data) throw new Error('No OCR data returned');
@@ -1326,8 +1309,6 @@
 
         // Step 7: Detect potential OCR errors
         const detectedErrors = this.semanticEngine.detectErrors(validatedWords, this.confidenceThreshold);
-
-        console.log(`✅ OCR Complete: ${words.length} words, ${detectedErrors.length} flagged for review`);
 
         // PHASE 7: Build hierarchical document structure
         const hierarchyAnalysis = this.hierarchicalGAT.buildHierarchy(
@@ -1460,7 +1441,6 @@
           await this.worker.terminate();
           this.isInitialized = false;
           this.ocrCache.clear();
-          console.log('✓ SmartOCREngine cleanup complete');
         } catch (e) {
           console.error('Error terminating worker:', e);
         }
@@ -1505,8 +1485,6 @@
 
       // Group regions by columns
       const columns = this.groupByColumns(sortedByX, gaps);
-
-      console.log(`📐 Layout detected: ${layoutType} (${columnCount} columns)`);
 
       return {
         type: layoutType,
@@ -2072,12 +2050,10 @@
       try {
         // Load BERT via Transformers.js
         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
-        console.log('Loading BERT semantic corrector...');
         this.model = await pipeline('fill-mask', 'Xenova/distilbert-base-uncased');
         this.isInitialized = true;
-        console.log('✓ BERT model loaded for semantic correction');
       } catch (e) {
-        console.warn('BERT not available, using Levenshtein fallback:', e.message);
+        // BERT not available, using Levenshtein fallback
         this.isInitialized = false;
       }
     }
@@ -2186,8 +2162,6 @@
 
       // Build edges with relationships
       this.edges = this.buildEdgesWithRelationships(this.nodes, imageWidth, imageHeight);
-
-      console.log(`✓ Built GAT with ${this.nodes.length} nodes, ${this.edges.length} edges`);
 
       return { nodes: this.nodes, edges: this.edges };
     }
@@ -2347,10 +2321,8 @@
     async initialize() {
       try {
         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0');
-        console.log('Loading XLM-R for 100+ languages...');
         this.embeddingModel = await pipeline('feature-extraction', 'Xenova/xlm-roberta-base');
         this.isInitialized = true;
-        console.log('✓ XLM-R loaded (768-dim multilingual embeddings)');
       } catch (e) {
         console.warn('XLM-R initialization failed:', e.message);
         this.isInitialized = false;
@@ -2612,7 +2584,6 @@
       container.appendChild(svg);
       container.style.width = '100%';
       container.style.overflow = 'visible';
-      console.log(`✓ Layout visualization rendered (${this.width}x${this.height}, scale ${scale}x)`);
     }
 
     drawHierarchyLines(svg, hierarchy, scale = 1) {
@@ -2706,7 +2677,6 @@
       }));
 
       this.hierarchy = document;
-      console.log('✓ Hierarchical document structure built (' + sections.length + ' sections)');
       
       return document;
     }
@@ -2788,7 +2758,6 @@
       for (let iter = 0; iter < iterations; iter++) {
         this.propagateLevel(this.hierarchy, 0);
       }
-      console.log('✓ Hierarchical context propagation complete (' + iterations + ' iterations)');
     }
 
     propagateLevel(node, level) {
@@ -2939,7 +2908,6 @@
       this.translationCache = new Map();
       // Only use BACKEND_URL if explicitly set, don't default to localhost
       this.backendUrl = window.BACKEND_URL || null;
-      console.log('✓ Translation engine initialized (' + Object.keys(this.supportedLanguages).length + ' languages) - Offline mode');
     }
 
     async translate(text, sourceLang, targetLang) {
@@ -2968,7 +2936,6 @@
       try {
         // Only attempt backend if explicitly set (no default localhost call)
         if (!window.BACKEND_URL) {
-          console.log('ℹ Backend translation not configured (offline mode)');
           return null;
         }
 
@@ -2995,7 +2962,7 @@
           };
         }
       } catch (e) {
-        console.log('Backend translation skipped (offline/unavailable)');
+        // Backend translation skipped
       }
       return null;
     }
@@ -3056,7 +3023,6 @@
         }
       }
 
-      console.log('✓ Document translated to ' + (this.supportedLanguages[targetLang] || targetLang) + ' (' + translations.length + ' regions)');
       return translations;
     }
 
@@ -3096,7 +3062,6 @@
 
     clearCache() {
       this.translationCache.clear();
-      console.log('✓ Translation cache cleared');
     }
 
     getCacheSize() {

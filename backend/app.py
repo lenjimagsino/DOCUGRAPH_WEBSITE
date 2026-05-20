@@ -35,7 +35,28 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+
+# Enhanced CORS configuration for production and development
+cors_origins = [
+    'https://docugraph.site',
+    'https://www.docugraph.site',
+    'http://localhost',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://127.0.0.1',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5000',
+]
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": cors_origins,
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "max_age": 3600
+    }
+})
 
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
@@ -596,4 +617,28 @@ def server_error(error):
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('DEBUG', 'False') == 'True'
+    
+    # Print startup configuration
+    print("\n" + "="*60)
+    print("🚀 DOCUGRAPH Backend API Server - Startup")
+    print("="*60)
+    print(f"\n📡 CORS Configuration (Production Domains):")
+    for origin in cors_origins:
+        print(f"   ✓ {origin}")
+    print(f"\n🔌 Server Configuration:")
+    print(f"   Host: 0.0.0.0")
+    print(f"   Port: {port}")
+    print(f"   Debug Mode: {debug}")
+    print(f"\n🌐 Access URLs:")
+    print(f"   Local: http://localhost:{port}")
+    print(f"   Network: http://0.0.0.0:{port}")
+    print(f"   Production: https://docugraph.site:{port}")
+    print(f"\n📋 API Endpoints:")
+    print(f"   Health: http://localhost:{port}/health")
+    print(f"   Diagnostics: http://localhost:{port}/diagnostics")
+    print(f"   Layout Analysis: http://localhost:{port}/api/v1/layout/analyze")
+    print(f"   OCR Extract: http://localhost:{port}/api/v1/ocr/extract")
+    print(f"\n💡 Press CTRL+C to stop the server\n")
+    print("="*60 + "\n")
+    
     app.run(host='0.0.0.0', port=port, debug=debug)

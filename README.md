@@ -1,53 +1,65 @@
-# DOCUGRAPH Website
+# DOCUGRAPH - Advanced Document Analysis Platform
 
-Graph-Based Document Layout Analysis — research website with full Firebase Authentication.
+Graph-based document layout analysis with intelligent OCR, multilingual support, and real-time processing.
 
-## Pages
+## ✨ Features
 
-**Public**
-- `index.html` — Landing page (Hero, Features, How It Works, About, Team, Contact)
-- `login.html` — Sign in (Google, Microsoft, Email/Password)
-- `signup.html` — Create account (Google, Microsoft, Email/Password)
-- `reset-password.html` — Forgot password / send reset email
-- `verify-email.html` — Email verification holding screen
+- **Advanced OCR** - EasyOCR + Tesseract.js with intelligent preprocessing
+- **Document Layout Analysis** - LayoutParser + Graph Neural Networks
+- **Multilingual Support** - 12+ languages with semantic embeddings
+- **Shape & Flowchart Detection** - Automatic diagram recognition
+- **User Authentication** - Firebase with Google, Microsoft, Email sign-in
+- **Real-time Processing** - Async document analysis pipeline
+- **Production Ready** - 24/7 backend with auto-restart
 
-**Protected (require authentication)**
-- `dashboard.html` — User dashboard (greeting, stats, recent docs, quick actions)
-- `try.html` — Document upload page
-- `processing.html` — Animated processing pipeline
-- `results.html` — Structured OCR output
+## 🚀 Quick Start
 
-## Authentication Flow
-
-```
-Landing Page (index.html)
-     ↓
-Login / Create Account
-     ↓
-Firebase Authentication
-   ├─ Email/Password (with verification email)
-   ├─ Google Sign-In (popup)
-   └─ Microsoft Sign-In (popup)
-     ↓
-Dashboard (dashboard.html)
-     ↓
-Document Processing (try → processing → results)
+### 1. Install Backend Dependencies
+```bash
+cd backend
+pip install -r requirements.txt
 ```
 
-## 🔥 Firebase Setup (REQUIRED before auth works)
+### 2. Start Backend Server
+```bash
+# Windows
+backend\start_backend_windows.bat
 
-### 1. Create a Firebase project
-1. Go to https://console.firebase.google.com/
-2. Click **Add project**, name it (e.g. `docugraph`), continue through setup
-3. (Optional) Disable Google Analytics for a faster setup
+# Linux/Mac
+python backend/run_production.py
+```
 
-### 2. Register a Web App
-1. In the project overview, click the **`</>`** (Web) icon to add an app
-2. Nickname it `docugraph-web`, **don't** enable hosting yet
-3. Copy the `firebaseConfig` object Firebase shows you
+### 3. Open Website
+```
+https://docugraph.site
+```
 
-### 3. Paste credentials into `assets/firebase-config.js`
-Replace the placeholder values with your real ones:
+## 📋 Project Structure
+
+```
+docugraph.site/
+├── index.html              # Landing page
+├── login.html              # Sign in
+├── signup.html             # Register
+├── dashboard.html          # User dashboard
+├── try.html                # Upload & analyze
+├── processing.html         # Processing status
+├── results.html            # Analysis results
+├── assets/                 # Frontend (JS, CSS)
+├── backend/                # Python Flask server
+└── DOCS/                   # Documentation
+```
+
+## 🔑 Authentication Setup (Firebase)
+
+### Setup Instructions
+
+1. **Create Firebase Project**: https://console.firebase.google.com
+2. **Add Web App**: Copy firebaseConfig
+3. **Update** `assets/firebase-config.js` with your credentials
+4. **Enable Sign-In Methods**: Email, Google, Microsoft in Firebase Console
+
+For detailed setup, see [DOCS/SETUP.md](DOCS/SETUP.md)
 
 ```js
 const firebaseConfig = {
