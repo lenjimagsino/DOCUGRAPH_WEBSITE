@@ -2692,27 +2692,63 @@
         const regionHeight = bbox[3] - bbox[1];
         const area = regionWidth * regionHeight;
         const aspectRatio = regionWidth / Math.max(1, regionHeight);
+        const density = region.density;
+        const intensity = region.intensity;
         
-        // Classify region type
+        // Calculate real confidence based on feature matching
         let type = 'text';
         let confidence = 0.7;
+        let featureScores = {};
         
-        if (bbox[1] < 10 && regionHeight < 8) {
+        // HEADER: Top of page, small height, consistent width
+        const isHeaderCandidate = bbox[1] < 10 && regionHeight < 8 && regionWidth > 30;
+        if (isHeaderCandidate) {
+          featureScores.position = 0.95; // Strong signal from top positioning
+          featureScores.size = Math.min(1, 1 - (regionHeight / 10)); // Bonus for small height
+          featureScores.width = Math.min(1, regionWidth / 70); // Bonus for wider regions
           type = 'header';
-          confidence = 0.9;
-        } else if (regionHeight > 25 && regionWidth > 50) {
-          type = 'figure';
-          confidence = 0.85;
-        } else if (region.density > 0.4) {
-          type = 'table';
-          confidence = 0.88;
-        } else if (aspectRatio > 3 && regionHeight < 5) {
-          type = 'separator';
-          confidence = 0.92;
-        } else if (regionHeight < 3) {
-          type = 'line';
-          confidence = 0.95;
+          confidence = (featureScores.position * 0.5 + featureScores.size * 0.25 + featureScores.width * 0.25);
         }
+        // FIGURE: Large uniform area with low density
+        else if (regionHeight > 25 && regionWidth > 50 && density < 0.3) {
+          featureScores.size = Math.min(1, area / 2500); // Larger = more confident
+          featureScores.uniformity = 1 - Math.min(1, intensity / 200); // Low intensity = more uniform
+          featureScores.sparsity = 1 - density; // Low density indicates image/figure
+          type = 'figure';
+          confidence = (featureScores.size * 0.4 + featureScores.uniformity * 0.3 + featureScores.sparsity * 0.3);
+        }
+        // TABLE: High density with regular structure
+        else if (density > 0.4 && density < 0.9) {
+          featureScores.density = Math.min(1, density * 1.2); // 0.4-0.9 is good for tables
+          featureScores.regularity = Math.max(0, 1 - Math.abs(density - 0.65) / 0.65); // Peak at 0.65
+          featureScores.minSize = regionWidth > 20 && regionHeight > 10 ? 1 : 0.5;
+          type = 'table';
+          confidence = (featureScores.density * 0.4 + featureScores.regularity * 0.4 + featureScores.minSize * 0.2);
+        }
+        // SEPARATOR: Very wide, very thin
+        else if (aspectRatio > 3 && regionHeight < 5 && regionWidth > 30) {
+          featureScores.aspect = Math.min(1, (aspectRatio - 3) / 10); // Bonus for extreme aspect
+          featureScores.thinness = 1 - (regionHeight / 5); // Bonus for extremely thin
+          featureScores.uniformity = 1 - Math.min(1, intensity / 150);
+          type = 'separator';
+          confidence = (featureScores.aspect * 0.4 + featureScores.thinness * 0.35 + featureScores.uniformity * 0.25);
+        }
+        // LINE: Very thin, shorter than separators
+        else if (regionHeight < 3 && regionWidth > 5) {
+          featureScores.thinness = 1 - (regionHeight / 3);
+          featureScores.linearity = 1 - Math.min(1, intensity / 100);
+          type = 'line';
+          confidence = (featureScores.thinness * 0.5 + featureScores.linearity * 0.5);
+        }
+        // TEXT: Default, density 0.1-0.4
+        else {
+          featureScores.density = Math.min(1, density / 0.4); // Good text density
+          featureScores.structure = regionWidth > 15 && regionHeight > 8 ? 1 : 0.7;
+          confidence = (featureScores.density * 0.6 + featureScores.structure * 0.4);
+        }
+        
+        // Clamp confidence to realistic range
+        confidence = Math.max(0.5, Math.min(1, confidence));
         
         // Detect multi-column layout
         const isMultiCol = regionWidth > 60 && region.density < 0.3;
@@ -2721,6 +2757,7 @@
           type,
           bbox,
           confidence,
+          featureScores,
           size: { width: regionWidth, height: regionHeight, area },
           aspectRatio,
           density: region.density,
@@ -3036,11 +3073,36 @@
     calculateConfidence(regions) {
       if (regions.length === 0) return 0.5;
       
+      // Calculate average individual region confidence
       const avgConf = regions.reduce((a, r) => a + r.confidence, 0) / regions.length;
+      
+      // Calculate consistency (how similar confidences are)
       const variance = regions.reduce((a, r) => a + Math.pow(r.confidence - avgConf, 2), 0) / regions.length;
       const consistency = 1 - Math.sqrt(variance);
       
-      return Math.round((avgConf + consistency) / 2 * 100) / 100;
+      // Calculate region diversity factor (more diverse types = more complex = lower confidence)
+      const typeCount = new Set(regions.map(r => r.type)).size;
+      const diversityPenalty = Math.min(0.1, (typeCount - 1) * 0.02);
+      
+      // Calculate structural coherence
+      // Well-structured documents have regions with similar densities
+      const densities = regions.map(r => r.density);
+      const avgDensity = densities.reduce((a, d) => a + d, 0) / densities.length;
+      const densityVariance = densities.reduce((a, d) => a + Math.pow(d - avgDensity, 2), 0) / densities.length;
+      const coherence = Math.max(0.6, 1 - Math.sqrt(densityVariance));
+      
+      // Weight factors: 60% individual confidence, 20% consistency, 10% coherence, 10% diversity
+      const overallConfidence = (
+        avgConf * 0.6 +
+        consistency * 0.2 +
+        coherence * 0.1 +
+        (1 - diversityPenalty) * 0.1
+      );
+      
+      // Clamp to realistic range (0.5-0.98, never extremely high)
+      const finalConfidence = Math.max(0.5, Math.min(0.98, overallConfidence));
+      
+      return Math.round(finalConfidence * 100) / 100;
     }
 
     buildDocumentGraph(words, imageWidth, imageHeight) {
@@ -3606,8 +3668,51 @@
         }
       }
 
-      // If we have a proper grid, return table info
+      // If we have a proper grid, return table info with REAL confidence
       if (rows.length >= 2 && cols.length >= 2) {
+        // Calculate real confidence based on grid quality
+        let gridConfidence = 0.5;
+        
+        // Factor 1: Grid regularity (uniform row/column spacing)
+        const rowSpacings = [];
+        for (let i = 1; i < rows.length; i++) {
+          rowSpacings.push(rows[i] - rows[i-1]);
+        }
+        const avgRowSpacing = rowSpacings.reduce((a, b) => a + b, 0) / rowSpacings.length;
+        const rowSpacingVariance = rowSpacings.reduce((a, s) => a + Math.abs(s - avgRowSpacing), 0) / rowSpacings.length;
+        const rowRegularity = Math.max(0, 1 - (rowSpacingVariance / avgRowSpacing)); // 0 = irregular, 1 = uniform
+        
+        const colSpacings = [];
+        for (let i = 1; i < cols.length; i++) {
+          colSpacings.push(cols[i] - cols[i-1]);
+        }
+        const avgColSpacing = colSpacings.reduce((a, b) => a + b, 0) / colSpacings.length;
+        const colSpacingVariance = colSpacings.reduce((a, s) => a + Math.abs(s - avgColSpacing), 0) / colSpacings.length;
+        const colRegularity = Math.max(0, 1 - (colSpacingVariance / avgColSpacing));
+        
+        // Factor 2: Line coverage (how many of the detected lines form the grid)
+        const lineCoverage = Math.min(1, (hLines.length / rows.length + vLines.length / cols.length) / 2);
+        
+        // Factor 3: Grid density (more cells = more likely real table)
+        const cellCount = rows.length * cols.length;
+        const gridDensity = Math.min(1, cellCount / 100); // Peak at 100+ cells
+        
+        // Factor 4: Line continuity (average line length relative to grid size)
+        const avgHLineLength = hLines.reduce((a, l) => a + l.length, 0) / hLines.length;
+        const avgVLineLength = vLines.reduce((a, l) => a + l.length, 0) / vLines.length;
+        const hContinuity = Math.min(1, avgHLineLength / (Math.max(...vLines.map(l => l.x)) - Math.min(...vLines.map(l => l.x))));
+        const vContinuity = Math.min(1, avgVLineLength / (Math.max(...hLines.map(l => l.y)) - Math.min(...hLines.map(l => l.y))));
+        
+        // Combine factors with weights
+        gridConfidence = (
+          rowRegularity * 0.25 +     // 25% - row spacing uniformity
+          colRegularity * 0.25 +     // 25% - column spacing uniformity
+          gridDensity * 0.25 +       // 25% - cell count
+          ((hContinuity + vContinuity) / 2) * 0.25 // 25% - line continuity
+        );
+        
+        gridConfidence = Math.max(0.5, Math.min(1, gridConfidence)); // Clamp 0.5-1.0
+        
         return {
           rows: rows.length,
           cols: cols.length,
@@ -3617,7 +3722,15 @@
             (Math.max(...vLines.map(l => l.x)) / width) * 100,
             (Math.max(...hLines.map(l => l.y)) / height) * 100
           ],
-          confidence: 0.92
+          confidence: gridConfidence,
+          quality: {
+            rowRegularity,
+            colRegularity,
+            lineCoverage,
+            gridDensity,
+            hContinuity,
+            vContinuity
+          }
         };
       }
 
@@ -6238,19 +6351,56 @@
     const container = document.getElementById('region-list');
     if (!container) return;
 
-    container.innerHTML = regions.map((r, idx) => `
-      <div class="region-item" onclick="this.classList.toggle('selected')">
-        <div>
-          <span class="region-type">${r.type.toUpperCase()}</span>
-          <span class="region-confidence">Confidence: ${(r.confidence * 100).toFixed(0)}%</span>
+    container.innerHTML = regions.map((r, idx) => {
+      // Build confidence breakdown if feature scores available
+      let confidenceBreakdown = '';
+      if (r.featureScores && Object.keys(r.featureScores).length > 0) {
+        const scores = r.featureScores;
+        const scoreLabels = {
+          position: 'Position',
+          size: 'Size',
+          width: 'Width',
+          uniformity: 'Uniformity',
+          sparsity: 'Sparsity',
+          density: 'Density',
+          regularity: 'Regularity',
+          minSize: 'Min Size',
+          aspect: 'Aspect',
+          thinness: 'Thinness',
+          linearity: 'Linearity',
+          structure: 'Structure'
+        };
+        
+        confidenceBreakdown = '<div style="margin-top: 8px; font-size: 10px; color: var(--ink-600);">';
+        confidenceBreakdown += '<strong>Feature Breakdown:</strong><div style="margin-top: 4px; display: grid; grid-template-columns: 1fr 1fr;">';
+        for (const [key, label] of Object.entries(scoreLabels)) {
+          if (scores[key] !== undefined) {
+            const pct = (scores[key] * 100).toFixed(0);
+            confidenceBreakdown += `<div>${label}: <strong>${pct}%</strong></div>`;
+          }
+        }
+        confidenceBreakdown += '</div></div>';
+      }
+      
+      return `
+        <div class="region-item" onclick="this.classList.toggle('selected')" style="position: relative;">
+          <div>
+            <span class="region-type">${r.type.toUpperCase()}</span>
+            <span class="region-confidence" style="background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(59,130,246,0.2)); padding: 2px 6px; border-radius: 3px;">
+              Confidence: ${(r.confidence * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div style="font-size: 11px; color: var(--ink-500); margin-top: 6px;">
+            Position: (${Math.round(r.bbox[0])}%, ${Math.round(r.bbox[1])}%)
+            &nbsp;·&nbsp;
+            Size: ${Math.round((r.bbox[2] - r.bbox[0]) * 100) / 100}% × ${Math.round((r.bbox[3] - r.bbox[1]) * 100) / 100}%
+            <br>
+            <strong>Metrics:</strong> Density: ${(r.density * 100).toFixed(0)}% · Intensity: ${Math.round(r.intensity)}
+          </div>
+          ${confidenceBreakdown}
         </div>
-        <div style="font-size: 11px; color: var(--ink-500); margin-top: 6px;">
-          Position: (${Math.round(r.bbox[0])}%, ${Math.round(r.bbox[1])}%)
-          &nbsp;·&nbsp;
-          Size: ${Math.round((r.bbox[2] - r.bbox[0]) * 100) / 100}% × ${Math.round((r.bbox[3] - r.bbox[1]) * 100) / 100}%
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function populateConnectivityAnalysis(regions, adjacency) {
@@ -6287,21 +6437,38 @@
     const container = document.getElementById('metrics-grid');
     if (!container) return;
 
+    // Calculate confidence breakdown for display
+    const regions = data.regions || [];
+    const typeCount = new Set(regions.map(r => r.type)).size;
+    const densities = regions.map(r => r.density);
+    const avgDensity = densities.length > 0 ? densities.reduce((a, d) => a + d, 0) / densities.length : 0;
+    const densityVariance = densities.length > 0 ? densities.reduce((a, d) => a + Math.pow(d - avgDensity, 2), 0) / densities.length : 0;
+    const coherence = Math.max(0.6, 1 - Math.sqrt(densityVariance));
+    
+    // Individual region confidence
+    const avgConf = regions.length > 0 ? regions.reduce((a, r) => a + r.confidence, 0) / regions.length : 0;
+    const variance = regions.length > 0 ? regions.reduce((a, r) => a + Math.pow(r.confidence - avgConf, 2), 0) / regions.length : 0;
+    const consistency = regions.length > 0 ? 1 - Math.sqrt(variance) : 0;
+
     const metrics = [
-      { label: 'Total Regions', value: data.stats.total },
-      { label: 'Headers', value: data.stats.headers },
-      { label: 'Paragraphs', value: data.stats.paragraphs },
-      { label: 'Tables', value: data.stats.tables },
-      { label: 'Figures', value: data.stats.figures },
-      { label: 'Overall Confidence', value: (data.confidence * 100).toFixed(1) + '%' },
-      { label: 'Document Type', value: data.structure?.documentType || 'Unknown' },
-      { label: 'Layout', value: data.structure?.layout || 'Unknown' },
-      { label: 'Columns', value: data.structure?.columns || '1' },
-      { label: 'Content Area', value: (data.metrics?.contentArea || 0).toFixed(1) + '%' }
+      { label: 'Total Regions', value: data.stats.total, tooltip: 'Number of detected layout regions' },
+      { label: 'Headers', value: data.stats.headers, tooltip: 'Header elements detected' },
+      { label: 'Paragraphs', value: data.stats.paragraphs, tooltip: 'Text paragraph regions' },
+      { label: 'Tables', value: data.stats.tables, tooltip: 'Table structures detected' },
+      { label: 'Figures', value: data.stats.figures, tooltip: 'Large image/figure regions' },
+      { label: 'Overall Confidence', value: (data.confidence * 100).toFixed(1) + '%', tooltip: 'Composite confidence score' },
+      { label: 'Region Agreement', value: (avgConf * 100).toFixed(1) + '%', tooltip: 'Avg individual region confidence' },
+      { label: 'Consistency', value: (consistency * 100).toFixed(1) + '%', tooltip: 'Uniformity of region confidences' },
+      { label: 'Structural Coherence', value: (coherence * 100).toFixed(1) + '%', tooltip: 'Layout structure consistency' },
+      { label: 'Region Diversity', value: typeCount + ' types', tooltip: 'Number of different region types' },
+      { label: 'Document Type', value: data.structure?.documentType || 'Unknown', tooltip: 'Detected document classification' },
+      { label: 'Layout', value: data.structure?.layout || 'Unknown', tooltip: 'Single/multi-column layout' },
+      { label: 'Columns', value: data.structure?.columns || '1', tooltip: 'Number of text columns' },
+      { label: 'Content Area', value: (data.metrics?.contentArea || 0).toFixed(1) + '%', tooltip: 'Percentage of page with content' }
     ];
 
     container.innerHTML = metrics.map(m => `
-      <div class="metric-card">
+      <div class="metric-card" title="${m.tooltip}">
         <div class="metric-label">${m.label}</div>
         <div class="metric-value">${m.value}</div>
       </div>
