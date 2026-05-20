@@ -14,9 +14,78 @@
   
   .results-grid {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1fr;
     gap: 48px;
     margin-top: 48px;
+  }
+
+  /* Hierarchy visualization panel (left column) */
+  .hierarchy-panel {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow-md);
+    overflow: auto;
+    max-height: 800px;
+  }
+
+  .hierarchy-panel h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--ink-900);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #hierarchyVisualization {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border: 2px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    min-height: 300px;
+    overflow: visible;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #hierarchyVisualization svg {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .tree-node-box {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
+  }
+
+  .tree-node-box:hover {
+    fill-opacity: 0.2 !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  }
+
+  /* Two-column layout for document + results */
+  .results-content-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 48px;
+    margin-top: 48px;
+  }
+
+  .doc-column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
   }
   
   .result-doc {
@@ -331,68 +400,33 @@
   }
   
   /* ===== RESPONSIVE ===== */
-  /* ===== LAYOUT VISUALIZATION ===== */
-  .layout-visualization-section {
-    margin-bottom: 48px;
-    background: var(--white);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    padding: 32px;
-    box-shadow: var(--shadow-md);
-  }
-
-  .layout-visualization-section h3 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 18px;
-    color: var(--ink-900);
-    margin-bottom: 20px;
-  }
-
-  #layoutVisualization {
-    width: 100%;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    border: 2px solid #e5e7eb;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-    min-height: 600px;
-    overflow: visible;
-    padding: 20px;
-    box-sizing: border-box;
-  }
-
-  #layoutVisualization svg {
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto;
-  }
-
-  .region-box {
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
-  }
-
-  .region-box:hover {
-    fill-opacity: 0.4 !important;
-    stroke-width: 3 !important;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  @media (max-width: 1400px) {
+    .results-content-wrapper {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
   }
 
   @media (max-width: 1024px) {
     .results-grid {
-      grid-template-columns: 1fr;
       gap: 32px;
     }
     .tab-body {
       max-height: 400px;
     }
-    .layout-visualization-section {
-      padding: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .hierarchy-panel {
+      max-height: 500px;
+    }
+    
+    .results-content-wrapper {
+      grid-template-columns: 1fr;
+    }
+    
+    .doc-render {
+      aspect-ratio: 4/5;
     }
   }
 </style>
@@ -482,42 +516,44 @@
       </div>
     </div>
 
-    <!-- Full-width Layout Visualization (Phase 7 - Hierarchical Structure) -->
-    <div class="layout-visualization-section reveal" id="layout-section" style="display:none;">
+    <!-- Hierarchical Document Structure Panel -->
+    <div class="hierarchy-panel reveal" id="hierarchy-section" style="display:none;">
       <h3>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; margin-right:8px; vertical-align:-2px;"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 6v6m-3-3h6"/></svg>
-        Document Structure & Hierarchy (Phase 7)
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:-2px;"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 6v6m-3-3h6"/></svg>
+        Document Hierarchy & Confidence
       </h3>
-      <div id="layoutVisualization" style="min-height: 300px; padding: 20px; overflow-x: auto;"></div>
+      <div id="hierarchyVisualization" style="min-height: 300px; padding: 20px; overflow-x: auto;"></div>
     </div>
 
-    <div class="results-grid">
-
+    <!-- Two-Column Content: Document + Results -->
+    <div class="results-content-wrapper reveal">
       <!-- Left: Document with bounding boxes -->
-      <div class="result-doc reveal">
-        <h3 id="doc-title">Document Analysis</h3>
-        <div class="doc-render" id="doc-render">
-          <!-- Dynamic content will be inserted here -->
-        </div>
-        <div class="confidence-badge" id="confidence-badge" style="position: absolute; top: 24px; right: 24px;">
-          Confidence: <span id="result-confidence">0%</span>
-        </div>
-        <div class="doc-stats" id="doc-stats">
-          <div class="stat-item">
-            <span class="stat-label">Regions Found</span>
-            <span class="stat-value" id="stat-total">0</span>
+      <div class="doc-column">
+        <div class="result-doc">
+          <h3 id="doc-title">Document Analysis</h3>
+          <div class="doc-render" id="doc-render">
+            <!-- Dynamic content will be inserted here -->
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Headers</span>
-            <span class="stat-value" id="stat-headers">0</span>
+          <div class="confidence-badge" id="confidence-badge" style="position: absolute; top: 24px; right: 24px;">
+            Confidence: <span id="result-confidence">0%</span>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Tables</span>
-            <span class="stat-value" id="stat-tables">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Shapes</span>
-            <span class="stat-value" id="stat-shapes">0</span>
+          <div class="doc-stats" id="doc-stats">
+            <div class="stat-item">
+              <span class="stat-label">Regions Found</span>
+              <span class="stat-value" id="stat-total">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Headers</span>
+              <span class="stat-value" id="stat-headers">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Tables</span>
+              <span class="stat-value" id="stat-tables">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Shapes</span>
+              <span class="stat-value" id="stat-shapes">0</span>
+            </div>
           </div>
         </div>
       </div>
@@ -650,7 +686,6 @@ improvement across all region categories.</pre>
           </button>
         </div>
       </div>
-
     </div>
   </div>
 </main>
@@ -673,6 +708,11 @@ improvement across all region categories.</pre>
         // Reveal the export bar now that we have data
         const expBar = document.getElementById('export-bar');
         if (expBar) expBar.style.display = 'inline-flex';
+        
+        // Display hierarchy visualization if available
+        if (window.lastHierarchyData) {
+          displayHierarchyVisualization(window.lastHierarchyData);
+        }
       } catch (e) {
         console.error('Error parsing analysis data:', e);
       }
@@ -1052,6 +1092,181 @@ improvement across all region categories.</pre>
       tableJsonBtn.style.display = 'none';
       tableContent.innerHTML = '<p style="color: var(--ink-500); font-style: italic;">No tables detected in this document.</p>';
     }
+  }
+
+  function displayHierarchyVisualization(hierarchyData) {
+    const hierarchySection = document.getElementById('hierarchy-section');
+    const hierarchyViz = document.getElementById('hierarchyVisualization');
+    
+    if (!hierarchyData || !hierarchyViz) return;
+    
+    // Show the hierarchy panel
+    hierarchySection.style.display = 'block';
+    
+    // Create a simple DocumentStructureVisualizer instance to render the tree
+    class SimpleHierarchyVisualizer {
+      constructor() {
+        this.nodeWidth = 160;
+        this.nodeHeight = 60;
+        this.verticalGap = 100;
+        this.horizontalGap = 40;
+      }
+
+      getTypeColor(type) {
+        const colors = {
+          'header': '#1c7a39',
+          'para': '#3ec85c',
+          'table': '#d97706',
+          'figure': '#7c3aed',
+          'shape': '#ec4899',
+          'document': '#059669',
+          'section': '#10b981',
+          'paragraph': '#34d399',
+          'sentence': '#6ee7b7',
+          'word': '#a7f3d0'
+        };
+        return colors[type] || '#999';
+      }
+
+      calculateTreeDimensions(node, depth = 0) {
+        if (!node) return { width: 0, height: 0 };
+        
+        let maxWidth = this.nodeWidth + this.horizontalGap;
+        let totalHeight = this.nodeHeight + this.verticalGap;
+
+        if (node.children && node.children.length > 0) {
+          let childrenWidth = 0;
+          let maxChildHeight = 0;
+
+          for (const child of node.children) {
+            const childDim = this.calculateTreeDimensions(child, depth + 1);
+            childrenWidth += childDim.width;
+            maxChildHeight = Math.max(maxChildHeight, childDim.height);
+          }
+
+          maxWidth = Math.max(maxWidth, childrenWidth);
+          totalHeight += maxChildHeight;
+        }
+
+        return { 
+          width: Math.max(maxWidth, this.nodeWidth), 
+          height: totalHeight 
+        };
+      }
+
+      render(container, hierarchy) {
+        container.innerHTML = '';
+        
+        const dimensions = this.calculateTreeDimensions(hierarchy);
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', (dimensions.height + 60) + 'px');
+        svg.setAttribute('viewBox', `0 0 ${dimensions.width + 60} ${dimensions.height + 60}`);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
+        svg.setAttribute('style', `border: 2px solid #e5e7eb; background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%); display: block; width: 100%; overflow: visible;`);
+
+        // Create defs for gradients
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        grad.setAttribute('id', 'nodeGradient');
+        grad.setAttribute('x1', '0%');
+        grad.setAttribute('y1', '0%');
+        grad.setAttribute('x2', '0%');
+        grad.setAttribute('y2', '100%');
+        
+        const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop1.setAttribute('offset', '0%');
+        stop1.setAttribute('stop-color', '#ffffff');
+        grad.appendChild(stop1);
+        
+        const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop2.setAttribute('offset', '100%');
+        stop2.setAttribute('stop-color', '#f3f4f6');
+        grad.appendChild(stop2);
+        
+        defs.appendChild(grad);
+        svg.appendChild(defs);
+
+        // Draw tree nodes and connections
+        this.drawTreeNode(svg, hierarchy, 30, 30, 0, dimensions.width);
+        container.appendChild(svg);
+      }
+
+      drawTreeNode(svg, node, x, y, depth, treeWidth) {
+        if (!node) return;
+
+        const nodeType = node.type || 'document';
+        const confidence = Math.round((node.confidence || 0.85) * 100);
+        const bgColor = this.getTypeColor(nodeType);
+        
+        // Draw node background
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x - this.nodeWidth / 2);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', this.nodeWidth);
+        rect.setAttribute('height', this.nodeHeight);
+        rect.setAttribute('fill', bgColor);
+        rect.setAttribute('fill-opacity', '0.12');
+        rect.setAttribute('stroke', bgColor);
+        rect.setAttribute('stroke-width', '2');
+        rect.setAttribute('rx', '8');
+        rect.setAttribute('ry', '8');
+        rect.setAttribute('class', 'tree-node-box');
+        rect.setAttribute('style', 'cursor: pointer; transition: all 0.2s; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));');
+        svg.appendChild(rect);
+
+        // Draw type label
+        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        typeText.setAttribute('x', x);
+        typeText.setAttribute('y', y + 20);
+        typeText.setAttribute('font-size', '11px');
+        typeText.setAttribute('font-weight', '700');
+        typeText.setAttribute('fill', bgColor);
+        typeText.setAttribute('text-anchor', 'middle');
+        typeText.setAttribute('font-family', 'monospace');
+        typeText.textContent = nodeType.toUpperCase();
+        svg.appendChild(typeText);
+
+        // Draw confidence percentage
+        const confText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        confText.setAttribute('x', x);
+        confText.setAttribute('y', y + 40);
+        confText.setAttribute('font-size', '13px');
+        confText.setAttribute('font-weight', '700');
+        confText.setAttribute('fill', confidence > 85 ? '#059669' : confidence > 70 ? '#f59e0b' : '#ef4444');
+        confText.setAttribute('text-anchor', 'middle');
+        confText.setAttribute('font-family', 'var(--font-display)');
+        confText.textContent = `${confidence}%`;
+        svg.appendChild(confText);
+
+        // Draw connections to children
+        if (node.children && node.children.length > 0) {
+          const childCount = node.children.length;
+          const startX = x - ((childCount - 1) * (this.nodeWidth + this.horizontalGap)) / 2;
+
+          node.children.forEach((child, idx) => {
+            const childX = startX + idx * (this.nodeWidth + this.horizontalGap);
+            const childY = y + this.nodeHeight + this.verticalGap;
+
+            // Draw connection line
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('d', `M ${x} ${y + this.nodeHeight} Q ${x} ${(y + this.nodeHeight + childY) / 2} ${childX} ${childY}`);
+            line.setAttribute('stroke', '#d1d5db');
+            line.setAttribute('stroke-width', '2');
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(line);
+
+            // Recursively draw child node
+            this.drawTreeNode(svg, child, childX, childY, depth + 1, treeWidth);
+          });
+        }
+      }
+    }
+
+    const visualizer = new SimpleHierarchyVisualizer();
+    visualizer.render(hierarchyViz, hierarchyData);
   }
 
   function downloadTableData(format) {

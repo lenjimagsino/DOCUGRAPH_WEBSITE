@@ -394,6 +394,8 @@
   // ============= STATE MANAGEMENT =============
   let currentTest = null;
   let currentFile = null;
+  let currentLayoutData = null;  // Store layout analysis for second stage
+  let analysisStage = 'initial'; // Track: initial, layout-detected, ocr-complete
 
   const elements = {
     dropzone: document.getElementById('dropzone'),
@@ -2734,6 +2736,10 @@
       this.containerId = containerId;
       this.d3 = null;
       this.padding = 40;
+      this.nodeWidth = 160;
+      this.nodeHeight = 60;
+      this.verticalGap = 100;
+      this.horizontalGap = 40;
     }
 
     getTypeColor(type) {
@@ -2742,7 +2748,12 @@
         'para': '#3ec85c',
         'table': '#d97706',
         'figure': '#7c3aed',
-        'shape': '#ec4899'
+        'shape': '#ec4899',
+        'document': '#059669',
+        'section': '#10b981',
+        'paragraph': '#34d399',
+        'sentence': '#6ee7b7',
+        'word': '#a7f3d0'
       };
       return colors[type] || '#999';
     }
@@ -2753,24 +2764,169 @@
 
       container.innerHTML = '';
       
-      // Calculate dimensions based on actual content with generous padding
+      // Check if we have hierarchical data from HierarchicalGraphAttentionNetwork
+      if (data.hierarchy && typeof data.hierarchy === 'object') {
+        this.visualizeHierarchyTree(container, data.hierarchy);
+      } else {
+        // Fallback to flat region visualization
+        this.visualizeFlatRegions(container, data);
+      }
+    }
+
+    visualizeHierarchyTree(container, hierarchy) {
+      // Calculate tree dimensions using depth-first traversal
+      const dimensions = this.calculateTreeDimensions(hierarchy);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', (dimensions.height + 60) + 'px');
+      svg.setAttribute('viewBox', `0 0 ${dimensions.width + 60} ${dimensions.height + 60}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
+      svg.setAttribute('style', `border: 2px solid #e5e7eb; background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%); display: block; width: 100%; overflow: visible;`);
+
+      // Create defs for gradients
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+      grad.setAttribute('id', 'nodeGradient');
+      grad.setAttribute('x1', '0%');
+      grad.setAttribute('y1', '0%');
+      grad.setAttribute('x2', '0%');
+      grad.setAttribute('y2', '100%');
+      
+      const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop1.setAttribute('offset', '0%');
+      stop1.setAttribute('stop-color', '#ffffff');
+      grad.appendChild(stop1);
+      
+      const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop2.setAttribute('offset', '100%');
+      stop2.setAttribute('stop-color', '#f3f4f6');
+      grad.appendChild(stop2);
+      
+      defs.appendChild(grad);
+      svg.appendChild(defs);
+
+      // Draw tree nodes and connections
+      const positions = {};
+      this.drawTreeNode(svg, hierarchy, 30, 30, 0, positions, dimensions.width);
+
+      container.appendChild(svg);
+      container.style.width = '100%';
+      container.style.overflow = 'auto';
+    }
+
+    calculateTreeDimensions(node, depth = 0) {
+      if (!node) return { width: 0, height: 0 };
+      
+      let maxWidth = this.nodeWidth + this.horizontalGap;
+      let totalHeight = this.nodeHeight + this.verticalGap;
+
+      if (node.children && node.children.length > 0) {
+        let childrenWidth = 0;
+        let maxChildHeight = 0;
+
+        for (const child of node.children) {
+          const childDim = this.calculateTreeDimensions(child, depth + 1);
+          childrenWidth += childDim.width;
+          maxChildHeight = Math.max(maxChildHeight, childDim.height);
+        }
+
+        maxWidth = Math.max(maxWidth, childrenWidth);
+        totalHeight += maxChildHeight;
+      }
+
+      return { 
+        width: Math.max(maxWidth, this.nodeWidth), 
+        height: totalHeight 
+      };
+    }
+
+    drawTreeNode(svg, node, x, y, depth, positions, treeWidth) {
+      if (!node) return;
+
+      const nodeType = node.type || 'document';
+      const confidence = Math.round((node.confidence || 0.85) * 100);
+      const bgColor = this.getTypeColor(nodeType);
+      
+      // Draw node background
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x - this.nodeWidth / 2);
+      rect.setAttribute('y', y);
+      rect.setAttribute('width', this.nodeWidth);
+      rect.setAttribute('height', this.nodeHeight);
+      rect.setAttribute('fill', bgColor);
+      rect.setAttribute('fill-opacity', '0.12');
+      rect.setAttribute('stroke', bgColor);
+      rect.setAttribute('stroke-width', '2');
+      rect.setAttribute('rx', '8');
+      rect.setAttribute('ry', '8');
+      rect.setAttribute('class', 'tree-node-box');
+      rect.setAttribute('style', 'cursor: pointer; transition: all 0.2s; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));');
+      svg.appendChild(rect);
+
+      // Draw type label
+      const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      typeText.setAttribute('x', x);
+      typeText.setAttribute('y', y + 20);
+      typeText.setAttribute('font-size', '11px');
+      typeText.setAttribute('font-weight', '700');
+      typeText.setAttribute('fill', bgColor);
+      typeText.setAttribute('text-anchor', 'middle');
+      typeText.setAttribute('font-family', 'monospace');
+      typeText.textContent = nodeType.toUpperCase();
+      svg.appendChild(typeText);
+
+      // Draw confidence percentage
+      const confText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      confText.setAttribute('x', x);
+      confText.setAttribute('y', y + 40);
+      confText.setAttribute('font-size', '13px');
+      confText.setAttribute('font-weight', '700');
+      confText.setAttribute('fill', confidence > 85 ? '#059669' : confidence > 70 ? '#f59e0b' : '#ef4444');
+      confText.setAttribute('text-anchor', 'middle');
+      confText.setAttribute('font-family', 'var(--font-display)');
+      confText.textContent = `${confidence}%`;
+      svg.appendChild(confText);
+
+      // Draw connections to children
+      if (node.children && node.children.length > 0) {
+        const childCount = node.children.length;
+        const startX = x - ((childCount - 1) * (this.nodeWidth + this.horizontalGap)) / 2;
+
+        node.children.forEach((child, idx) => {
+          const childX = startX + idx * (this.nodeWidth + this.horizontalGap);
+          const childY = y + this.nodeHeight + this.verticalGap;
+
+          // Draw connection line
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          line.setAttribute('d', `M ${x} ${y + this.nodeHeight} Q ${x} ${(y + this.nodeHeight + childY) / 2} ${childX} ${childY}`);
+          line.setAttribute('stroke', '#d1d5db');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('fill', 'none');
+          line.setAttribute('stroke-linecap', 'round');
+          svg.appendChild(line);
+
+          // Recursively draw child node
+          this.drawTreeNode(svg, child, childX, childY, depth + 1, positions, treeWidth);
+        });
+      }
+    }
+
+    visualizeFlatRegions(container, data) {
+      // Fallback visualization for non-hierarchical data
       let maxX = 0, maxY = 0;
       for (const region of data.regions || []) {
         maxX = Math.max(maxX, region.bbox[2]);
         maxY = Math.max(maxY, region.bbox[3]);
       }
 
-      // Scale from normalized (0-100) to actual pixels
-      // If test data, scale up; if real data, use as-is
-      const scale = (maxX < 150 && maxY < 150) ? 10 : 1; // Scale test data up by 10x
+      const scale = (maxX < 150 && maxY < 150) ? 10 : 1;
       this.width = Math.round((maxX + 20) * scale);
       this.height = Math.round((maxY + 20) * scale);
       
-      // Ensure minimum size
       this.width = Math.max(this.width, 800);
       this.height = Math.max(this.height, 600);
 
-      // Create SVG with full width coverage
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       svg.setAttribute('width', '100%');
@@ -2779,12 +2935,6 @@
       svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
       svg.setAttribute('style', `border: 2px solid #e5e7eb; background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%); display: block; width: 100%; overflow: visible;`);
 
-      // Draw hierarchy lines first (background)
-      if (data.hierarchy) {
-        this.drawHierarchyLines(svg, data.hierarchy, scale);
-      }
-
-      // Draw regions on top
       for (const region of data.regions || []) {
         const x1 = region.bbox[0] * scale;
         const y1 = region.bbox[1] * scale;
@@ -2808,7 +2958,6 @@
         
         svg.appendChild(rect);
 
-        // Add text label with background
         const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         bg.setAttribute('x', x1 + 4);
         bg.setAttribute('y', y1 + 3);
@@ -2826,7 +2975,7 @@
         text.setAttribute('font-weight', 'bold');
         text.setAttribute('fill', this.getTypeColor(region.type));
         text.setAttribute('font-family', 'monospace');
-        text.textContent = `${region.type.toUpperCase()} ${Math.round((region.confidence || 0.5) * 100)}%`;
+        text.textContent = `${region.type.toUpperCase()} ${Math.round((region.conf || 0.5) * 100)}%`;
         
         svg.appendChild(text);
       }
@@ -2834,33 +2983,6 @@
       container.appendChild(svg);
       container.style.width = '100%';
       container.style.overflow = 'visible';
-    }
-
-    drawHierarchyLines(svg, hierarchy, scale = 1) {
-      if (!hierarchy || !hierarchy.children) return;
-
-      for (const child of hierarchy.children) {
-        // Draw connecting lines
-        if (child.bbox && hierarchy.bbox) {
-          const parentX = ((hierarchy.bbox[0] + hierarchy.bbox[2]) / 2) * scale;
-          const parentY = (hierarchy.bbox[3]) * scale;
-          const childX = ((child.bbox[0] + child.bbox[2]) / 2) * scale;
-          const childY = (child.bbox[1]) * scale;
-
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          line.setAttribute('d', `M ${parentX} ${parentY} Q ${parentX} ${(parentY + childY) / 2} ${childX} ${childY}`);
-          line.setAttribute('stroke', '#d1d5db');
-          line.setAttribute('stroke-width', '2');
-          line.setAttribute('fill', 'none');
-          line.setAttribute('stroke-dasharray', '5,3');
-          
-          svg.appendChild(line);
-        }
-
-        if (child.children) {
-          this.drawHierarchyLines(svg, child, scale);
-        }
-      }
     }
   }
 
@@ -4104,6 +4226,11 @@
     };
 
     sessionStorage.setItem('analysisData', JSON.stringify(analysisData));
+    
+    // Store hierarchy data in window for results page
+    if (data.hierarchicalAnalysis) {
+      window.lastHierarchyData = data.hierarchicalAnalysis;
+    }
 
     // Enable results actions
     elements.viewResultsBtn.style.display = 'inline-flex';
@@ -4114,30 +4241,349 @@
     // Show processing state
     showState('processing');
     
-    // Handle uploaded files with real OCR analysis
+    // Handle uploaded files with LAYOUT ANALYSIS ONLY
     if (currentFile && testCase === 'uploaded') {
-      analyzeUploadedImage(currentFile).then(data => {
+      analyzeLayoutOnly(currentFile).then(data => {
         const placeholder = document.getElementById('preview-placeholder');
         if (placeholder) placeholder.style.display = 'none';
-        displayAnalysisResults(data, true);
+        currentLayoutData = data;
+        analysisStage = 'layout-detected';
+        displayLayoutAnalysisResults(data, true);
       }).catch(err => {
-        console.error('Analysis error:', err);
-        alert('Error analyzing document. Please try again.');
+        console.error('Layout analysis error:', err);
+        alert('Error analyzing document layout. Please try again.');
         showState('initial');
       });
       return;
     }
     
-    // Handle test cases with simulated delay
+    // Handle test cases with simulated delay - LAYOUT ONLY
     setTimeout(() => {
       const placeholder = document.getElementById('preview-placeholder');
       if (placeholder) placeholder.style.display = 'none';
       
       const data = TEST_CASES[testCase];
-      displayAnalysisResults(data, false);
+      currentLayoutData = data;
+      analysisStage = 'layout-detected';
+      displayLayoutAnalysisResults(data, false);
     }, 1500);
   }
-  
+
+  function updateUIForStage() {
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const ocrBtn = document.getElementById('ocr-btn');
+    
+    if (analysisStage === 'initial') {
+      analyzeBtn.style.display = 'inline-flex';
+      ocrBtn.style.display = 'none';
+    } else if (analysisStage === 'layout-detected') {
+      analyzeBtn.style.display = 'none';
+      ocrBtn.style.display = 'inline-flex';
+    } else if (analysisStage === 'ocr-complete') {
+      analyzeBtn.style.display = 'none';
+      ocrBtn.style.display = 'none';
+    }
+  }
+
+  function performOCRWithExistingLayout(file, layoutData) {
+    return new Promise(async (resolve) => {
+      const reader = new FileReader();
+      const ocrEngine = new SmartOCREngine();
+      const semanticEngine = new SemanticCorrectionEngine();
+      const multilingualProcessor = new MultilingualProcessor();
+
+      reader.onerror = () => {
+        resolve(layoutData); // Return layout if OCR fails
+      };
+
+      reader.onload = async (event) => {
+        const img = new Image();
+        img.onerror = () => {
+          resolve(layoutData);
+        };
+
+        img.onload = async () => {
+          try {
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // Use detected language from layout
+            const ocrLanguage = layoutData.metadata?.language || 'eng';
+
+            // Initialize OCR
+            const initialized = await ocrEngine.initialize();
+            if (!initialized) {
+              console.warn('OCR initialization failed');
+              return resolve(layoutData);
+            }
+
+            // Extract text from canvas
+            const ocrResult = await ocrEngine.extractTextWithConfidence(canvas, ocrLanguage);
+
+            if (!ocrResult || !ocrResult.words || ocrResult.words.length === 0) {
+              console.log('No text found, returning layout data');
+              return resolve(layoutData);
+            }
+
+            console.log(`✓ OCR extracted ${ocrResult.words.length} words`);
+
+            // If there's a table, parse it
+            let tableResults = null;
+            if (layoutData.metadata?.hasTable && layoutData.stats.tables > 0) {
+              const tableGrids = layoutData.regions
+                .filter(r => r.type === 'table')
+                .map((r, idx) => ({
+                  bbox: r.bbox,
+                  confidence: r.conf
+                }));
+
+              if (tableGrids.length > 0) {
+                const parsedTables = ocrEngine.tableParser.parseTablesFromOCR(
+                  ocrResult.words,
+                  tableGrids,
+                  canvas.width,
+                  canvas.height
+                );
+
+                if (parsedTables.hasTables && parsedTables.tables.length > 0) {
+                  const table = parsedTables.tables[0];
+                  window.lastTableResults = {
+                    markdown: table.tableFormat,
+                    html: ocrEngine.tableParser.formatAsHTML(table.cells, table.rows, table.cols, table.headerRow),
+                    csv: ocrEngine.tableParser.formatAsCSV(table.cells, table.rows, table.cols),
+                    json: ocrEngine.tableParser.toJSON(table),
+                    cellsData: table.cells,
+                    headers: ocrEngine.tableParser.getColumnHeaders(table.cells, table.cols, table.headerRow)
+                  };
+                  
+                  tableResults = {
+                    rows: table.rows,
+                    cols: table.cols,
+                    confidence: table.confidence
+                  };
+                }
+              }
+            }
+
+            // Build hierarchical structure
+            const hierarchyAnalysis = ocrEngine.hierarchicalGAT?.buildHierarchy
+              ? ocrEngine.hierarchicalGAT.buildHierarchy(
+                  layoutData.regions,
+                  canvas.width,
+                  canvas.height
+                )
+              : null;
+
+            // Merge OCR results with layout data
+            const finalData = {
+              ...layoutData,
+              text: ocrResult.text || '',
+              words: ocrResult.words,
+              confidence: Math.max(layoutData.confidence, ocrResult.confidence || 0.75),
+              metadata: {
+                ...layoutData.metadata,
+                ocrPending: false,
+                textExtracted: true,
+                language: ocrLanguage,
+                totalWords: ocrResult.words.length,
+                analysisMethod: 'Two-Stage: Layout + OCR'
+              },
+              hierarchicalAnalysis: hierarchyAnalysis,
+              fullText: ocrResult.text || ''
+            };
+
+            resolve(finalData);
+          } catch (e) {
+            console.error('OCR extraction error:', e);
+            resolve(layoutData);
+          }
+        };
+
+        img.src = event.target.result;
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function analyzeLayoutOnly(file) {
+    return new Promise(async (resolve) => {
+      const reader = new FileReader();
+      const shapeDetector = new ShapeDetector();
+      const layoutDetector = new LayoutDetector();
+      const gnnAnalyzer = new GNNDocumentAnalyzer();
+      const multilingualProcessor = new MultilingualProcessor();
+
+      reader.onerror = () => {
+        resolve(generateFallbackRegions());
+      };
+
+      reader.onload = async (event) => {
+        const img = new Image();
+        img.onerror = () => {
+          resolve(generateFallbackRegions());
+        };
+
+        img.onload = async () => {
+          try {
+            // Prepare canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Detect language (for metadata)
+            const detectedScripts = multilingualProcessor.detectMultilingualContent(file.name);
+            const optimalLanguage = multilingualProcessor.selectOptimalLanguage(detectedScripts);
+
+            // LAYOUT DETECTION ONLY (No OCR/Text Extraction)
+            // Step 1: Detect shapes and tables (edge-based)
+            const edges = shapeDetector.detectEdges(imageData, canvas);
+            const lines = shapeDetector.detectLines(edges, canvas);
+            const tableGrid = shapeDetector.detectTableGrid(lines, img.width, img.height);
+            const flowchartElements = shapeDetector.detectFlowchartElements(edges, canvas);
+
+            let regions = [];
+            let analysisMethod = 'Layout Detection';
+            let confidence = 0.7;
+
+            // Detect table regions
+            if (tableGrid) {
+              regions.push({
+                type: 'table',
+                bbox: tableGrid.bbox,
+                conf: tableGrid.confidence,
+                text: `Table (${tableGrid.rows}×${tableGrid.cols})`
+              });
+              analysisMethod = 'Table Grid Detection';
+              confidence = tableGrid.confidence;
+            }
+
+            // Detect flowchart/shape regions
+            let detectedShapes = [];
+            if (flowchartElements.length > 0) {
+              detectedShapes = flowchartElements.map((elem, idx) => ({
+                type: 'shape',
+                bbox: elem.bbox_percent || [elem.minX/img.width*100, elem.minY/img.height*100, elem.maxX/img.width*100, elem.maxY/img.height*100],
+                conf: 0.88,
+                text: `${elem.type || 'Shape'} #${idx + 1}`
+              }));
+              analysisMethod = 'Flowchart/Shape Detection';
+            }
+
+            if (detectedShapes.length > 3 && detectedShapes.length < 100) {
+              regions = detectedShapes;
+              confidence = 0.88;
+            }
+
+            // If no shapes/tables, use GNN for general layout
+            if (regions.length === 0) {
+              console.log('🎯 Starting layout detection with GNN...');
+              const gnnResult = gnnAnalyzer.analyzeLayout(imageData, canvas.width, canvas.height);
+              
+              if (gnnResult && gnnResult.regions && gnnResult.regions.length > 0) {
+                regions = gnnResult.regions.map((r, idx) => ({
+                  type: r.type || 'para',
+                  bbox: r.bbox,
+                  conf: r.confidence || 0.75,
+                  text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block'
+                }));
+                analysisMethod = 'GNN-Based Layout Detection';
+                confidence = gnnResult.confidence || 0.75;
+              } else {
+                // Fallback
+                regions = generateFallbackRegions().regions;
+                confidence = 0.65;
+              }
+            }
+
+            // Count region types
+            const stats = {
+              headers: regions.filter(r => r.type === 'header').length,
+              paragraphs: regions.filter(r => r.type === 'para').length,
+              tables: regions.filter(r => r.type === 'table').length,
+              figures: regions.filter(r => r.type === 'figure').length,
+              shapes: regions.filter(r => r.type === 'shape').length,
+              total: regions.length
+            };
+
+            // Return layout data WITHOUT text extraction
+            resolve({
+              filename: file.name,
+              timestamp: new Date().toISOString(),
+              imageBase64: event.target.result,
+              regions: regions,
+              confidence: confidence,
+              stats: stats,
+              metadata: {
+                language: optimalLanguage,
+                hasTable: tableGrid ? true : false,
+                hasFlowchart: flowchartElements.length > 0,
+                analysisMethod: analysisMethod,
+                imageWidth: canvas.width,
+                imageHeight: canvas.height,
+                ocrPending: true  // Mark that OCR still needs to be done
+              }
+            });
+          } catch (e) {
+            console.error('Layout analysis error:', e);
+            resolve(generateFallbackRegions());
+          }
+        };
+
+        img.src = event.target.result;
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function displayLayoutAnalysisResults(data, isUploaded) {
+    // Hide placeholder
+    const placeholder = document.getElementById('preview-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+    
+    // Display image if available
+    if (isUploaded && data.imageBase64) {
+      const img = document.createElement('img');
+      img.src = data.imageBase64;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '100%';
+      img.style.objectFit = 'contain';
+      const preview = document.querySelector('.output-preview');
+      const existingImg = preview.querySelector('img');
+      if (existingImg) existingImg.remove();
+      preview.insertBefore(img, preview.firstChild);
+      
+      // Draw bounding boxes
+      const bboxContainer = document.querySelector('.bbox-container');
+      if (bboxContainer) bboxContainer.innerHTML = '';
+      
+      renderBoundingBoxes(data.regions);
+    }
+    
+    // Update statistics
+    elements.confidenceScore.textContent = (data.confidence * 100).toFixed(1) + '%';
+    elements.regionCount.textContent = data.stats.total;
+    elements.headerCount.textContent = data.stats.headers;
+    elements.paraCount.textContent = data.stats.paragraphs;
+    elements.tableCount.textContent = data.stats.tables;
+    elements.layoutAccuracy.textContent = (data.confidence * 100).toFixed(1) + '%';
+
+    // Show results state and update button visibility
+    showState('results');
+    updateUIForStage();
+    
+    // Show "View Results" button will appear after OCR
+    elements.viewResultsBtn.style.display = 'none';
+  }
+
   function displayAnalysisResults(data, isUploaded) {
     // Hide placeholder
     const placeholder = document.getElementById('preview-placeholder');
@@ -4253,10 +4699,10 @@
     }
   });
 
-  // OCR button
+  // OCR button - extracts text from already-analyzed layout
   elements.ocr.addEventListener('click', async () => {
-    if (!currentFile && !currentTest) {
-      alert('Please upload a file or select a test case first.');
+    if (!currentLayoutData) {
+      alert('Please analyze layout first.');
       return;
     }
     
@@ -4265,29 +4711,32 @@
     
     try {
       if (currentFile) {
-        // Extract OCR from uploaded file
-        const ocrData = await performOCR(currentFile);
+        // Perform OCR on the uploaded file using already-detected regions
+        const ocrData = await performOCRWithExistingLayout(currentFile, currentLayoutData);
         const placeholder = document.getElementById('preview-placeholder');
         if (placeholder) placeholder.style.display = 'none';
-        displayOCRResults(ocrData, currentFile);
+        analysisStage = 'ocr-complete';
+        displayAnalysisResults(ocrData, currentFile);
+        
+        // Enable "View Results" button
+        elements.viewResultsBtn.style.display = 'inline-flex';
+        updateUIForStage();
       } else if (currentTest) {
-        // Extract OCR from test case
+        // For test cases, merge OCR text with layout
         const testData = TEST_CASES[currentTest];
         const placeholder = document.getElementById('preview-placeholder');
         if (placeholder) placeholder.style.display = 'none';
-        displayOCRResults(testData, null);
+        analysisStage = 'ocr-complete';
+        displayAnalysisResults(testData, null);
+        
+        // Enable "View Results" button
+        elements.viewResultsBtn.style.display = 'inline-flex';
+        updateUIForStage();
       }
     } catch (err) {
       console.error('OCR error:', err);
-      const errorMsg = err.message || 'Unknown error occurred';
-      
-      // Check if backend is unavailable
-      if (errorMsg.includes('unavailable') || errorMsg.includes('not responding')) {
-        alert(`OCR Service Error:\n\n${errorMsg}\n\nMake sure the backend server is running on port 5000.\n\nRun: python -m flask run`);
-      } else {
-        alert(`Error extracting text:\n\n${errorMsg}\n\nPlease try again or use a different image.`);
-      }
-      showState('initial');
+      alert('Error during OCR extraction. Please try again.');
+      showState('results');
     }
   });
 
