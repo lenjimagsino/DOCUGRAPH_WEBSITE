@@ -3972,6 +3972,8 @@
     elements.actionButtons.style.display = 'none';
     document.querySelectorAll('.test-case-btn').forEach(b => b.classList.remove('active'));
     showState('initial');
+    analysisStage = 'initial';
+    updateUIForStage();
   }
 
   function renderBoundingBoxes(regions) {
@@ -4625,10 +4627,18 @@
       confidence: data.confidence,
       stats: data.stats,
       metadata: data.metadata || null,
-      imageBase64: data.imageBase64 || null
+      imageBase64: data.imageBase64 || null,
+      text: data.text || data.fullText || '',
+      words: data.words || [],
+      hierarchicalAnalysis: data.hierarchicalAnalysis || null
     };
     
     sessionStorage.setItem('analysisData', JSON.stringify(analysisData));
+    
+    // Store hierarchy data for results.html visualization
+    if (data.hierarchicalAnalysis) {
+      window.lastHierarchyData = data.hierarchicalAnalysis;
+    }
     
     // Enable results actions
     elements.viewResultsBtn.style.display = 'inline-flex';
@@ -4646,6 +4656,9 @@
       elements.fileSize.textContent = fmt(currentFile.size);
       elements.fileInfo.style.display = 'block';
       elements.actionButtons.style.display = 'flex';
+      currentLayoutData = null;
+      analysisStage = 'initial';
+      updateUIForStage();
     }
   });
 
@@ -4753,6 +4766,10 @@
       elements.fileSize.textContent = 'Sample Test Case';
       elements.fileInfo.style.display = 'block';
       elements.actionButtons.style.display = 'flex';
+      
+      currentLayoutData = null;
+      analysisStage = 'initial';
+      updateUIForStage();
       
       document.querySelectorAll('.test-case-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
