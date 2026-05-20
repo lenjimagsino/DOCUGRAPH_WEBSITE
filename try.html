@@ -7,6 +7,7 @@
 <title>Try DOCUGRAPH — Upload Document</title>
 <link rel="icon" type="image/png" href="assets/logo.png">
 <link rel="stylesheet" href="assets/style.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
   body.loading main, body.loading header { visibility: hidden; }
   .auth-loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--white); z-index: 9999; }
@@ -67,6 +68,40 @@
   
   /* Ensure buttons are clickable */
   #view-results-btn, #new-document-btn { position: relative; z-index: 100; pointer-events: auto; cursor: pointer; }
+  
+  /* Advanced visualization styles */
+  #layout-graph-container { width: 100%; height: 400px; background: var(--off); border-radius: 8px; margin-top: 16px; border: 1px solid var(--line); }
+  #layout-graph-container svg { width: 100%; height: 100%; }
+  .graph-node { cursor: pointer; }
+  .graph-node circle { fill: var(--green-500); stroke: var(--green-700); stroke-width: 2px; }
+  .graph-node text { font-size: 11px; font-weight: 600; pointer-events: none; }
+  .graph-node:hover circle { r: 8; fill: var(--green-600); }
+  .graph-link { stroke: var(--ink-300); stroke-width: 2px; opacity: 0.6; }
+  .graph-link.strong { stroke: var(--green-500); stroke-width: 3px; opacity: 0.9; }
+  
+  .visualization-tabs { display: flex; gap: 8px; margin-top: 16px; border-bottom: 1px solid var(--line); }
+  .visualization-tabs button { padding: 8px 16px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; color: var(--ink-600); font-weight: 600; }
+  .visualization-tabs button.active { color: var(--green-600); border-bottom-color: var(--green-600); }
+  .visualization-content { display: none; margin-top: 16px; }
+  .visualization-content.active { display: block; }
+  
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .metric-card { padding: 12px 16px; background: var(--off); border-radius: 8px; border-left: 4px solid var(--green-500); }
+  .metric-label { font-size: 12px; color: var(--ink-600); text-transform: uppercase; }
+  .metric-value { font-size: 20px; font-weight: 700; color: var(--green-700); margin-top: 4px; }
+  
+  .region-list { max-height: 400px; overflow-y: auto; }
+  .region-item { padding: 12px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+  .region-item:hover { background: var(--green-50); border-color: var(--green-300); }
+  .region-item.selected { background: var(--green-100); border-color: var(--green-600); }
+  .region-type { display: inline-block; padding: 2px 8px; background: var(--green-600); color: white; border-radius: 3px; font-size: 10px; font-weight: 600; margin-right: 8px; }
+  .region-confidence { font-size: 12px; color: var(--ink-600); }
+  
+  .connectivity-map { display: grid; gap: 8px; }
+  .connectivity-row { display: flex; gap: 4px; align-items: center; }
+  .connectivity-label { min-width: 60px; font-size: 11px; font-weight: 600; color: var(--ink-600); }
+  .connectivity-bar { flex: 1; height: 20px; background: linear-gradient(90deg, var(--green-100), var(--green-600)); border-radius: 3px; position: relative; }
+  .connectivity-value { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 600; color: white; }
 </style>
 </head>
 <body class="loading">
@@ -559,44 +594,103 @@
           await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI thread
           
           if (typeof Tesseract !== 'undefined' && Tesseract.recognize) {
-            console.log('📖 Running Tesseract OCR...');
+            console.log('📖 Running Enhanced Region-Based OCR...');
+            
+            // Use layout data if available
+            let regions = [];
+            let readingOrder = [];
+            let structure = null;
+            
+            if (window.currentLayoutData) {
+              console.log('✨ Using layout analysis data for enhanced OCR...');
+              regions = window.currentLayoutData.regions || [];
+              readingOrder = window.currentLayoutData.readingOrder || [];
+              structure = window.currentLayoutData.structure;
+            }
+            
             // Use worker with timeout
             const worker = await Tesseract.createWorker();
+            this.ocrEngine.worker = worker;
+            
             const timeoutPromise = new Promise((_, reject) => 
               setTimeout(() => reject(new Error('OCR timeout')), 8000)
             );
             
             try {
-              const result = await Promise.race([
-                worker.recognize(canvas),
-                timeoutPromise
-              ]);
-              
-              ocrData.text = result.data.text || '';
-              ocrData.confidence = (result.data.confidence || 85) / 100;
-              
-              // Simple word extraction
-              const words = ocrData.text.split(/\s+/);
-              ocrData.words = words.map((text, i) => ({
-                text,
-                bbox: [0, 0, 100, 100],
-                confidence: 0.85 + Math.random() * 0.15
-              }));
-              
-              console.log('✅ Phase 5 complete - Text:', ocrData.text.substring(0, 100));
+              // Perform region-based OCR if regions detected
+              if (regions && regions.length > 0) {
+                console.log('🔍 Processing', regions.length, 'regions separately...');
+                const regionResults = await this.ocrEngine.extractTextByRegion(canvas, regions, primaryLanguage);
+                
+                // Extract text in reading order
+                const orderedText = this.ocrEngine.extractTextInReadingOrder(regionResults.regions, readingOrder);
+                
+                // Validate against structure
+                const validation = this.ocrEngine.validateTextAgainstStructure(regionResults.regions, structure);
+                
+                // Assemble hierarchical document
+                const hierarchicalDoc = this.ocrEngine.assembleHierarchicalDocument(
+                  regionResults.regions,
+                  structure,
+                  readingOrder
+                );
+                
+                ocrData = {
+                  text: orderedText,
+                  words: regionResults.regions.flatMap(r => r.words),
+                  confidence: regionResults.regions.reduce((a, r) => a + r.confidence, 0) / Math.max(1, regionResults.regions.length),
+                  language: primaryLanguage,
+                  detectedLanguages: [primaryLanguage],
+                  regionResults: regionResults.regions,
+                  validation: validation,
+                  hierarchical: hierarchicalDoc,
+                  byRegionType: regionResults.byRegionType,
+                  extractionMethod: 'Region-Based Enhanced OCR'
+                };
+                
+                console.log('✅ Region-based OCR complete:', {
+                  regions: regionResults.regions.length,
+                  confidence: ocrData.confidence.toFixed(2),
+                  validation
+                });
+              } else {
+                // Fallback to standard full-page OCR
+                console.log('📖 Using standard full-page OCR...');
+                const result = await Promise.race([
+                  worker.recognize(canvas),
+                  timeoutPromise
+                ]);
+                
+                ocrData.text = result.data.text || '';
+                ocrData.confidence = (result.data.confidence || 85) / 100;
+                
+                // Simple word extraction
+                const words = ocrData.text.split(/\s+/);
+                ocrData.words = words.map((text, i) => ({
+                  text,
+                  bbox: [0, 0, 100, 100],
+                  confidence: 0.85 + Math.random() * 0.15
+                }));
+                
+                ocrData.extractionMethod = 'Standard Full-Page OCR';
+                console.log('✅ Standard OCR complete - Text:', ocrData.text.substring(0, 100));
+              }
               
               await worker.terminate();
             } catch (workerErr) {
               console.warn('⚠️ Tesseract worker error:', workerErr.message);
               ocrData.text = 'Document scanned successfully';
+              ocrData.extractionMethod = 'Fallback OCR';
             }
           } else {
             console.log('📖 Tesseract not available, using fallback');
             ocrData.text = 'Document processed with standard OCR';
+            ocrData.extractionMethod = 'Fallback OCR';
           }
         } catch (e) {
           console.warn('⚠️ OCR extraction error:', e.message);
           ocrData.text = 'Document processed';
+          ocrData.extractionMethod = 'Basic Fallback';
         }
 
         // ========== PHASE 6: SEGMENTATION ==========
@@ -1792,6 +1886,325 @@
     }
 
     /**
+     * ENHANCED: Extract text from individual regions using layout analysis
+     * Processes each detected region separately for better accuracy
+     */
+    async extractTextByRegion(canvas, regions, language = 'eng') {
+      if (!regions || regions.length === 0) return { regions: [], text: '' };
+
+      const regionResults = [];
+      let fullText = '';
+
+      for (const region of regions) {
+        try {
+          // Extract canvas region based on bbox coordinates
+          const bbox = region.bbox;
+          const x = (bbox[0] / 100) * canvas.width;
+          const y = (bbox[1] / 100) * canvas.height;
+          const width = ((bbox[2] - bbox[0]) / 100) * canvas.width;
+          const height = ((bbox[3] - bbox[1]) / 100) * canvas.height;
+
+          // Skip very small regions
+          if (width < 10 || height < 10) continue;
+
+          // Create region canvas
+          const regionCanvas = document.createElement('canvas');
+          regionCanvas.width = Math.ceil(width);
+          regionCanvas.height = Math.ceil(height);
+          const ctx = regionCanvas.getContext('2d');
+          ctx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+
+          // Apply context-aware preprocessing
+          const preprocessedCanvas = await this.contextAwarePreprocess(regionCanvas, region.type);
+
+          // Run OCR on region
+          if (!this.isInitialized) await this.initialize();
+          await this.worker.loadLanguage(language);
+          await this.worker.initialize(language);
+          
+          const result = await this.worker.recognize(preprocessedCanvas);
+          const regionText = result.data.text || '';
+          const confidence = (result.data.confidence || 85) / 100;
+
+          // Parse words from region
+          const words = this.parseWordsFromRegion(result, regionCanvas.width, regionCanvas.height, x, y, canvas.width, canvas.height);
+
+          // Apply region-specific semantic correction
+          const correctedWords = await this.applyRegionSpecificCorrection(words, region.type, language);
+
+          regionResults.push({
+            type: region.type,
+            bbox: bbox,
+            text: regionText,
+            words: correctedWords,
+            confidence: confidence,
+            originalConfidence: confidence
+          });
+
+          fullText += regionText + '\n';
+        } catch (e) {
+          console.warn(`Error extracting text from ${region.type} region:`, e.message);
+        }
+      }
+
+      return {
+        regions: regionResults,
+        text: fullText,
+        byRegionType: this.groupRegionsByType(regionResults)
+      };
+    }
+
+    /**
+     * ENHANCED: Apply context-aware preprocessing based on region type
+     */
+    async contextAwarePreprocess(canvas, regionType) {
+      const preprocessed = document.createElement('canvas');
+      preprocessed.width = canvas.width;
+      preprocessed.height = canvas.height;
+      const ctx = preprocessed.getContext('2d');
+
+      // Copy to preprocessed canvas
+      ctx.drawImage(canvas, 0, 0);
+
+      // Apply type-specific enhancements
+      const imageData = ctx.getImageData(0, 0, preprocessed.width, preprocessed.height);
+      const data = imageData.data;
+
+      switch (regionType) {
+        case 'header':
+          // Boost contrast for headers (typically larger text)
+          for (let i = 0; i < data.length; i += 4) {
+            const avg = (data[i] + data[i+1] + data[i+2]) / 3;
+            const contrast = 1.5; // Boost contrast
+            data[i] = Math.min(255, avg * contrast);
+            data[i+1] = Math.min(255, avg * contrast);
+            data[i+2] = Math.min(255, avg * contrast);
+          }
+          break;
+        
+        case 'table':
+          // Enhance edges and lines for table detection
+          for (let i = 0; i < data.length; i += 4) {
+            const val = (data[i] + data[i+1] + data[i+2]) / 3;
+            const threshold = 128;
+            const enhanced = val > threshold ? 255 : 0;
+            data[i] = enhanced;
+            data[i+1] = enhanced;
+            data[i+2] = enhanced;
+          }
+          break;
+
+        case 'figure':
+          // Preserve detail for figure OCR
+          // Minimal processing
+          break;
+
+        default:
+          // Standard text enhancement
+          for (let i = 0; i < data.length; i += 4) {
+            const val = (data[i] + data[i+1] + data[i+2]) / 3;
+            // Slight contrast boost for standard text
+            const boosted = Math.min(255, val * 1.1);
+            data[i] = boosted;
+            data[i+1] = boosted;
+            data[i+2] = boosted;
+          }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return preprocessed;
+    }
+
+    /**
+     * ENHANCED: Parse words maintaining absolute coordinates
+     */
+    parseWordsFromRegion(ocrResult, regionWidth, regionHeight, regionX, regionY, canvasWidth, canvasHeight) {
+      const words = [];
+      
+      if (ocrResult.data.words) {
+        ocrResult.data.words.forEach(word => {
+          words.push({
+            text: word.text,
+            confidence: (word.confidence || 0) / 100,
+            bbox: {
+              x0: (regionX + word.bbox.x0) / canvasWidth * 100,
+              y0: (regionY + word.bbox.y0) / canvasHeight * 100,
+              x1: (regionX + word.bbox.x1) / canvasWidth * 100,
+              y1: (regionY + word.bbox.y1) / canvasHeight * 100
+            }
+          });
+        });
+      }
+      
+      return words;
+    }
+
+    /**
+     * ENHANCED: Apply semantic correction specific to region type
+     */
+    async applyRegionSpecificCorrection(words, regionType, language) {
+      return words.map(word => {
+        let corrected = word.text;
+        let confidenceBoost = 0;
+
+        // Apply region-specific corrections
+        if (regionType === 'header') {
+          // Headers: prefer capitalization patterns
+          if (word.text.toLowerCase() === word.text) {
+            corrected = word.text.charAt(0).toUpperCase() + word.text.slice(1);
+            confidenceBoost = 0.02;
+          }
+        } else if (regionType === 'table') {
+          // Tables: preserve exact format, boost numbers
+          if (/^\d+$/.test(corrected)) {
+            confidenceBoost = 0.08;
+          }
+        }
+
+        return {
+          ...word,
+          text: corrected,
+          confidence: Math.min(1, word.confidence + confidenceBoost)
+        };
+      });
+    }
+
+    /**
+     * ENHANCED: Extract text in reading order from regions
+     */
+    extractTextInReadingOrder(regionResults, readingOrder) {
+      if (!readingOrder || readingOrder.length === 0) {
+        // Default: concatenate all regions
+        return regionResults.map(r => r.text).join('\n\n');
+      }
+
+      const orderedTexts = [];
+      
+      for (const order of readingOrder) {
+        const regionIdx = order.index;
+        if (regionResults[regionIdx]) {
+          orderedTexts.push(regionResults[regionIdx].text);
+        }
+      }
+
+      return orderedTexts.join('\n\n');
+    }
+
+    /**
+     * ENHANCED: Validate extracted text against detected structure
+     */
+    validateTextAgainstStructure(regionResults, structure) {
+      const validation = {
+        hasHeaders: false,
+        hasTableStructure: false,
+        columnConsistency: 0,
+        issues: []
+      };
+
+      // Check for headers
+      const headerRegions = regionResults.filter(r => r.type === 'header');
+      validation.hasHeaders = headerRegions.length > 0;
+
+      // Check for tables
+      const tableRegions = regionResults.filter(r => r.type === 'table');
+      validation.hasTableStructure = tableRegions.length > 0;
+
+      // Validate against structure
+      if (structure) {
+        // Check column consistency
+        if (structure.columns > 1) {
+          const textLengths = regionResults.map(r => r.text.length);
+          const avgLength = textLengths.reduce((a, b) => a + b, 0) / textLengths.length;
+          validation.columnConsistency = textLengths.filter(l => Math.abs(l - avgLength) < avgLength * 0.2).length / textLengths.length;
+        }
+      }
+
+      return validation;
+    }
+
+    /**
+     * ENHANCED: Assemble hierarchical document structure
+     */
+    assembleHierarchicalDocument(regionResults, structure, readingOrder) {
+      const document = {
+        sections: [],
+        headers: [],
+        content: [],
+        tables: [],
+        figures: [],
+        hierarchy: []
+      };
+
+      // Extract sections by headers
+      let currentSection = null;
+
+      for (const region of regionResults) {
+        if (region.type === 'header') {
+          if (currentSection) document.sections.push(currentSection);
+          currentSection = { title: region.text, content: [], tables: [] };
+          document.headers.push(region.text);
+        } else if (region.type === 'table') {
+          document.tables.push({ ...region, parsed: this.parseTableContent(region.words) });
+          if (currentSection) currentSection.tables.push(region);
+        } else if (region.type === 'figure') {
+          document.figures.push(region);
+        } else {
+          document.content.push(region.text);
+          if (currentSection) currentSection.content.push(region.text);
+        }
+      }
+
+      if (currentSection) document.sections.push(currentSection);
+
+      // Build hierarchy
+      document.hierarchy = this.buildDocumentHierarchy(document.sections, document.headers);
+
+      return document;
+    }
+
+    /**
+     * Helper: Parse table content from words
+     */
+    parseTableContent(words) {
+      // Extract cells and structure from words
+      return {
+        wordCount: words.length,
+        estimatedRows: Math.ceil(words.length / 5),
+        estimatedCols: 5
+      };
+    }
+
+    /**
+     * Helper: Build document hierarchy
+     */
+    buildDocumentHierarchy(sections, headers) {
+      return {
+        title: headers[0] || 'Untitled',
+        sections: sections.map((s, idx) => ({
+          id: `section_${idx}`,
+          title: s.title,
+          level: 1,
+          contentLength: s.content.reduce((a, c) => a + c.length, 0),
+          tableCount: s.tables.length
+        }))
+      };
+    }
+
+    /**
+     * Helper: Group regions by type
+     */
+    groupRegionsByType(regionResults) {
+      const grouped = {};
+      
+      regionResults.forEach(region => {
+        if (!grouped[region.type]) grouped[region.type] = [];
+        grouped[region.type].push(region);
+      });
+
+      return grouped;
+    }
+
+    /**
      * Cleanup resources
      */
     async cleanup() {
@@ -1972,6 +2385,662 @@
     constructor() {
       this.nodes = [];
       this.edges = [];
+    }
+
+    analyzeLayout(imageData, width, height) {
+      console.log('🔍 Starting advanced layout analysis...');
+      
+      // Step 1: Preprocessing and enhancement
+      const enhanced = this.preprocessImage(imageData, width, height);
+      const grayscale = enhanced.grayscale;
+      
+      // Step 2: Advanced edge detection with multiple kernels
+      const edges = this.advancedEdgeDetection(grayscale, width, height);
+      
+      // Step 3: Hough transform for line detection (NEW)
+      const houghLines = this.detectHoughLines(edges, width, height);
+      
+      // Step 4: Structural line detection
+      const lines = this.detectStructuralLines(edges, width, height);
+      
+      // Step 5: Texture analysis for content classification (NEW)
+      const textures = this.detectTextureAnalysis(grayscale, width, height);
+      
+      // Step 6: Region detection using multiple algorithms
+      const regions = this.detectRegions(grayscale, edges, width, height);
+      
+      // Step 7: Region classification and feature extraction
+      const classified = this.classifyAndEnhanceRegions(regions, grayscale, width, height);
+      
+      // Step 8: Structure analysis (columns, hierarchy, layout type)
+      const structure = this.analyzeStructure(classified, width, height);
+      
+      // Step 9: Connectivity analysis (NEW)
+      const connectivity = this.analyzeConnectivity(classified);
+      
+      // Step 10: Text flow and reading order
+      const readingOrder = this.determineReadingOrder(classified);
+      
+      // Step 11: Merge and optimize regions
+      const optimized = this.optimizeRegions(classified);
+      
+      // Step 12: Calculate confidence and metrics
+      const analysis = {
+        regions: optimized,
+        structure: structure,
+        readingOrder: readingOrder,
+        connectivity: connectivity,
+        metrics: this.calculateMetrics(optimized, width, height),
+        confidence: this.calculateConfidence(optimized),
+        advancedFeatures: {
+          houghLines: houghLines.length,
+          textureVariations: textures.length,
+          structuralLines: lines.horizontal.length + lines.vertical.length + lines.diagonal.length
+        },
+        method: 'Advanced Multi-Algorithm Layout Analysis (v2 with Hough + Texture)',
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('✅ Layout analysis complete:', analysis);
+      return analysis;
+    }
+
+    preprocessImage(imageData, width, height) {
+      const data = imageData.data;
+      const grayscale = new Uint8ClampedArray(width * height);
+      
+      // Convert to grayscale with luminosity formula
+      for (let i = 0; i < data.length; i += 4) {
+        const idx = i / 4;
+        grayscale[idx] = Math.round(0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
+      }
+      
+      // Adaptive contrast enhancement
+      const enhanced = this.adaptiveContrast(grayscale, width, height);
+      
+      // Binarization with Otsu's method
+      const threshold = this.calculateOtsuThreshold(enhanced);
+      const binary = new Uint8ClampedArray(width * height);
+      for (let i = 0; i < enhanced.length; i++) {
+        binary[i] = enhanced[i] > threshold ? 255 : 0;
+      }
+      
+      return { grayscale: enhanced, binary, threshold };
+    }
+
+    adaptiveContrast(grayscale, width, height) {
+      const enhanced = new Uint8ClampedArray(grayscale.length);
+      const radius = Math.min(width, height) / 20;
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          
+          // Calculate local mean and std
+          let sum = 0, sumSq = 0, count = 0;
+          for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              const ny = Math.max(0, Math.min(height - 1, y + dy));
+              const nx = Math.max(0, Math.min(width - 1, x + dx));
+              const val = grayscale[ny * width + nx];
+              sum += val;
+              sumSq += val * val;
+              count++;
+            }
+          }
+          
+          const mean = sum / count;
+          const variance = (sumSq / count) - (mean * mean);
+          const stddev = Math.sqrt(Math.max(0, variance));
+          
+          // Contrast stretching
+          const val = grayscale[idx];
+          enhanced[idx] = stddev > 0 
+            ? Math.round(((val - mean) / stddev + 2) * 64) 
+            : val;
+        }
+      }
+      
+      return enhanced;
+    }
+
+    calculateOtsuThreshold(data) {
+      const histogram = new Array(256).fill(0);
+      for (let i = 0; i < data.length; i++) {
+        histogram[data[i]]++;
+      }
+      
+      let sum = 0;
+      for (let i = 0; i < 256; i++) {
+        sum += i * histogram[i];
+      }
+      
+      let weight0 = 0, sum0 = 0;
+      let maxVariance = 0, threshold = 0;
+      
+      for (let t = 0; t < 256; t++) {
+        weight0 += histogram[t];
+        if (weight0 === 0) continue;
+        
+        const weight1 = data.length - weight0;
+        if (weight1 === 0) break;
+        
+        sum0 += t * histogram[t];
+        const mean0 = sum0 / weight0;
+        const mean1 = (sum - sum0) / weight1;
+        
+        const variance = weight0 * weight1 * Math.pow(mean0 - mean1, 2);
+        if (variance > maxVariance) {
+          maxVariance = variance;
+          threshold = t;
+        }
+      }
+      
+      return threshold;
+    }
+
+    advancedEdgeDetection(grayscale, width, height) {
+      // Multi-kernel edge detection: Sobel + Laplacian
+      const sobel = this.sobelEdgeDetection(grayscale, width, height);
+      const laplacian = this.laplacianEdgeDetection(grayscale, width, height);
+      
+      // Combine edges
+      const combined = new Uint8ClampedArray(sobel.length);
+      for (let i = 0; i < sobel.length; i++) {
+        combined[i] = Math.min(255, (sobel[i] + laplacian[i]) / 2);
+      }
+      
+      return combined;
+    }
+
+    sobelEdgeDetection(data, width, height) {
+      const edges = new Uint8ClampedArray(width * height);
+      
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const idx = y * width + x;
+          
+          const gx = -data[(y-1)*width + x-1] - 2*data[y*width + x-1] - data[(y+1)*width + x-1] +
+                     data[(y-1)*width + x+1] + 2*data[y*width + x+1] + data[(y+1)*width + x+1];
+          
+          const gy = -data[(y-1)*width + x-1] - 2*data[(y-1)*width + x] - data[(y-1)*width + x+1] +
+                     data[(y+1)*width + x-1] + 2*data[(y+1)*width + x] + data[(y+1)*width + x+1];
+          
+          const magnitude = Math.sqrt(gx * gx + gy * gy);
+          edges[idx] = Math.min(255, magnitude / 4);
+        }
+      }
+      
+      return edges;
+    }
+
+    laplacianEdgeDetection(data, width, height) {
+      const edges = new Uint8ClampedArray(width * height);
+      
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const idx = y * width + x;
+          
+          const laplacian = -data[(y-1)*width + x] - data[y*width + x-1] + 4*data[idx] - data[y*width + x+1] - data[(y+1)*width + x];
+          
+          edges[idx] = Math.min(255, Math.abs(laplacian));
+        }
+      }
+      
+      return edges;
+    }
+
+    detectStructuralLines(edges, width, height) {
+      const lines = { horizontal: [], vertical: [], diagonal: [] };
+      
+      // Horizontal lines
+      for (let y = 0; y < height; y++) {
+        let run = 0, startX = 0;
+        for (let x = 0; x < width; x++) {
+          if (edges[y * width + x] > 100) {
+            if (run === 0) startX = x;
+            run++;
+          } else if (run > width * 0.05) {
+            lines.horizontal.push({ y, x0: startX, x1: x, length: run });
+            run = 0;
+          }
+        }
+        if (run > width * 0.05) {
+          lines.horizontal.push({ y, x0: startX, x1: startX + run, length: run });
+        }
+      }
+      
+      // Vertical lines
+      for (let x = 0; x < width; x++) {
+        let run = 0, startY = 0;
+        for (let y = 0; y < height; y++) {
+          if (edges[y * width + x] > 100) {
+            if (run === 0) startY = y;
+            run++;
+          } else if (run > height * 0.05) {
+            lines.vertical.push({ x, y0: startY, y1: y, length: run });
+            run = 0;
+          }
+        }
+        if (run > height * 0.05) {
+          lines.vertical.push({ x, y0: startY, y1: startY + run, length: run });
+        }
+      }
+      
+      return lines;
+    }
+
+    detectRegions(grayscale, edges, width, height) {
+      const regions = [];
+      const visited = new Uint8ClampedArray(width * height);
+      
+      // Scan for connected components (content regions)
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          if (!visited[idx] && edges[idx] > 50) {
+            const region = this.floodFillAdvanced(edges, visited, x, y, width, height);
+            if (region.pixels > 100) { // Minimum region size
+              regions.push(region);
+            }
+          }
+        }
+      }
+      
+      return regions;
+    }
+
+    floodFillAdvanced(edges, visited, startX, startY, width, height) {
+      const stack = [[startX, startY]];
+      let minX = startX, maxX = startX, minY = startY, maxY = startY;
+      let pixels = 0, totalIntensity = 0;
+      
+      while (stack.length > 0) {
+        const [x, y] = stack.pop();
+        
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+        
+        const idx = y * width + x;
+        if (visited[idx] || edges[idx] <= 50) continue;
+        
+        visited[idx] = 1;
+        pixels++;
+        totalIntensity += edges[idx];
+        
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+        
+        stack.push([x+1, y], [x-1, y], [x, y+1], [x, y-1]);
+      }
+      
+      return {
+        bbox: [minX / width * 100, minY / height * 100, maxX / width * 100, maxY / height * 100],
+        width: maxX - minX,
+        height: maxY - minY,
+        pixels,
+        intensity: totalIntensity / Math.max(1, pixels),
+        density: pixels / ((maxX - minX + 1) * (maxY - minY + 1))
+      };
+    }
+
+    classifyAndEnhanceRegions(regions, grayscale, width, height) {
+      return regions.map((region, idx) => {
+        const bbox = region.bbox;
+        const regionWidth = bbox[2] - bbox[0];
+        const regionHeight = bbox[3] - bbox[1];
+        const area = regionWidth * regionHeight;
+        const aspectRatio = regionWidth / Math.max(1, regionHeight);
+        
+        // Classify region type
+        let type = 'text';
+        let confidence = 0.7;
+        
+        if (bbox[1] < 10 && regionHeight < 8) {
+          type = 'header';
+          confidence = 0.9;
+        } else if (regionHeight > 25 && regionWidth > 50) {
+          type = 'figure';
+          confidence = 0.85;
+        } else if (region.density > 0.4) {
+          type = 'table';
+          confidence = 0.88;
+        } else if (aspectRatio > 3 && regionHeight < 5) {
+          type = 'separator';
+          confidence = 0.92;
+        } else if (regionHeight < 3) {
+          type = 'line';
+          confidence = 0.95;
+        }
+        
+        // Detect multi-column layout
+        const isMultiCol = regionWidth > 60 && region.density < 0.3;
+        
+        return {
+          type,
+          bbox,
+          confidence,
+          size: { width: regionWidth, height: regionHeight, area },
+          aspectRatio,
+          density: region.density,
+          intensity: region.intensity,
+          pixels: region.pixels,
+          isMultiCol,
+          index: idx
+        };
+      });
+    }
+
+    analyzeStructure(regions, width, height) {
+      if (regions.length === 0) {
+        return { layout: 'unknown', columns: 1, hasHeader: false, hasFigures: false, hasTables: false };
+      }
+      
+      // Detect columns
+      const columns = this.detectColumns(regions, width);
+      
+      // Detect layout type
+      const layout = columns > 1 ? 'multi-column' : 'single-column';
+      
+      // Check for specific elements
+      const hasHeader = regions.some(r => r.type === 'header');
+      const hasFigures = regions.some(r => r.type === 'figure');
+      const hasTables = regions.some(r => r.type === 'table');
+      const hasSeparators = regions.some(r => r.type === 'separator');
+      
+      // Detect document type
+      let documentType = 'document';
+      if (hasHeader && hasTables) documentType = 'report';
+      else if (hasFigures && hasHeader) documentType = 'article';
+      else if (hasTables) documentType = 'table-heavy';
+      else if (columns > 2) documentType = 'newspaper';
+      
+      return {
+        layout,
+        columns,
+        hasHeader,
+        hasFigures,
+        hasTables,
+        hasSeparators,
+        documentType,
+        complexity: this.calculateComplexity(regions)
+      };
+    }
+
+    detectColumns(regions, width) {
+      const xPositions = regions.map(r => r.bbox[0]).sort((a, b) => a - b);
+      
+      // Look for gaps in X positions
+      let columnCount = 1;
+      for (let i = 1; i < xPositions.length; i++) {
+        if (xPositions[i] - xPositions[i-1] > 15) {
+          columnCount++;
+        }
+      }
+      
+      return Math.min(columnCount, 4); // Max 4 columns detected
+    }
+
+    calculateComplexity(regions) {
+      const typeCount = new Set(regions.map(r => r.type)).size;
+      const avgDensity = regions.reduce((a, r) => a + r.density, 0) / regions.length;
+      const avgSize = regions.reduce((a, r) => a + r.size.area, 0) / regions.length;
+      
+      let complexity = 0.5;
+      if (typeCount > 3) complexity += 0.2;
+      if (avgDensity > 0.4) complexity += 0.2;
+      if (regions.length > 10) complexity += 0.1;
+      
+      return Math.min(1, complexity);
+    }
+
+    determineReadingOrder(regions) {
+      // Sort regions by reading order (top-to-bottom, left-to-right)
+      const sorted = [...regions].sort((a, b) => {
+        // Group by row (within 5% height)
+        const aRow = Math.round(a.bbox[1] / 5);
+        const bRow = Math.round(b.bbox[1] / 5);
+        
+        if (aRow !== bRow) return aRow - bRow;
+        return a.bbox[0] - b.bbox[0]; // Left to right
+      });
+      
+      return sorted.map((r, idx) => ({
+        index: idx,
+        type: r.type,
+        position: `${Math.round(r.bbox[1])}%-${Math.round(r.bbox[0])}%`
+      }));
+    }
+
+    analyzeConnectivity(regions) {
+      // Analyze spatial relationships between regions
+      const adjacency = {};
+      const threshold = 5; // % distance threshold
+      
+      regions.forEach((r, i) => {
+        adjacency[i] = { above: [], below: [], left: [], right: [], diagonal: [] };
+        
+        regions.forEach((other, j) => {
+          if (i === j) return;
+          
+          const verticalGap = r.bbox[1] - (other.bbox[3] + 1);
+          const bottomGap = other.bbox[1] - (r.bbox[3] + 1);
+          const leftGap = r.bbox[0] - (other.bbox[2] + 1);
+          const rightGap = other.bbox[0] - (r.bbox[2] + 1);
+          
+          // Check adjacent relationships
+          if (verticalGap < threshold && verticalGap > -threshold && 
+              Math.max(r.bbox[0], other.bbox[0]) < Math.min(r.bbox[2], other.bbox[2])) {
+            adjacency[i].above.push(j);
+          }
+          if (bottomGap < threshold && bottomGap > -threshold &&
+              Math.max(r.bbox[0], other.bbox[0]) < Math.min(r.bbox[2], other.bbox[2])) {
+            adjacency[i].below.push(j);
+          }
+          if (leftGap < threshold && leftGap > -threshold &&
+              Math.max(r.bbox[1], other.bbox[1]) < Math.min(r.bbox[3], other.bbox[3])) {
+            adjacency[i].left.push(j);
+          }
+          if (rightGap < threshold && rightGap > -threshold &&
+              Math.max(r.bbox[1], other.bbox[1]) < Math.min(r.bbox[3], other.bbox[3])) {
+            adjacency[i].right.push(j);
+          }
+        });
+      });
+      
+      return adjacency;
+    }
+
+    detectTextureAnalysis(grayscale, width, height) {
+      // Analyze texture patterns (entropy, homogeneity, contrast)
+      const blockSize = Math.min(width, height) / 10;
+      const textures = [];
+      
+      for (let y = 0; y < height - blockSize; y += blockSize) {
+        for (let x = 0; x < width - blockSize; x += blockSize) {
+          const histogram = new Array(256).fill(0);
+          let sum = 0, sumSq = 0;
+          
+          for (let dy = 0; dy < blockSize; dy++) {
+            for (let dx = 0; dx < blockSize; dx++) {
+              const idx = (y + dy) * width + (x + dx);
+              const val = grayscale[idx] || 0;
+              histogram[val]++;
+              sum += val;
+              sumSq += val * val;
+            }
+          }
+          
+          const mean = sum / (blockSize * blockSize);
+          const variance = (sumSq / (blockSize * blockSize)) - (mean * mean);
+          const stddev = Math.sqrt(Math.max(0, variance));
+          
+          // Entropy calculation
+          let entropy = 0;
+          for (let i = 0; i < 256; i++) {
+            if (histogram[i] > 0) {
+              const p = histogram[i] / (blockSize * blockSize);
+              entropy -= p * Math.log2(p);
+            }
+          }
+          
+          textures.push({
+            x: x / width * 100,
+            y: y / height * 100,
+            stddev: stddev / 255,
+            entropy: entropy / 8,
+            contrast: stddev / 128
+          });
+        }
+      }
+      
+      return textures;
+    }
+
+    detectHoughLines(edges, width, height) {
+      // Simplified Hough transform for line detection
+      const rhoMax = Math.sqrt(width * width + height * height);
+      const accumulator = {};
+      const threshold = Math.max(width, height) * 0.1;
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (edges[y * width + x] > 100) {
+            // Generate all (rho, theta) pairs for this edge point
+            for (let theta = 0; theta < 180; theta += 5) {
+              const rad = (theta * Math.PI) / 180;
+              const rho = Math.round(x * Math.cos(rad) + y * Math.sin(rad));
+              const key = `${rho},${theta}`;
+              accumulator[key] = (accumulator[key] || 0) + 1;
+            }
+          }
+        }
+      }
+      
+      // Extract significant lines
+      const lines = [];
+      for (const [key, count] of Object.entries(accumulator)) {
+        if (count > threshold) {
+          const [rho, theta] = key.split(',').map(Number);
+          lines.push({ rho, theta, strength: count });
+        }
+      }
+      
+      return lines.sort((a, b) => b.strength - a.strength).slice(0, 20);
+    }
+
+    buildLayoutGraph(regions) {
+      // Build graph structure from regions for D3 visualization
+      const nodes = regions.map((r, idx) => ({
+        id: idx,
+        type: r.type,
+        x: (r.bbox[0] + r.bbox[2]) / 2,
+        y: (r.bbox[1] + r.bbox[3]) / 2,
+        size: r.size.area,
+        confidence: r.confidence,
+        label: `${r.type}${idx + 1}`
+      }));
+      
+      // Build edges based on connectivity
+      const adjacency = this.analyzeConnectivity(regions);
+      const edges = [];
+      const typeMap = { header: 0, text: 1, table: 2, figure: 3, separator: 4, line: 5 };
+      
+      Object.entries(adjacency).forEach(([idx, adj]) => {
+        const connections = [
+          ...adj.above.map(j => ({ target: j, type: 'above' })),
+          ...adj.below.map(j => ({ target: j, type: 'below' })),
+          ...adj.left.map(j => ({ target: j, type: 'left' })),
+          ...adj.right.map(j => ({ target: j, type: 'right' }))
+        ];
+        
+        connections.forEach(conn => {
+          edges.push({
+            source: parseInt(idx),
+            target: conn.target,
+            type: conn.type,
+            strength: 1
+          });
+        });
+      });
+      
+      return { nodes, edges, adjacency };
+    }
+
+    optimizeRegions(regions) {
+      // Remove very small regions (noise)
+      let filtered = regions.filter(r => r.size.area > 10);
+      
+      // Merge nearby regions of same type
+      const merged = [];
+      const processed = new Set();
+      
+      for (let i = 0; i < filtered.length; i++) {
+        if (processed.has(i)) continue;
+        
+        let region = { ...filtered[i] };
+        processed.add(i);
+        
+        for (let j = i + 1; j < filtered.length; j++) {
+          if (processed.has(j) || filtered[j].type !== region.type) continue;
+          
+          const dx = Math.min(
+            Math.abs(region.bbox[2] - filtered[j].bbox[0]),
+            Math.abs(filtered[j].bbox[2] - region.bbox[0])
+          );
+          const dy = Math.min(
+            Math.abs(region.bbox[3] - filtered[j].bbox[1]),
+            Math.abs(filtered[j].bbox[3] - region.bbox[1])
+          );
+          
+          if (dx < 5 && dy < 5) {
+            // Merge regions
+            region.bbox[0] = Math.min(region.bbox[0], filtered[j].bbox[0]);
+            region.bbox[1] = Math.min(region.bbox[1], filtered[j].bbox[1]);
+            region.bbox[2] = Math.max(region.bbox[2], filtered[j].bbox[2]);
+            region.bbox[3] = Math.max(region.bbox[3], filtered[j].bbox[3]);
+            processed.add(j);
+          }
+        }
+        
+        merged.push(region);
+      }
+      
+      return merged;
+    }
+
+    calculateMetrics(regions, width, height) {
+      const total = regions.length;
+      const byType = {};
+      
+      regions.forEach(r => {
+        byType[r.type] = (byType[r.type] || 0) + 1;
+      });
+      
+      const avgConfidence = regions.reduce((a, r) => a + r.confidence, 0) / Math.max(1, total);
+      const avgDensity = regions.reduce((a, r) => a + r.density, 0) / Math.max(1, total);
+      const contentArea = regions.reduce((a, r) => a + r.size.area, 0) / (width * height) * 100;
+      
+      return {
+        total,
+        byType,
+        avgConfidence: Math.round(avgConfidence * 100) / 100,
+        avgDensity: Math.round(avgDensity * 100) / 100,
+        contentArea: Math.round(contentArea * 10) / 10,
+        textRatio: (byType['text'] || 0) / total,
+        imageRatio: (byType['figure'] || 0) / total
+      };
+    }
+
+    calculateConfidence(regions) {
+      if (regions.length === 0) return 0.5;
+      
+      const avgConf = regions.reduce((a, r) => a + r.confidence, 0) / regions.length;
+      const variance = regions.reduce((a, r) => a + Math.pow(r.confidence - avgConf, 2), 0) / regions.length;
+      const consistency = 1 - Math.sqrt(variance);
+      
+      return Math.round((avgConf + consistency) / 2 * 100) / 100;
     }
 
     buildDocumentGraph(words, imageWidth, imageHeight) {
@@ -4798,6 +5867,7 @@
       const shapeDetector = new ShapeDetector();
       const layoutDetector = new LayoutDetector();
       const gnnAnalyzer = new GNNDocumentAnalyzer();
+      window.gnnAnalyzer = gnnAnalyzer; // Store globally for visualization access
       const multilingualProcessor = new MultilingualProcessor();
 
       reader.onerror = () => {
@@ -4965,9 +6035,277 @@
     elements.tableCount.textContent = data.stats.tables;
     elements.layoutAccuracy.textContent = (data.confidence * 100).toFixed(1) + '%';
 
+    // Create or update visualization
+    setTimeout(() => {
+      visualizeLayoutAnalysis(data);
+    }, 100);
+
     // Show results state and update button visibility
     showState('results');
     updateUIForStage();
+  }
+
+  function visualizeLayoutAnalysis(data) {
+    // Create visualization container if it doesn't exist
+    let vizContainer = document.getElementById('layout-visualization-container');
+    if (!vizContainer) {
+      const resultsSection = document.getElementById('results-state');
+      if (!resultsSection) return;
+      
+      vizContainer = document.createElement('div');
+      vizContainer.id = 'layout-visualization-container';
+      vizContainer.style.marginTop = '24px';
+      resultsSection.appendChild(vizContainer);
+    }
+
+    const tabsHtml = `
+      <div class="visualization-tabs">
+        <button class="viz-tab active" data-tab="graph">📊 Structure Graph</button>
+        <button class="viz-tab" data-tab="regions">🔲 Region Analysis</button>
+        <button class="viz-tab" data-tab="connectivity">🔗 Connectivity</button>
+        <button class="viz-tab" data-tab="metrics">📈 Detailed Metrics</button>
+      </div>
+    `;
+
+    const graphHtml = `
+      <div class="visualization-content active" id="graph-content">
+        <div id="layout-graph-container"></div>
+        <p style="font-size: 12px; color: var(--ink-600); margin-top: 8px;">Interactive graph showing spatial relationships between detected regions. Click nodes to highlight connected regions.</p>
+      </div>
+    `;
+
+    const regionsHtml = `
+      <div class="visualization-content" id="regions-content">
+        <div class="region-list" id="region-list"></div>
+      </div>
+    `;
+
+    const connectivityHtml = `
+      <div class="visualization-content" id="connectivity-content">
+        <div class="connectivity-map" id="connectivity-map"></div>
+      </div>
+    `;
+
+    const metricsHtml = `
+      <div class="visualization-content" id="metrics-content">
+        <div class="metrics-grid" id="metrics-grid"></div>
+      </div>
+    `;
+
+    vizContainer.innerHTML = tabsHtml + graphHtml + regionsHtml + connectivityHtml + metricsHtml;
+
+    // Add tab switching handlers
+    document.querySelectorAll('.viz-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.visualization-content').forEach(c => c.classList.remove('active'));
+        
+        e.target.classList.add('active');
+        const tabName = e.target.dataset.tab;
+        document.getElementById(`${tabName}-content`).classList.add('active');
+      });
+    });
+
+    // Populate graph visualization
+    if (window.gnnAnalyzer) {
+      const graphData = window.gnnAnalyzer.buildLayoutGraph(data.regions);
+      renderLayoutGraph(graphData, data.regions);
+    }
+
+    // Populate region list
+    populateRegionList(data.regions);
+
+    // Populate connectivity analysis
+    if (window.gnnAnalyzer) {
+      populateConnectivityAnalysis(data.regions, window.gnnAnalyzer.analyzeConnectivity(data.regions));
+    }
+
+    // Populate detailed metrics
+    populateDetailedMetrics(data);
+  }
+
+  function renderLayoutGraph(graphData, regions) {
+    const container = document.getElementById('layout-graph-container');
+    if (!container) return;
+
+    container.innerHTML = ''; // Clear
+    
+    const width = container.clientWidth;
+    const height = 400;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+
+    // Add background
+    svg.append('rect')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('fill', 'var(--off)')
+      .attr('rx', 8);
+
+    const g = svg.append('g');
+
+    // Create force simulation
+    const simulation = d3.forceSimulation(graphData.nodes)
+      .force('link', d3.forceLink(graphData.edges)
+        .id(d => d.id)
+        .distance(60))
+      .force('charge', d3.forceManyBody().strength(-300))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.size) + 10));
+
+    // Color scale by region type
+    const colors = {
+      header: '#16a34a',
+      text: '#22c55e',
+      table: '#f59e0b',
+      figure: '#8b5cf6',
+      separator: '#ec4899',
+      line: '#6b7280'
+    };
+
+    // Draw links
+    const links = g.selectAll('.graph-link')
+      .data(graphData.edges)
+      .enter()
+      .append('line')
+      .attr('class', d => `graph-link ${d.type}`)
+      .attr('stroke', d => d.type === 'below' || d.type === 'right' ? '#16a34a' : '#e5e7eb')
+      .attr('opacity', d => d.type === 'below' || d.type === 'right' ? 0.8 : 0.3);
+
+    // Draw nodes
+    const nodes = g.selectAll('.graph-node')
+      .data(graphData.nodes)
+      .enter()
+      .append('g')
+      .attr('class', 'graph-node')
+      .call(d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended));
+
+    nodes.append('circle')
+      .attr('r', d => Math.sqrt(d.size) + 5)
+      .attr('fill', d => colors[d.type] || '#10b981')
+      .attr('stroke', d => colors[d.type] ? d3.color(colors[d.type]).darker(1) : '#059669')
+      .attr('stroke-width', 2);
+
+    nodes.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.3em')
+      .attr('fill', 'white')
+      .attr('font-weight', '600')
+      .attr('font-size', '11px')
+      .text(d => d.type.substring(0, 1).toUpperCase());
+
+    // Add tooltips
+    nodes.append('title')
+      .text(d => `${d.type.toUpperCase()} (Confidence: ${(d.confidence * 100).toFixed(0)}%)`);
+
+    // Update positions on simulation tick
+    simulation.on('tick', () => {
+      links
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+
+      nodes
+        .attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+  }
+
+  function populateRegionList(regions) {
+    const container = document.getElementById('region-list');
+    if (!container) return;
+
+    container.innerHTML = regions.map((r, idx) => `
+      <div class="region-item" onclick="this.classList.toggle('selected')">
+        <div>
+          <span class="region-type">${r.type.toUpperCase()}</span>
+          <span class="region-confidence">Confidence: ${(r.confidence * 100).toFixed(0)}%</span>
+        </div>
+        <div style="font-size: 11px; color: var(--ink-500); margin-top: 6px;">
+          Position: (${Math.round(r.bbox[0])}%, ${Math.round(r.bbox[1])}%)
+          &nbsp;·&nbsp;
+          Size: ${Math.round((r.bbox[2] - r.bbox[0]) * 100) / 100}% × ${Math.round((r.bbox[3] - r.bbox[1]) * 100) / 100}%
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function populateConnectivityAnalysis(regions, adjacency) {
+    const container = document.getElementById('connectivity-map');
+    if (!container) return;
+
+    const connectionCounts = {};
+    regions.forEach((r, idx) => {
+      const adj = adjacency[idx];
+      const totalConnections = (adj.above || []).length + (adj.below || []).length + 
+                              (adj.left || []).length + (adj.right || []).length;
+      connectionCounts[idx] = totalConnections;
+    });
+
+    const maxConnections = Math.max(...Object.values(connectionCounts), 1);
+
+    container.innerHTML = regions.map((r, idx) => {
+      const connections = connectionCounts[idx];
+      const percentage = (connections / maxConnections * 100).toFixed(0);
+      return `
+        <div class="connectivity-row">
+          <div class="connectivity-label">${r.type.substring(0, 3).toUpperCase()}</div>
+          <div class="connectivity-bar" style="width: calc(100% - 60px);">
+            <div style="height: 100%; width: ${percentage}%; background: linear-gradient(90deg, var(--green-400), var(--green-600)); border-radius: 3px; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px;">
+            </div>
+            <span class="connectivity-value">${connections}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function populateDetailedMetrics(data) {
+    const container = document.getElementById('metrics-grid');
+    if (!container) return;
+
+    const metrics = [
+      { label: 'Total Regions', value: data.stats.total },
+      { label: 'Headers', value: data.stats.headers },
+      { label: 'Paragraphs', value: data.stats.paragraphs },
+      { label: 'Tables', value: data.stats.tables },
+      { label: 'Figures', value: data.stats.figures },
+      { label: 'Overall Confidence', value: (data.confidence * 100).toFixed(1) + '%' },
+      { label: 'Document Type', value: data.structure?.documentType || 'Unknown' },
+      { label: 'Layout', value: data.structure?.layout || 'Unknown' },
+      { label: 'Columns', value: data.structure?.columns || '1' },
+      { label: 'Content Area', value: (data.metrics?.contentArea || 0).toFixed(1) + '%' }
+    ];
+
+    container.innerHTML = metrics.map(m => `
+      <div class="metric-card">
+        <div class="metric-label">${m.label}</div>
+        <div class="metric-value">${m.value}</div>
+      </div>
+    `).join('');
   }
 
   function displayAnalysisResults(data, isUploaded) {
@@ -5133,17 +6471,23 @@
       extractedText = '⚠️ No text extracted from this document';
     }
     
+    // Determine extraction method
+    const extractionMethod = processedDocument.ocr?.extractionMethod || 'Standard OCR';
+    const isRegionBased = extractionMethod.includes('Region-Based');
+    
     textContainer.innerHTML = `
       <div style="margin-bottom: 20px;">
         <div style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #2196F3;">
-          <strong style="color: #1976D2;">OCR Analysis Report</strong>
+          <strong style="color: #1976D2;">OCR Analysis Report ${isRegionBased ? '✨ (Enhanced Region-Based)' : ''}</strong>
           <div style="font-size: 12px; color: #555; margin-top: 8px;">
             <div>📊 Confidence: <strong>${((processedDocument.ocr?.confidence || 0) * 100).toFixed(1)}%</strong></div>
             <div>🌐 Language: <strong>${processedDocument.ocr?.language || 'Unknown'}</strong></div>
             <div>📝 Word Count: <strong>${(processedDocument.ocr?.words || []).length}</strong></div>
             <div>⚠️ Errors Flagged: <strong>${(processedDocument.semantics?.errorFlags || []).length}</strong></div>
+            ${processedDocument.ocr?.regionResults ? `<div>🔍 Regions Analyzed: <strong>${processedDocument.ocr.regionResults.length}</strong></div>` : ''}
             ${processedDocument.tables?.length ? `<div>📋 Tables: <strong>${processedDocument.tables.length}</strong></div>` : ''}
             ${processedDocument.metadata?.imageSize ? `<div>📐 Image: <strong>${processedDocument.metadata.imageSize.width}x${processedDocument.metadata.imageSize.height}px</strong></div>` : ''}
+            <div>🔧 Method: <strong>${extractionMethod}</strong></div>
           </div>
         </div>
         
@@ -5155,6 +6499,69 @@
         </div>
       </div>
     `;
+
+    // ========== DISPLAY REGION-BASED ANALYSIS ==========
+    if (isRegionBased && processedDocument.ocr?.regionResults) {
+      const regionsByType = {};
+      processedDocument.ocr.regionResults.forEach(r => {
+        if (!regionsByType[r.type]) regionsByType[r.type] = [];
+        regionsByType[r.type].push(r);
+      });
+
+      const regionsHtml = `
+        <div style="margin-top: 16px; background: #e8f5e9; padding: 12px; border-radius: 6px;">
+          <h5 style="margin-top: 0; color: #1b5e20;">🔍 Region-Based Extraction Details</h5>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: 12px;">
+            ${Object.entries(regionsByType).map(([type, regions]) => `
+              <div style="background: white; padding: 8px; border-radius: 4px; border-left: 3px solid #4CAF50;">
+                <strong>${type.toUpperCase()}</strong><br>
+                <span style="color: #666;">Count: ${regions.length}</span><br>
+                <span style="color: #666;">Avg Conf: ${(regions.reduce((a, r) => a + r.confidence, 0) / regions.length * 100).toFixed(0)}%</span>
+              </div>
+            `).join('')}
+          </div>
+          ${processedDocument.ocr?.validation ? `
+            <div style="margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 11px;">
+              <strong>Structure Validation:</strong>
+              <div>✓ Headers: ${processedDocument.ocr.validation.hasHeaders ? '✅' : '❌'}</div>
+              <div>✓ Tables: ${processedDocument.ocr.validation.hasTableStructure ? '✅' : '❌'}</div>
+              <div>✓ Column Consistency: ${(processedDocument.ocr.validation.columnConsistency * 100).toFixed(0)}%</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      textContainer.innerHTML += regionsHtml;
+    }
+
+    // ========== DISPLAY HIERARCHICAL STRUCTURE ==========
+    if (isRegionBased && processedDocument.ocr?.hierarchical) {
+      const hierarchy = processedDocument.ocr.hierarchical;
+      const hierarchyHtml = `
+        <div style="margin-top: 16px; background: #f3e5f5; padding: 12px; border-radius: 6px;">
+          <h5 style="margin-top: 0; color: #4a148c;">📑 Document Hierarchy</h5>
+          <div style="background: white; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+            <strong style="color: #6a1b9a;">📖 ${escapeHtml(hierarchy.hierarchy?.title || 'Untitled')}</strong>
+          </div>
+          ${hierarchy.sections ? `
+            <div style="margin-left: 8px; border-left: 2px solid #9c27b0; padding-left: 8px;">
+              ${hierarchy.sections.map((s, i) => `
+                <div style="margin-bottom: 6px; padding: 6px; background: #fafafa; border-radius: 3px; font-size: 12px;">
+                  <strong style="color: #5e35b1;">§${i + 1}: ${escapeHtml(s.title || 'Section')}</strong><br>
+                  <span style="color: #666;">Content: ${s.contentLength} chars | Tables: ${s.tableCount}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          <div style="margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 11px;">
+            <strong>Summary:</strong>
+            <div>📄 Sections: ${hierarchy.sections?.length || 0}</div>
+            <div>📋 Tables: ${hierarchy.tables?.length || 0}</div>
+            <div>🖼️ Figures: ${hierarchy.figures?.length || 0}</div>
+          </div>
+        </div>
+      `;
+      textContainer.innerHTML += hierarchyHtml;
+    }
 
     // ========== DISPLAY PIPELINE WORKFLOW ==========
     if (processedDocument.workflow && processedDocument.workflow.length > 0) {
@@ -5275,45 +6682,66 @@
 
     try {
       const doc = window.lastProcessedDocument;
-      const { Document, Packer, Paragraph, Table, TableCell, TextRun, BorderStyle, VerticalAlign, AlignmentType, HeadingLevel, UnderlineType } = window.docx;
+      const { Document, Packer, Paragraph, Table, TableCell, TextRun, BorderStyle, VerticalAlign, AlignmentType, HeadingLevel, UnderlineType, convertInchesToTwip } = window.docx;
 
       // Generate document
       const sections = [];
       
-      // Title
+      // Title Page
       sections.push(
         new Paragraph({
-          text: 'Document Analysis Report',
+          text: 'DOCUMENT ANALYSIS REPORT',
           heading: HeadingLevel.HEADING_1,
           alignment: AlignmentType.CENTER,
-          spacing: { after: 100 },
-          bold: true
+          spacing: { before: 400, after: 100 },
+          bold: true,
+          size: 32
         })
       );
-
-      // Metadata
+      
       sections.push(
         new Paragraph({
-          text: `Generated: ${new Date().toLocaleString()}`,
-          spacing: { after: 200 },
+          text: 'OCR Analysis & Structure Extraction',
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 300 },
+          italic: true,
+          size: 22,
           color: '666666'
         })
       );
-
-      // Summary Table
+      
+      // Metadata Section
       sections.push(
         new Paragraph({
-          text: 'Summary',
+          text: 'Report Metadata',
           heading: HeadingLevel.HEADING_2,
-          spacing: { before: 100, after: 100 }
+          spacing: { before: 200, after: 100 }
         })
       );
-
-      const summaryRows = [
+      
+      const metadataTable = [
         {
           cells: [
-            new TableCell({ children: [new Paragraph({ text: 'Metric', bold: true })], shading: { fill: 'E8F5E9' } }),
-            new TableCell({ children: [new Paragraph({ text: 'Value', bold: true })], shading: { fill: 'E8F5E9' } })
+            new TableCell({ children: [new Paragraph({ text: 'Property', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' }, width: { size: 30, type: 'pct' } }),
+            new TableCell({ children: [new Paragraph({ text: 'Value', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' }, width: { size: 70, type: 'pct' } })
+          ]
+        },
+        {
+          cells: [
+            new TableCell({ children: [new Paragraph('Generated')] }),
+            new TableCell({ children: [new Paragraph(new Date().toLocaleString())] })
+          ]
+        },
+        {
+          cells: [
+            new TableCell({ children: [new Paragraph('Extraction Method')] }),
+            new TableCell({ children: [new Paragraph(doc.ocr?.extractionMethod || 'Standard OCR')] })
+          ]
+        },
+        {
+          cells: [
+            new TableCell({ children: [new Paragraph('Language')] }),
+            new TableCell({ children: [new Paragraph(doc.ocr?.language || 'Unknown')] })
           ]
         },
         {
@@ -5324,101 +6752,224 @@
         },
         {
           cells: [
-            new TableCell({ children: [new Paragraph('Detected Language')] }),
-            new TableCell({ children: [new Paragraph(doc.ocr?.language || 'Unknown')] })
-          ]
-        },
-        {
-          cells: [
             new TableCell({ children: [new Paragraph('Word Count')] }),
             new TableCell({ children: [new Paragraph(String((doc.ocr?.words || []).length))] })
           ]
         },
         {
           cells: [
-            new TableCell({ children: [new Paragraph('Tables Detected')] }),
-            new TableCell({ children: [new Paragraph(String((doc.tables || []).length))] })
-          ]
-        },
-        {
-          cells: [
-            new TableCell({ children: [new Paragraph('Errors Flagged')] }),
-            new TableCell({ children: [new Paragraph(String((doc.semantics?.errorFlags || []).length))] })
+            new TableCell({ children: [new Paragraph('Regions Detected')] }),
+            new TableCell({ children: [new Paragraph(String((doc.ocr?.regionResults || []).length))] })
           ]
         }
       ];
-
+      
       sections.push(
         new Table({
           width: { size: 100, type: 'pct' },
-          rows: summaryRows
+          rows: metadataTable,
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' },
+            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' }
+          }
         })
       );
-
-      // Extracted Text
+      
+      // Hierarchical Structure (if available)
+      if (doc.ocr?.hierarchical && doc.ocr.hierarchical.sections) {
+        sections.push(
+          new Paragraph({
+            text: 'Document Structure',
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 300, after: 100 }
+          })
+        );
+        
+        doc.ocr.hierarchical.sections.forEach((section, sIdx) => {
+          sections.push(
+            new Paragraph({
+              text: `${section.title}`,
+              heading: HeadingLevel.HEADING_3,
+              spacing: { before: 150, after: 100 },
+              border: {
+                bottom: {
+                  color: '22C55E',
+                  space: 1,
+                  style: BorderStyle.SINGLE,
+                  size: 6
+                }
+              }
+            })
+          );
+          
+          // Add section metadata
+          sections.push(
+            new Paragraph({
+              text: `Content length: ${section.contentLength} characters | Tables: ${section.tableCount}`,
+              spacing: { after: 100 },
+              italics: true,
+              size: 18,
+              color: '666666'
+            })
+          );
+          
+          // Add editable content field
+          sections.push(
+            new Paragraph({
+              text: '[--- Section Content ---]',
+              spacing: { after: 100 },
+              shading: { fill: 'F5F5F5' },
+              border: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+                left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+                right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
+              }
+            })
+          );
+        });
+      }
+      
+      // Extracted Text Section
       sections.push(
         new Paragraph({
-          text: 'Extracted Text',
+          text: 'Extracted Text Content',
           heading: HeadingLevel.HEADING_2,
-          spacing: { before: 200, after: 100 }
+          spacing: { before: 300, after: 100 }
         })
       );
-
+      
       sections.push(
         new Paragraph({
           text: doc.ocr?.text || 'No text extracted',
-          spacing: { after: 100 }
+          spacing: { after: 200 },
+          border: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+            right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
+          }
         })
       );
-
+      
       // Tables
       if ((doc.tables || []).length > 0) {
         sections.push(
           new Paragraph({
-            text: `Tables (${doc.tables.length} found)`,
+            text: `Detected Tables (${doc.tables.length})`,
             heading: HeadingLevel.HEADING_2,
-            spacing: { before: 200, after: 100 }
+            spacing: { before: 300, after: 100 }
           })
         );
-
+        
         doc.tables.forEach((table, idx) => {
           sections.push(
             new Paragraph({
               text: `Table ${idx + 1}`,
               heading: HeadingLevel.HEADING_3,
-              spacing: { before: 100, after: 50 }
+              spacing: { before: 150, after: 50 }
             })
           );
+          
           sections.push(
             new Paragraph({
               text: table.markdown || table.csv || 'Table data',
-              spacing: { after: 100 }
+              spacing: { after: 150 },
+              shading: { fill: 'F9F9F9' },
+              border: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+                left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+                right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
+              }
             })
           );
         });
       }
-
-      // Semantic Analysis
-      if ((doc.semantics?.errorFlags || []).length > 0) {
+      
+      // Quality Analysis
+      sections.push(
+        new Paragraph({
+          text: 'Quality Analysis',
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 100 }
+        })
+      );
+      
+      const errorFlags = doc.semantics?.errorFlags || [];
+      if (errorFlags.length > 0) {
         sections.push(
           new Paragraph({
-            text: 'Flagged Words (Low Confidence)',
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 200, after: 100 }
+            text: `Low Confidence Words (${errorFlags.length} flagged)`,
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 150, after: 50 }
           })
         );
-
-        const flaggedText = (doc.semantics?.errorFlags || []).slice(0, 20)
-          .map(w => `• "${w.text}" (${((w.confidence || 0.5) * 100).toFixed(0)}% confidence)`)
-          .join('\n');
-
+        
+        const flaggedTable = [
+          {
+            cells: [
+              new TableCell({ children: [new Paragraph({ text: 'Word', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' }, width: { size: 60, type: 'pct' } }),
+              new TableCell({ children: [new Paragraph({ text: 'Confidence', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' }, width: { size: 40, type: 'pct' } })
+            ]
+          },
+          ...errorFlags.slice(0, 20).map(w => ({
+            cells: [
+              new TableCell({ children: [new Paragraph(`"${w.text}"`)] }),
+              new TableCell({ children: [new Paragraph(`${((w.confidence || 0.5) * 100).toFixed(0)}%`)] })
+            ]
+          }))
+        ];
+        
+        sections.push(
+          new Table({
+            width: { size: 100, type: 'pct' },
+            rows: flaggedTable,
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+              left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+              right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
+              insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' },
+              insideVertical: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' }
+            }
+          })
+        );
+      } else {
         sections.push(
           new Paragraph({
-            text: flaggedText,
-            spacing: { after: 100 }
+            text: '✓ No quality issues detected',
+            spacing: { after: 100 },
+            color: '16A34A'
           })
         );
       }
+      
+      // Footer
+      sections.push(
+        new Paragraph({
+          text: '═══════════════════════════════════════',
+          spacing: { before: 300, after: 50 },
+          alignment: AlignmentType.CENTER,
+          size: 16,
+          color: 'CCCCCC'
+        })
+      );
+      
+      sections.push(
+        new Paragraph({
+          text: 'Generated by DOCUGRAPH — Advanced Document Intelligence',
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 50 },
+          size: 18,
+          color: '666666',
+          italics: true
+        })
+      );
 
       const document = new Document({ sections: [{ children: sections }] });
 
@@ -5426,20 +6977,19 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `document-analysis-${new Date().getTime()}.docx`;
+        a.download = `docugraph-analysis-${new Date().getTime()}.docx`;
         a.click();
         URL.revokeObjectURL(url);
-        console.log('✅ DOCX export complete');
+        console.log('✅ Enhanced DOCX export complete');
       });
     } catch (error) {
       console.error('Error generating DOCX:', error);
-      // Fallback to text export
       exportAsMarkdown();
     }
   }
 
   /**
-   * Export professional PDF file with formatting
+   * Export professional PDF file with enhanced formatting
    */
   function exportAsProfessionalPDF() {
     if (!window.lastProcessedDocument) {
@@ -5452,122 +7002,268 @@
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      let yPosition = 20;
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
+      const margin = 12;
       const maxWidth = pageWidth - (2 * margin);
+      let yPosition = 15;
 
-      // Title
-      pdf.setFontSize(20);
-      pdf.text('Document Analysis Report', pageWidth / 2, yPosition, { align: 'center' });
+      // Page setup helper
+      const addPageWithHeader = () => {
+        pdf.addPage();
+        yPosition = 15;
+      };
+
+      // Enhanced Title Page
+      pdf.setFontSize(28);
+      pdf.setTextColor(20, 20, 20);
+      pdf.text('DOCUMENT ANALYSIS REPORT', pageWidth / 2, yPosition + 10, { align: 'center' });
+      yPosition += 25;
+
+      pdf.setFontSize(12);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('OCR Analysis & Structure Extraction', pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 15;
 
-      // Date
-      pdf.setFontSize(10);
-      pdf.setTextColor(100);
-      pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, yPosition);
-      yPosition += 12;
+      // Decorative line
+      pdf.setDrawColor(34, 197, 94);
+      pdf.setLineWidth(1);
+      pdf.line(margin + 20, yPosition, pageWidth - margin - 20, yPosition);
+      yPosition += 15;
 
-      // Summary Section
-      pdf.setFontSize(14);
-      pdf.setTextColor(0);
-      pdf.text('Summary', margin, yPosition);
-      yPosition += 10;
-
-      pdf.setFontSize(11);
-      const summaryData = [
-        ['Confidence Score', `${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`],
-        ['Detected Language', doc.ocr?.language || 'Unknown'],
-        ['Word Count', String((doc.ocr?.words || []).length)],
-        ['Tables Detected', String((doc.tables || []).length)],
-        ['Errors Flagged', String((doc.semantics?.errorFlags || []).length)]
+      // Quick stats
+      pdf.setFontSize(9);
+      pdf.setTextColor(120, 120, 120);
+      const qstats = [
+        `Language: ${doc.ocr?.language || 'Unknown'}`,
+        `Method: ${(doc.ocr?.extractionMethod || 'Standard OCR').substring(0, 30)}`,
+        `Confidence: ${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`
       ];
-
-      // Create summary table manually
-      pdf.autoTable({
-        startY: yPosition,
-        head: [['Metric', 'Value']],
-        body: summaryData,
-        margin: { left: margin, right: margin },
-        headStyles: { fillColor: [34, 197, 94], textColor: [255, 255, 255] },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
-        didDrawPage: function(data) {
-          // Callback not needed
-        }
+      qstats.forEach((s, i) => {
+        pdf.text(s, pageWidth / 2, yPosition + (i * 6), { align: 'center' });
       });
 
-      yPosition = pdf.internal.pageSize.getHeight() - 40;
+      yPosition += 30;
+      pdf.setFontSize(10);
+      pdf.setTextColor(80, 80, 80);
+      const desc = `This document contains extracted text and analysis from an OCR scan. It includes ${(doc.ocr?.regionResults || []).length} detected regions, ${(doc.tables || []).length} tables, and ${((doc.ocr?.words || []).length)} words.`;
+      const wrapped = pdf.splitTextToSize(desc, maxWidth);
+      pdf.text(wrapped, margin, yPosition);
 
-      // Extracted Text
+      // New page for metadata
+      addPageWithHeader();
+
+      // Metadata Section
       pdf.setFontSize(14);
-      pdf.text('Extracted Text', margin, yPosition);
+      pdf.setTextColor(34, 197, 94);
+      pdf.text('• Analysis Metadata', margin, yPosition);
+      pdf.setDrawColor(34, 197, 94);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
       yPosition += 8;
 
-      pdf.setFontSize(11);
-      const textLines = pdf.splitTextToSize(doc.ocr?.text || 'No text extracted', maxWidth);
-      pdf.text(textLines, margin, yPosition);
-      yPosition += (textLines.length * 5) + 10;
+      const metadata = [
+        ['Timestamp', new Date().toLocaleString()],
+        ['Extraction Method', doc.ocr?.extractionMethod || 'Standard OCR'],
+        ['Language', doc.ocr?.language || 'Unknown'],
+        ['Overall Confidence', `${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`],
+        ['Regions Analyzed', String((doc.ocr?.regionResults || []).length)],
+        ['Total Word Count', String((doc.ocr?.words || []).length)],
+        ['Tables Detected', String((doc.tables || []).length)],
+        ['Quality Flags', String((doc.semantics?.errorFlags || []).length)]
+      ];
 
-      // Check for page break
-      if (yPosition > pageHeight - 20) {
-        pdf.addPage();
-        yPosition = 20;
+      pdf.autoTable({
+        startY: yPosition,
+        head: [['Property', 'Value']],
+        body: metadata,
+        margin: { left: margin, right: margin },
+        headStyles: {
+          fillColor: [34, 197, 94],
+          textColor: [255, 255, 255],
+          fontSize: 10
+        },
+        bodyStyles: { fontSize: 9 },
+        alternateRowStyles: { fillColor: [250, 250, 250] }
+      });
+
+      yPosition = pdf.lastAutoTable.finalY + 8;
+
+      // Hierarchical Structure
+      if (doc.ocr?.hierarchical?.sections?.length > 0) {
+        if (yPosition > pageHeight - 40) {
+          addPageWithHeader();
+        }
+
+        pdf.setFontSize(14);
+        pdf.setTextColor(34, 197, 94);
+        pdf.text('• Document Structure', margin, yPosition);
+        pdf.setDrawColor(34, 197, 94);
+        pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
+        yPosition += 8;
+
+        doc.ocr.hierarchical.sections.forEach((section) => {
+          if (yPosition > pageHeight - 20) {
+            addPageWithHeader();
+          }
+
+          pdf.setFontSize(11);
+          pdf.setTextColor(34, 197, 94);
+          pdf.setFontStyle('bold');
+          pdf.text(`§ ${section.title}`, margin + 3, yPosition);
+          yPosition += 5;
+
+          pdf.setFontSize(9);
+          pdf.setTextColor(120, 120, 120);
+          pdf.setFontStyle('normal');
+          pdf.text(`Content: ${section.contentLength} chars | Tables: ${section.tableCount}`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+
+        yPosition += 3;
+      }
+
+      // Extracted Text
+      if (yPosition > pageHeight - 40) {
+        addPageWithHeader();
+      }
+
+      pdf.setFontSize(14);
+      pdf.setTextColor(34, 197, 94);
+      pdf.text('• Extracted Text Content', margin, yPosition);
+      pdf.setDrawColor(34, 197, 94);
+      pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
+      yPosition += 8;
+
+      pdf.setFontSize(9);
+      pdf.setTextColor(50, 50, 50);
+      const text = doc.ocr?.text || 'No text extracted';
+      const lines = pdf.splitTextToSize(text, maxWidth - 4);
+      const maxLines = Math.min(lines.length, Math.floor((pageHeight - yPosition - 20) / 3.5));
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setFillColor(249, 249, 249);
+      pdf.rect(margin + 2, yPosition - 1, maxWidth - 4, maxLines * 3.5 + 2, 'FD');
+
+      for (let i = 0; i < maxLines; i++) {
+        pdf.text(lines[i], margin + 4, yPosition + 2 + (i * 3.5));
+      }
+
+      yPosition += maxLines * 3.5 + 5;
+
+      if (lines.length > maxLines) {
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`[... ${lines.length - maxLines} more lines]`, margin + 4, yPosition);
+        yPosition += 4;
       }
 
       // Tables
       if ((doc.tables || []).length > 0) {
+        if (yPosition > pageHeight - 30) {
+          addPageWithHeader();
+        }
+
         pdf.setFontSize(14);
-        pdf.text(`Tables (${doc.tables.length} found)`, margin, yPosition);
+        pdf.setTextColor(34, 197, 94);
+        pdf.text(`• Detected Tables (${doc.tables.length})`, margin, yPosition);
+        pdf.setDrawColor(34, 197, 94);
+        pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
         yPosition += 10;
 
         doc.tables.slice(0, 3).forEach((table, idx) => {
           if (yPosition > pageHeight - 30) {
-            pdf.addPage();
-            yPosition = 20;
+            addPageWithHeader();
           }
 
-          pdf.setFontSize(12);
-          pdf.text(`Table ${idx + 1}`, margin, yPosition);
-          yPosition += 7;
+          pdf.setFontSize(11);
+          pdf.setTextColor(34, 197, 94);
+          pdf.setFontStyle('bold');
+          pdf.text(`Table ${idx + 1}`, margin + 3, yPosition);
+          yPosition += 5;
 
-          pdf.setFontSize(10);
-          const tableText = table.markdown || table.csv || 'Table data';
-          const tableLines = pdf.splitTextToSize(tableText, maxWidth);
-          pdf.text(tableLines, margin, yPosition);
-          yPosition += (tableLines.length * 4) + 5;
-        });
-      }
+          pdf.setFontSize(8);
+          pdf.setTextColor(50, 50, 50);
+          pdf.setFontStyle('normal');
+          const tText = table.markdown || table.csv || 'Table data';
+          const tLines = pdf.splitTextToSize(tText, maxWidth - 4);
+          const tMax = Math.min(tLines.length, 10);
 
-      // Check for page break
-      if (yPosition > pageHeight - 20) {
-        pdf.addPage();
-        yPosition = 20;
-      }
+          pdf.setDrawColor(200, 200, 200);
+          pdf.setFillColor(245, 250, 245);
+          pdf.rect(margin + 2, yPosition - 1, maxWidth - 4, tMax * 3 + 2, 'FD');
 
-      // Flagged Words
-      if ((doc.semantics?.errorFlags || []).length > 0) {
-        pdf.setFontSize(14);
-        pdf.text('Flagged Words (Low Confidence)', margin, yPosition);
-        yPosition += 10;
-
-        pdf.setFontSize(11);
-        const flaggedWords = (doc.semantics?.errorFlags || []).slice(0, 15);
-        flaggedWords.forEach(w => {
-          if (yPosition > pageHeight - 10) {
-            pdf.addPage();
-            yPosition = 20;
+          for (let i = 0; i < tMax; i++) {
+            pdf.text(tLines[i], margin + 4, yPosition + 1 + (i * 3));
           }
-          pdf.text(`• "${w.text}" (${((w.confidence || 0.5) * 100).toFixed(0)}% confidence)`, margin + 5, yPosition);
-          yPosition += 6;
+
+          yPosition += tMax * 3 + 5;
         });
+
+        if ((doc.tables || []).length > 3) {
+          pdf.setFontSize(8);
+          pdf.setTextColor(150, 150, 150);
+          pdf.text(`... and ${doc.tables.length - 3} more tables`, margin, yPosition);
+          yPosition += 4;
+        }
       }
 
-      pdf.save(`document-analysis-${new Date().getTime()}.pdf`);
-      console.log('✅ PDF export complete');
+      // Quality Analysis
+      if (yPosition > pageHeight - 40) {
+        addPageWithHeader();
+      }
+
+      pdf.setFontSize(14);
+      pdf.setTextColor(34, 197, 94);
+      pdf.text('• Quality Analysis', margin, yPosition);
+      pdf.setDrawColor(34, 197, 94);
+      pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
+      yPosition += 8;
+
+      const errors = doc.semantics?.errorFlags || [];
+      if (errors.length > 0) {
+        pdf.setFontSize(10);
+        pdf.setTextColor(180, 0, 0);
+        pdf.text(`⚠️  ${errors.length} low-confidence words flagged`, margin + 3, yPosition);
+        yPosition += 6;
+
+        const flagData = errors.slice(0, 10).map(w => [
+          `"${w.text}"`,
+          `${((w.confidence || 0.5) * 100).toFixed(0)}%`
+        ]);
+
+        pdf.autoTable({
+          startY: yPosition,
+          head: [['Word', 'Confidence']],
+          body: flagData,
+          margin: { left: margin, right: margin },
+          headStyles: {
+            fillColor: [240, 100, 100],
+            textColor: [255, 255, 255],
+            fontSize: 9
+          },
+          bodyStyles: { fontSize: 8 },
+          alternateRowStyles: { fillColor: [255, 245, 245] }
+        });
+      } else {
+        pdf.setFontSize(10);
+        pdf.setTextColor(34, 197, 94);
+        pdf.text('✓ No quality issues detected', margin + 3, yPosition);
+      }
+
+      // Page numbering
+      const totalPages = pdf.internal.pages.length - 1;
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, pageHeight - 8);
+      }
+
+      pdf.save(`docugraph-analysis-${new Date().getTime()}.pdf`);
+      console.log('✅ Enhanced PDF export complete');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      // Fallback to markdown export
       exportAsMarkdown();
     }
   }
@@ -6067,50 +7763,113 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
   if (copyTextBtn) {
     copyTextBtn.addEventListener('click', () => {
       let copyContent = '';
+      const doc = window.lastProcessedDocument;
       
-      // Get extracted text
-      const textContainer = document.getElementById('scanned-text-container');
-      const extractedText = textContainer?.innerText || '';
+      // Add header
+      copyContent += '═══════════════════════════════════════\n';
+      copyContent += 'DOCUMENT ANALYSIS REPORT\n';
+      copyContent += '═══════════════════════════════════════\n\n';
       
-      // Check if there are tables
-      const tables = window.lastProcessedDocument?.tables || [];
+      // Add metadata
+      copyContent += `📊 METADATA\n`;
+      copyContent += `${'-'.repeat(40)}\n`;
+      copyContent += `Timestamp: ${new Date().toLocaleString()}\n`;
+      if (doc?.ocr?.language) copyContent += `Language: ${doc.ocr.language}\n`;
+      if (doc?.ocr?.confidence) copyContent += `Confidence: ${(doc.ocr.confidence * 100).toFixed(1)}%\n`;
+      if (doc?.ocr?.extractionMethod) copyContent += `Method: ${doc.ocr.extractionMethod}\n`;
+      copyContent += '\n';
       
-      if (tables.length > 0) {
-        // Format with tables
-        tables.forEach((table, index) => {
-          copyContent += `table ${index + 1}:\n`;
-          // Extract text from HTML table or use csv format
-          if (table.html) {
-            copyContent += table.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-          } else if (table.csv) {
-            copyContent += table.csv;
-          } else if (table.markdown) {
-            copyContent += table.markdown;
-          } else {
-            copyContent += '(table data)';
-          }
-          copyContent += '\n\n';
-        });
+      // Check for hierarchical structure from region-based extraction
+      if (doc?.ocr?.hierarchical && doc.ocr.hierarchical.sections) {
+        // Use hierarchical structure
+        const hierarchy = doc.ocr.hierarchical;
+        copyContent += `📑 DOCUMENT STRUCTURE\n`;
+        copyContent += `${'-'.repeat(40)}\n`;
         
-        // Add any extracted text after tables
-        if (extractedText) {
-          copyContent += extractedText;
-        }
+        hierarchy.sections.forEach((section, sIdx) => {
+          copyContent += `\n§${sIdx + 1} ${section.title.toUpperCase()}\n`;
+          copyContent += `${'─'.repeat(40)}\n`;
+          
+          // Add section content from corresponding regions
+          if (doc.ocr.regionResults) {
+            const sectionRegions = doc.ocr.regionResults.filter((_, idx) => 
+              idx >= sIdx * 5 && idx < (sIdx + 1) * 5
+            );
+            
+            sectionRegions.forEach(region => {
+              if (region.type === 'header') {
+                copyContent += `\n▌ ${region.text.toUpperCase()}\n`;
+              } else if (region.type === 'table') {
+                copyContent += `\n┌─ TABLE ─────────────┐\n`;
+                copyContent += region.text + '\n';
+                copyContent += `└─────────────────────┘\n`;
+              } else {
+                copyContent += region.text + '\n';
+              }
+            });
+          }
+        });
       } else {
-        // Format without tables - split text into descriptions
+        // Fallback: use extracted text with smart formatting
+        const textContainer = document.getElementById('scanned-text-container');
+        const extractedText = textContainer?.innerText || '';
+        
+        copyContent += '📄 EXTRACTED TEXT\n';
+        copyContent += `${'-'.repeat(40)}\n`;
+        
         if (extractedText) {
           const lines = extractedText.split('\n').filter(line => line.trim());
           lines.forEach((line, index) => {
-            copyContent += `description ${index + 1}:\n${line}\n\n`;
+            // Auto-detect and format headers (all caps, short lines)
+            if (line.length < 60 && line === line.toUpperCase() && line.length > 3) {
+              copyContent += `\n▌ ${line}\n`;
+            } else {
+              copyContent += line + '\n';
+            }
           });
         } else {
-          copyContent = 'No text available';
+          copyContent += '(No text extracted)';
         }
       }
       
+      // Add tables if any
+      const tables = doc?.tables || [];
+      if (tables.length > 0) {
+        copyContent += `\n\n📋 TABLES (${tables.length} detected)\n`;
+        copyContent += `${'-'.repeat(40)}\n`;
+        tables.forEach((table, index) => {
+          copyContent += `\n┌─ TABLE ${index + 1} ─────────────────┐\n`;
+          if (table.markdown) {
+            copyContent += table.markdown;
+          } else if (table.csv) {
+            copyContent += table.csv;
+          } else {
+            copyContent += '(table data)';
+          }
+          copyContent += `\n└──────────────────────┘\n`;
+        });
+      }
+      
+      // Add error flags if any
+      const errorFlags = doc?.semantics?.errorFlags || [];
+      if (errorFlags.length > 0) {
+        copyContent += `\n\n⚠️  LOW CONFIDENCE WORDS\n`;
+        copyContent += `${'-'.repeat(40)}\n`;
+        errorFlags.slice(0, 20).forEach(w => {
+          copyContent += `• "${w.text}" (${((w.confidence || 0.5) * 100).toFixed(0)}%)\n`;
+        });
+        if (errorFlags.length > 20) {
+          copyContent += `...and ${errorFlags.length - 20} more\n`;
+        }
+      }
+      
+      // Add footer
+      copyContent += `\n${'═'.repeat(40)}\n`;
+      copyContent += 'Generated by DOCUGRAPH\n';
+      
       navigator.clipboard.writeText(copyContent).then(() => {
         const originalText = copyTextBtn.innerHTML;
-        copyTextBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+        copyTextBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied! ✓';
         setTimeout(() => {
           copyTextBtn.innerHTML = originalText;
         }, 2000);
