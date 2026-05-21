@@ -455,14 +455,13 @@
 
 <!-- Wait for libraries to load before running main code -->
 <script>
-  // Check if required libraries are available
-  let libsReady = false;
+  // Check if required libraries are available (globally accessible)
+  window.libsReady = false;
   
   function checkLibrariesReady() {
-    const tesseractReady = typeof Tesseract !== 'undefined' && typeof Tesseract.recognize === 'function';
+    const tesseractReady = typeof Tesseract !== 'undefined' && typeof Tesseract.createWorker === 'function';
     const d3Ready = typeof d3 !== 'undefined';
     const jsPdfReady = typeof window.jspdf !== 'undefined';
-    const docxReady = typeof docx !== 'undefined';
     
     if (!tesseractReady) {
       console.log('⏳ Waiting for Tesseract.js to load...');
@@ -482,12 +481,16 @@
       return;
     }
     
-    console.log('✅ All libraries ready');
-    libsReady = true;
+    console.log('✅ All libraries ready - Tesseract, D3, jsPDF');
+    window.libsReady = true;
     
     // Enable buttons once libraries are ready
     const buttons = document.querySelectorAll('[id*="btn"], [id*="button"]');
-    buttons.forEach(btn => btn.disabled = false);
+    buttons.forEach(btn => {
+      if (btn && typeof btn.disabled !== 'undefined') {
+        btn.disabled = false;
+      }
+    });
   }
   
   // Start checking immediately
@@ -495,9 +498,9 @@
   
   // Also check after a maximum wait time (libraries should be loaded within 5 seconds)
   setTimeout(() => {
-    if (!libsReady) {
+    if (!window.libsReady) {
       console.warn('⚠️ Some libraries failed to load, using graceful degradation');
-      libsReady = true;
+      window.libsReady = true;
     }
   }, 5000);
 </script>
@@ -642,7 +645,7 @@
           // Use Tesseract with timeout
           await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI thread
           
-          if (typeof Tesseract !== 'undefined' && Tesseract.recognize) {
+          if (typeof Tesseract !== 'undefined' && typeof Tesseract.createWorker === 'function') {
             console.log('📖 Running Enhanced Region-Based OCR...');
             
             // Use layout data if available
@@ -672,7 +675,13 @@
               console.warn('⚠️ OCR worker creation failed:', workerErr.message);
               ocrData.text = 'Document processed (OCR unavailable)';
               ocrData.extractionMethod = 'Fallback - Worker Unavailable';
-              await worker?.terminate?.();
+              if (worker) {
+                try {
+                  await worker.terminate();
+                } catch (e) {
+                  console.log('Worker cleanup:', e.message);
+                }
+              }
               throw new Error('OCR worker failed');
             }
             
@@ -5834,7 +5843,7 @@
     showState('processing');
     
     // Check if libraries are ready
-    if (!libsReady) {
+    if (!window.libsReady) {
       alert('⚠️ Libraries still loading. Please wait a moment and try again.');
       showState('initial');
       return;
@@ -7925,7 +7934,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
   // OCR button - Full Document Processing Pipeline
   elements.ocr.addEventListener('click', async () => {
     // Check if libraries are ready
-    if (!libsReady) {
+    if (!window.libsReady) {
       alert('⚠️ Libraries still loading. Please wait a moment and try again.');
       return;
     }
