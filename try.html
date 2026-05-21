@@ -919,31 +919,8 @@
   let currentFile = null;
   let currentLayoutData = null;  // Store layout analysis for second stage
   let analysisStage = 'initial'; // Track: initial, layout-detected, ocr-complete
-
-  const elements = {
-    dropzone: document.getElementById('dropzone'),
-    fileInput: document.getElementById('file-input'),
-    browse: document.getElementById('browse-btn'),
-    fileInfo: document.getElementById('file-info'),
-    fileName: document.getElementById('file-name'),
-    fileSize: document.getElementById('file-size'),
-    removeFile: document.getElementById('remove-file'),
-    analyze: document.getElementById('analyze-btn'),
-    ocr: document.getElementById('ocr-btn'),
-    actionButtons: document.getElementById('action-buttons'),
-    initialState: document.getElementById('initial-state'),
-    processingState: document.getElementById('processing-state'),
-    resultsState: document.getElementById('results-state'),
-    bboxContainer: document.getElementById('bbox-container'),
-    confidenceScore: document.getElementById('confidence-score'),
-    regionCount: document.getElementById('region-count'),
-    headerCount: document.getElementById('header-count'),
-    paraCount: document.getElementById('para-count'),
-    tableCount: document.getElementById('table-count'),
-    layoutAccuracy: document.getElementById('layout-accuracy'),
-    viewResultsBtn: document.getElementById('view-results-btn'),
-    newDocumentBtn: document.getElementById('new-document-btn'),
-  };
+  
+  let elements = {}; // Will be initialized in DOMContentLoaded
 
   // ============= UTILITY FUNCTIONS =============
   
@@ -7761,6 +7738,41 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
     alert(reportHtml); // Better: use a modal
     console.log('Report:', report);
   }
+  
+  // ==========================================
+  // Wait for DOM to be fully loaded before setting up event listeners
+  // ==========================================
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔄 DOMContentLoaded fired - Initializing elements and event listeners');
+    
+    // Initialize elements object now that DOM is ready
+    elements = {
+      dropzone: document.getElementById('dropzone'),
+      fileInput: document.getElementById('file-input'),
+      browse: document.getElementById('browse-btn'),
+      fileInfo: document.getElementById('file-info'),
+      fileName: document.getElementById('file-name'),
+      fileSize: document.getElementById('file-size'),
+      removeFile: document.getElementById('remove-file'),
+      analyze: document.getElementById('analyze-btn'),
+      ocr: document.getElementById('ocr-btn'),
+      actionButtons: document.getElementById('action-buttons'),
+      initialState: document.getElementById('initial-state'),
+      processingState: document.getElementById('processing-state'),
+      resultsState: document.getElementById('results-state'),
+      bboxContainer: document.getElementById('bbox-container'),
+      confidenceScore: document.getElementById('confidence-score'),
+      regionCount: document.getElementById('region-count'),
+      headerCount: document.getElementById('header-count'),
+      paraCount: document.getElementById('para-count'),
+      tableCount: document.getElementById('table-count'),
+      layoutAccuracy: document.getElementById('layout-accuracy'),
+      viewResultsBtn: document.getElementById('view-results-btn'),
+      newDocumentBtn: document.getElementById('new-document-btn'),
+    };
+    
+    console.log('✅ Elements initialized:', Object.keys(elements).length, 'elements found');
+    
   elements.browse.addEventListener('click', () => elements.fileInput.click());
   
   // Camera functionality
@@ -8217,7 +8229,9 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
       updateUIForStage();
     });
   }
-
+  
+  }); // End of DOMContentLoaded event listener
+  
 
 </script>
 </body>
