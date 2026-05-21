@@ -939,38 +939,16 @@
     }
 
     /**
-     * Apply all preprocessing filters to image for optimal OCR
+     * SIMPLIFIED: Skip heavy preprocessing to prevent browser freeze
+     * Tesseract.js handles preprocessing internally
      */
     async preprocessImage(canvas) {
-      let ctx = canvas.getContext('2d');
-      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-      // Step 1: Convert to grayscale
-      imageData = this.toGrayscale(imageData);
-
-      // Step 2: Adaptive contrast enhancement
-      imageData = this.adaptiveContrastEnhancement(imageData);
-
-      // Step 2.5: Histogram equalization for additional contrast boost
-      imageData = this.histogramEqualization(imageData);
-
-      // Step 3: Noise reduction (median filter)
-      imageData = this.medianFilter(imageData, canvas.width, canvas.height);
-
-      // Step 4: Adaptive thresholding (CLAHE)
-      imageData = this.claheThresholding(imageData);
-
-      // Step 5: Advanced morphological operations
-      imageData = this.advancedMorphology(imageData, canvas.width, canvas.height);
-
-      // Step 6: Detect and correct skew
-      const deskewedCanvas = await this.detectAndCorrectSkew(canvas, imageData);
-
-      // Step 7: Document border detection and deskewing
-      const finalCanvas = await this.deskewAndCrop(deskewedCanvas);
-
-      return finalCanvas;
+      console.log('⏭️ Skipping heavy preprocessing (Tesseract handles it internally)');
+      // Just return the canvas as-is
+      // Tesseract.js has built-in preprocessing that's optimized and doesn't block the browser
+      return canvas;
     }
+  }
 
     /**
      * Convert image to grayscale
@@ -2031,6 +2009,7 @@
 
     /**
      * ENHANCED: Apply context-aware preprocessing based on region type
+     * OPTIMIZED: Async pixel processing to prevent browser freeze
      */
     async contextAwarePreprocess(canvas, regionType) {
       const preprocessed = document.createElement('canvas');
@@ -2041,49 +2020,68 @@
       // Copy to preprocessed canvas
       ctx.drawImage(canvas, 0, 0);
 
-      // Apply type-specific enhancements
+      // Get image data
       const imageData = ctx.getImageData(0, 0, preprocessed.width, preprocessed.height);
       const data = imageData.data;
 
-      switch (regionType) {
-        case 'header':
-          // Boost contrast for headers (typically larger text)
-          for (let i = 0; i < data.length; i += 4) {
-            const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-            const contrast = 1.5; // Boost contrast
-            data[i] = Math.min(255, avg * contrast);
-            data[i+1] = Math.min(255, avg * contrast);
-            data[i+2] = Math.min(255, avg * contrast);
-          }
-          break;
-        
-        case 'table':
-          // Enhance edges and lines for table detection
-          for (let i = 0; i < data.length; i += 4) {
-            const val = (data[i] + data[i+1] + data[i+2]) / 3;
-            const threshold = 128;
-            const enhanced = val > threshold ? 255 : 0;
-            data[i] = enhanced;
-            data[i+1] = enhanced;
-            data[i+2] = enhanced;
-          }
-          break;
+      // Skip heavy preprocessing for large images (> 2MB pixels)
+      // This prevents browser freeze
+      if (data.length > 2000000) {
+        console.log('⏭️ Skipping pixel processing for large image (' + Math.round(data.length / 1000000) + 'MP)');
+        return preprocessed;
+      }
 
-        case 'figure':
-          // Preserve detail for figure OCR
-          // Minimal processing
-          break;
+      // Process pixels in async chunks to prevent blocking
+      const CHUNK_SIZE = 65536; // Process 64KB at a time
+      const totalChunks = Math.ceil(data.length / CHUNK_SIZE);
 
-        default:
-          // Standard text enhancement
-          for (let i = 0; i < data.length; i += 4) {
-            const val = (data[i] + data[i+1] + data[i+2]) / 3;
-            // Slight contrast boost for standard text
-            const boosted = Math.min(255, val * 1.1);
-            data[i] = boosted;
-            data[i+1] = boosted;
-            data[i+2] = boosted;
-          }
+      for (let chunk = 0; chunk < totalChunks; chunk++) {
+        // Yield to browser thread every chunk
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const start = chunk * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, data.length);
+
+        switch (regionType) {
+          case 'header':
+            // Boost contrast for headers (typically larger text)
+            for (let i = start; i < end; i += 4) {
+              const avg = (data[i] + data[i+1] + data[i+2]) / 3;
+              const contrast = 1.5; // Boost contrast
+              data[i] = Math.min(255, avg * contrast);
+              data[i+1] = Math.min(255, avg * contrast);
+              data[i+2] = Math.min(255, avg * contrast);
+            }
+            break;
+          
+          case 'table':
+            // Enhance edges and lines for table detection
+            for (let i = start; i < end; i += 4) {
+              const val = (data[i] + data[i+1] + data[i+2]) / 3;
+              const threshold = 128;
+              const enhanced = val > threshold ? 255 : 0;
+              data[i] = enhanced;
+              data[i+1] = enhanced;
+              data[i+2] = enhanced;
+            }
+            break;
+
+          case 'figure':
+            // Preserve detail for figure OCR - minimal processing
+            // Skip processing
+            break;
+
+          default:
+            // Standard text enhancement
+            for (let i = start; i < end; i += 4) {
+              const val = (data[i] + data[i+1] + data[i+2]) / 3;
+              // Slight contrast boost for standard text
+              const boosted = Math.min(255, val * 1.1);
+              data[i] = boosted;
+              data[i+1] = boosted;
+              data[i+2] = boosted;
+            }
+        }
       }
 
       ctx.putImageData(imageData, 0, 0);
