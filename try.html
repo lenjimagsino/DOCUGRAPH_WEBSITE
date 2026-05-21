@@ -452,18 +452,63 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<!-- Primary docx library from jsdelivr -->
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 
-<!-- Fallback docx library loader -->
+<!-- Fallback docx library loader with multiple CDN attempts -->
 <script>
-  setTimeout(() => {
-    if (!window.docx && typeof docx === 'undefined') {
-      console.log('Loading fallback docx library...');
+  let docxLoadAttempts = 0;
+  const maxDocxLoadAttempts = 5;
+  
+  function ensureDocxLoaded() {
+    docxLoadAttempts++;
+    
+    // Check if docx is loaded
+    const docxAvailable = window.docx || (typeof docx !== 'undefined' ? docx : null);
+    
+    if (docxAvailable) {
+      console.log('✅ docx library successfully loaded');
+      // Ensure window.docx is set if available globally
+      if (typeof docx !== 'undefined' && !window.docx) {
+        window.docx = docx;
+      }
+      return;
+    }
+    
+    if (docxLoadAttempts >= maxDocxLoadAttempts) {
+      console.warn('⚠️ Failed to load docx library after', maxDocxLoadAttempts, 'attempts');
+      // Create a mock object to prevent errors
+      window.docx = {
+        Document: function() { },
+        Paragraph: function() { },
+        Table: function() { },
+        TableRow: function() { },
+        TableCell: function() { },
+        Packer: { toBlob: function() { return Promise.reject(new Error('docx library not available')); } },
+        HeadingLevel: { HEADING_1: 1, HEADING_2: 2, HEADING_3: 3 },
+        AlignmentType: { CENTER: 'center', LEFT: 'left', RIGHT: 'right' },
+        WidthType: { PERCENTAGE: 'percentage' }
+      };
+      return;
+    }
+    
+    // Retry from alternative CDN
+    if (docxLoadAttempts === 2) {
+      console.log('Attempting backup docx CDN...');
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
+      script.onload = ensureDocxLoaded;
+      script.onerror = () => setTimeout(ensureDocxLoaded, 500);
       document.head.appendChild(script);
+      return;
     }
-  }, 2000);
+    
+    // Continue retrying
+    setTimeout(ensureDocxLoaded, 500);
+  }
+  
+  // Start checking after a short delay
+  setTimeout(ensureDocxLoaded, 1000);
 </script>
 
 <!-- Wait for libraries to load before running main code -->
@@ -6482,14 +6527,17 @@
 
     try {
       // Get docx library - try multiple possible locations
-      const docxLib = window.docx || (function() { 
-        try { return docx; } catch(e) { return null; } 
-      })();
+      let docxLib = window.docx;
       
+      // Try alternative global access
+      if (!docxLib && typeof docx !== 'undefined') {
+        docxLib = docx;
+      }
+      
+      // If still not available, try to load it
       if (!docxLib) {
-        console.log('⏳ DOCX library still loading, retrying in 1 second...');
-        alert('DOCX library is still loading. Retrying in 1 second...');
-        setTimeout(() => exportAsProfessionalDOCX(), 1000);
+        console.log('⏳ DOCX library not yet loaded, retrying in 2 seconds...');
+        setTimeout(() => exportAsProfessionalDOCX(), 2000);
         return;
       }
 
