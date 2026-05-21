@@ -6482,7 +6482,9 @@
 
     try {
       // Get docx library - try multiple possible locations
-      let docxLib = window.docx || (typeof docx !== 'undefined' ? docx : null);
+      const docxLib = window.docx || (function() { 
+        try { return docx; } catch(e) { return null; } 
+      })();
       
       if (!docxLib) {
         console.log('⏳ DOCX library still loading, retrying in 1 second...');
@@ -6491,17 +6493,15 @@
         return;
       }
 
-      // Make sure docx is available globally for the rest of the code
-      const docx = docxLib;
       const doc = window.lastProcessedDocument;
       const sections = [];
       
       // Title
       sections.push(
-        new docx.Paragraph({
+        new docxLib.Paragraph({
           text: 'DOCUMENT ANALYSIS REPORT',
-          heading: docx.HeadingLevel.HEADING_1,
-          alignment: docx.AlignmentType.CENTER,
+          heading: docxLib.HeadingLevel.HEADING_1,
+          alignment: docxLib.AlignmentType.CENTER,
           spacing: { before: 400, after: 100 },
           bold: true,
           size: 32
@@ -6509,9 +6509,9 @@
       );
       
       sections.push(
-        new docx.Paragraph({
+        new docxLib.Paragraph({
           text: 'OCR Analysis & Structure Extraction',
-          alignment: docx.AlignmentType.CENTER,
+          alignment: docxLib.AlignmentType.CENTER,
           spacing: { after: 300 },
           italic: true,
           size: 22,
@@ -6521,60 +6521,60 @@
       
       // Metadata
       sections.push(
-        new docx.Paragraph({
+        new docxLib.Paragraph({
           text: 'Report Metadata',
-          heading: docx.HeadingLevel.HEADING_2,
+          heading: docxLib.HeadingLevel.HEADING_2,
           spacing: { before: 200, after: 100 }
         })
       );
       
       const metadataRows = [
-        new docx.TableRow({
+        new docxLib.TableRow({
           cells: [
-            new docx.TableCell({ children: [new docx.Paragraph({ text: 'Property', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' } }),
-            new docx.TableCell({ children: [new docx.Paragraph({ text: 'Value', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' } })
+            new docxLib.TableCell({ children: [new docxLib.Paragraph({ text: 'Property', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' } }),
+            new docxLib.TableCell({ children: [new docxLib.Paragraph({ text: 'Value', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' } })
           ]
         }),
-        new docx.TableRow({
+        new docxLib.TableRow({
           cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Generated')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(new Date().toLocaleString())] })
+            new docxLib.TableCell({ children: [new docxLib.Paragraph('Generated')] }),
+            new docxLib.TableCell({ children: [new docxLib.Paragraph(new Date().toLocaleString())] })
           ]
         }),
-        new docx.TableRow({
+        new docxLib.TableRow({
           cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Language')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(doc.ocr?.language || 'Unknown')] })
+            new docxLib.TableCell({ children: [new docxLib.Paragraph('Language')] }),
+            new docxLib.TableCell({ children: [new docxLib.Paragraph(doc.ocr?.language || 'Unknown')] })
           ]
         }),
-        new docx.TableRow({
+        new docxLib.TableRow({
           cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Confidence')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(`${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`)] })
+            new docxLib.TableCell({ children: [new docxLib.Paragraph('Confidence')] }),
+            new docxLib.TableCell({ children: [new docxLib.Paragraph(`${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`)] })
           ]
         }),
-        new docx.TableRow({
+        new docxLib.TableRow({
           cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Word Count')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(String((doc.ocr?.words || []).length))] })
+            new docxLib.TableCell({ children: [new docxLib.Paragraph('Word Count')] }),
+            new docxLib.TableCell({ children: [new docxLib.Paragraph(String((doc.ocr?.words || []).length))] })
           ]
         })
       ];
       
       sections.push(
-        new docx.Table({
-          width: { size: 100, type: docx.WidthType.PERCENTAGE },
+        new docxLib.Table({
+          width: { size: 100, type: docxLib.WidthType.PERCENTAGE },
           rows: metadataRows
         })
       );
       
-      sections.push(new docx.Paragraph({ text: '', spacing: { after: 300 } }));
+      sections.push(new docxLib.Paragraph({ text: '', spacing: { after: 300 } }));
 
       // Extracted Text
       sections.push(
-        new docx.Paragraph({
+        new docxLib.Paragraph({
           text: 'Extracted Text',
-          heading: docx.HeadingLevel.HEADING_2,
+          heading: docxLib.HeadingLevel.HEADING_2,
           spacing: { before: 300, after: 100 }
         })
       );
@@ -6584,7 +6584,7 @@
       textLines.forEach(line => {
         if (line.trim()) {
           sections.push(
-            new docx.Paragraph({
+            new docxLib.Paragraph({
               text: line,
               spacing: { after: 50 }
             })
@@ -6592,29 +6592,29 @@
         }
       });
 
-      sections.push(new docx.Paragraph({ text: '', spacing: { after: 300 } }));
+      sections.push(new docxLib.Paragraph({ text: '', spacing: { after: 300 } }));
 
       // Tables
       if ((doc.tables || []).length > 0) {
         sections.push(
-          new docx.Paragraph({
+          new docxLib.Paragraph({
             text: `Detected Tables (${doc.tables.length})`,
-            heading: docx.HeadingLevel.HEADING_2,
+            heading: docxLib.HeadingLevel.HEADING_2,
             spacing: { before: 300, after: 100 }
           })
         );
         
         doc.tables.slice(0, 3).forEach((table, idx) => {
           sections.push(
-            new docx.Paragraph({
+            new docxLib.Paragraph({
               text: `Table ${idx + 1}`,
-              heading: docx.HeadingLevel.HEADING_3,
+              heading: docxLib.HeadingLevel.HEADING_3,
               spacing: { before: 150, after: 50 }
             })
           );
           
           sections.push(
-            new docx.Paragraph({
+            new docxLib.Paragraph({
               text: table.markdown || table.csv || 'Table data',
               spacing: { after: 150 }
             })
@@ -6626,15 +6626,15 @@
       const errorFlags = doc.semantics?.errorFlags || [];
       if (errorFlags.length > 0) {
         sections.push(
-          new docx.Paragraph({
+          new docxLib.Paragraph({
             text: 'Quality Analysis',
-            heading: docx.HeadingLevel.HEADING_2,
+            heading: docxLib.HeadingLevel.HEADING_2,
             spacing: { before: 300, after: 100 }
           })
         );
         
         sections.push(
-          new docx.Paragraph({
+          new docxLib.Paragraph({
             text: `⚠️ ${errorFlags.length} low-confidence words flagged`,
             spacing: { after: 100 },
             color: 'B80000'
@@ -6642,36 +6642,36 @@
         );
 
         const flagRows = [
-          new docx.TableRow({
+          new docxLib.TableRow({
             cells: [
-              new docx.TableCell({ children: [new docx.Paragraph({ text: 'Word', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' } }),
-              new docx.TableCell({ children: [new docx.Paragraph({ text: 'Confidence', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' } })
+              new docxLib.TableCell({ children: [new docxLib.Paragraph({ text: 'Word', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' } }),
+              new docxLib.TableCell({ children: [new docxLib.Paragraph({ text: 'Confidence', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' } })
             ]
           }),
-          ...errorFlags.slice(0, 15).map(w => new docx.TableRow({
+          ...errorFlags.slice(0, 15).map(w => new docxLib.TableRow({
             cells: [
-              new docx.TableCell({ children: [new docx.Paragraph(`"${w.text}"`)] }),
-              new docx.TableCell({ children: [new docx.Paragraph(`${((w.confidence || 0.5) * 100).toFixed(0)}%`)] })
+              new docxLib.TableCell({ children: [new docxLib.Paragraph(`"${w.text}"`)] }),
+              new docxLib.TableCell({ children: [new docxLib.Paragraph(`${((w.confidence || 0.5) * 100).toFixed(0)}%`)] })
             ]
           }))
         ];
 
         sections.push(
-          new docx.Table({
-            width: { size: 100, type: docx.WidthType.PERCENTAGE },
+          new docxLib.Table({
+            width: { size: 100, type: docxLib.WidthType.PERCENTAGE },
             rows: flagRows
           })
         );
       }
 
       // Create and save document
-      const docxDocument = new docx.Document({
+      const docxDocument = new docxLib.Document({
         sections: [{
           children: sections
         }]
       });
 
-      docx.Packer.toBlob(docxDocument).then(blob => {
+      docxLib.Packer.toBlob(docxDocument).then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
