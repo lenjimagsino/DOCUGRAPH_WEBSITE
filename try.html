@@ -7271,33 +7271,33 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
     
     console.log('✅ Elements initialized:', Object.keys(elements).length, 'elements found');
     
-  elements.browse.addEventListener('click', () => elements.fileInput.click());
-  
-  // Camera functionality
-  const cameraModal = document.getElementById('camera-modal');
-  const cameraBtn = document.getElementById('camera-btn');
-  const camerClose = document.getElementById('camera-close');
-  let cameraStream = null;
-  let capturedImageData = null;
+    elements.browse.addEventListener('click', () => elements.fileInput.click());
+    
+    // Camera functionality
+    const cameraModal = document.getElementById('camera-modal');
+    const cameraBtn = document.getElementById('camera-btn');
+    const camerClose = document.getElementById('camera-close');
+    let cameraStream = null;
+    let capturedImageData = null;
 
-  cameraBtn.addEventListener('click', () => {
-    cameraModal.classList.add('active');
-    initCamera();
-  });
+    cameraBtn.addEventListener('click', () => {
+      cameraModal.classList.add('active');
+      initCamera();
+    });
 
-  camerClose.addEventListener('click', () => {
-    cameraModal.classList.remove('active');
-    stopCamera();
-  });
-
-  cameraModal.addEventListener('click', (e) => {
-    if (e.target === cameraModal) {
+    camerClose.addEventListener('click', () => {
       cameraModal.classList.remove('active');
       stopCamera();
-    }
-  });
+    });
 
-  async function initCamera() {
+    cameraModal.addEventListener('click', (e) => {
+      if (e.target === cameraModal) {
+        cameraModal.classList.remove('active');
+        stopCamera();
+      }
+    });
+
+    async function initCamera() {
     try {
       document.getElementById('camera-setup').style.display = 'block';
       document.getElementById('camera-live').style.display = 'none';
@@ -7327,277 +7327,277 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
   }
 
   function stopCamera() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      cameraStream = null;
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      document.getElementById('camera-live').style.display = 'none';
+      document.getElementById('camera-review').style.display = 'none';
     }
-    document.getElementById('camera-live').style.display = 'none';
-    document.getElementById('camera-review').style.display = 'none';
-  }
 
-  document.getElementById('camera-snap').addEventListener('click', () => {
+    document.getElementById('camera-snap').addEventListener('click', () => {
     const video = document.getElementById('camera-video');
-    const canvas = document.getElementById('camera-canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-    
-    capturedImageData = canvas.toDataURL('image/jpeg', 0.95);
-    document.getElementById('camera-captured').src = capturedImageData;
-    
-    document.getElementById('camera-live').style.display = 'none';
-    document.getElementById('camera-review').style.display = 'block';
-  });
+      const canvas = document.getElementById('camera-canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      capturedImageData = canvas.toDataURL('image/jpeg', 0.95);
+      document.getElementById('camera-captured').src = capturedImageData;
+      
+      document.getElementById('camera-live').style.display = 'none';
+      document.getElementById('camera-review').style.display = 'block';
+    });
 
-  document.getElementById('camera-retake').addEventListener('click', () => {
-    document.getElementById('camera-live').style.display = 'block';
-    document.getElementById('camera-review').style.display = 'none';
-  });
+    document.getElementById('camera-retake').addEventListener('click', () => {
+      document.getElementById('camera-live').style.display = 'block';
+      document.getElementById('camera-review').style.display = 'none';
+    });
 
-  document.getElementById('camera-confirm').addEventListener('click', () => {
-    if (capturedImageData) {
-      // Convert data URL to file
-      fetch(capturedImageData)
-        .then(res => res.blob())
-        .then(blob => {
-          const file = new File([blob], 'camera-capture-' + new Date().getTime() + '.jpg', { type: 'image/jpeg' });
-          currentFile = file;
-          elements.fileName.textContent = file.name;
-          elements.fileSize.textContent = fmt(file.size);
-          elements.fileInfo.style.display = 'block';
-          elements.actionButtons.style.display = 'flex';
-          currentLayoutData = null;
-          analysisStage = 'initial';
-          updateUIForStage();
-          
-          cameraModal.classList.remove('active');
-          stopCamera();
-        });
-    }
-  });
+    document.getElementById('camera-confirm').addEventListener('click', () => {
+      if (capturedImageData) {
+        // Convert data URL to file
+        fetch(capturedImageData)
+          .then(res => res.blob())
+          .then(blob => {
+            const file = new File([blob], 'camera-capture-' + new Date().getTime() + '.jpg', { type: 'image/jpeg' });
+            currentFile = file;
+            elements.fileName.textContent = file.name;
+            elements.fileSize.textContent = fmt(file.size);
+            elements.fileInfo.style.display = 'block';
+            elements.actionButtons.style.display = 'flex';
+            currentLayoutData = null;
+            analysisStage = 'initial';
+            updateUIForStage();
+            
+            cameraModal.classList.remove('active');
+            stopCamera();
+          });
+      }
+    });
 
-  elements.fileInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) {
-      currentFile = e.target.files[0];
-      elements.fileName.textContent = currentFile.name;
-      elements.fileSize.textContent = fmt(currentFile.size);
-      elements.fileInfo.style.display = 'block';
-      elements.actionButtons.style.display = 'flex';
-      currentLayoutData = null;
-      analysisStage = 'initial';
-      updateUIForStage();
-    }
-  });
+    elements.fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) {
+        currentFile = e.target.files[0];
+        elements.fileName.textContent = currentFile.name;
+        elements.fileSize.textContent = fmt(currentFile.size);
+        elements.fileInfo.style.display = 'block';
+        elements.actionButtons.style.display = 'flex';
+        currentLayoutData = null;
+        analysisStage = 'initial';
+        updateUIForStage();
+      }
+    });
 
-  elements.removeFile.addEventListener('click', () => {
-    currentFile = null;
-    elements.fileInput.value = '';
-    clearUI();
-  });
+    elements.removeFile.addEventListener('click', () => {
+      currentFile = null;
+      elements.fileInput.value = '';
+      clearUI();
+    });
 
-  // Drag and drop
-  ['dragenter', 'dragover'].forEach(ev =>
-    elements.dropzone.addEventListener(ev, e => {
-      e.preventDefault();
-      elements.dropzone.classList.add('drag');
-    })
-  );
-  ['dragleave', 'drop'].forEach(ev =>
-    elements.dropzone.addEventListener(ev, e => {
-      e.preventDefault();
-      elements.dropzone.classList.remove('drag');
-    })
-  );
+    // Drag and drop
+    ['dragenter', 'dragover'].forEach(ev =>
+      elements.dropzone.addEventListener(ev, e => {
+        e.preventDefault();
+        elements.dropzone.classList.add('drag');
+      })
+    );
+    ['dragleave', 'drop'].forEach(ev =>
+      elements.dropzone.addEventListener(ev, e => {
+        e.preventDefault();
+        elements.dropzone.classList.remove('drag');
+      })
+    );
 
-  elements.dropzone.addEventListener('drop', e => {
-    if (e.dataTransfer.files[0]) {
-      const f = e.dataTransfer.files[0];
-      const ok = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'].includes(f.type);
-      if (!ok) {
-        alert('Please upload a PDF, JPG, or PNG file.');
+    elements.dropzone.addEventListener('drop', e => {
+      if (e.dataTransfer.files[0]) {
+        const f = e.dataTransfer.files[0];
+        const ok = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'].includes(f.type);
+        if (!ok) {
+          alert('Please upload a PDF, JPG, or PNG file.');
+          return;
+        }
+        currentFile = f;
+        elements.fileInput.files = e.dataTransfer.files;
+        elements.fileName.textContent = f.name;
+        elements.fileSize.textContent = fmt(f.size);
+        elements.fileInfo.style.display = 'block';
+        elements.actionButtons.style.display = 'flex';
+      }
+    });
+
+    // Analyze button - Layout Detection
+    elements.analyze.addEventListener('click', () => {
+      if (!currentFile) {
+        alert('Please upload a document first.');
         return;
       }
-      currentFile = f;
-      elements.fileInput.files = e.dataTransfer.files;
-      elements.fileName.textContent = f.name;
-      elements.fileSize.textContent = fmt(f.size);
-      elements.fileInfo.style.display = 'block';
-      elements.actionButtons.style.display = 'flex';
-    }
-  });
+      console.log('🔍 Starting layout analysis...');
+      processDocument('uploaded');
+    });
 
-  // Analyze button - Layout Detection
-  elements.analyze.addEventListener('click', () => {
-    if (!currentFile) {
-      alert('Please upload a document first.');
-      return;
-    }
-    console.log('🔍 Starting layout analysis...');
-    processDocument('uploaded');
-  });
+    // OCR button - extracts text from already-analyzed layout
+    // Initialize the advanced processor globally
+    const advancedProcessor = new AdvancedDocumentProcessor();
 
-  // OCR button - extracts text from already-analyzed layout
-  // Initialize the advanced processor globally
-  const advancedProcessor = new AdvancedDocumentProcessor();
-
-  // OCR button - Full Document Processing Pipeline
-  elements.ocr.addEventListener('click', async () => {
-    // Check if libraries are ready
-    if (!window.libsReady) {
-      alert('⚠️ Libraries still loading. Please wait a moment and try again.');
-      return;
-    }
-    
-    if (!currentLayoutData) {
-      alert('Please analyze layout first.');
-      return;
-    }
-    
-    if (!currentFile) {
-      alert('Please upload a document first.');
-      return;
-    }
-    console.log('🟦 Starting DOCUMENT PROCESSING with timeout protection');
-    
-    // Show processing state
-    showState('processing');
-    
-    const textContainer = document.getElementById('scanned-text-container');
-    if (textContainer) {
-      textContainer.innerHTML = '<div style="padding:40px;text-align:center;"><div style="font-size:36px;margin:20px;">⏳</div><p><strong>Processing...</strong></p><p style="color:#666;font-size:13px;">Analyzing document (3-10 seconds)</p></div>';
-    }
-    
-    try {
-      // Setup timeouts
-      const fileTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('File reading timeout')), 5000)
-      );
-      
-      const processingTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Processing took too long')), 12000)
-      );
-      
-      // Read file
-      const fileReady = new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.onload = (event) => {
-          try {
-            const img = new Image();
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width;
-              canvas.height = img.height;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0);
-              resolve(canvas);
-            };
-            img.src = event.target.result;
-          } catch (e) {
-            reject(e);
-          }
-        };
-        reader.readAsDataURL(currentFile);
-      });
-      
-      const canvas = await Promise.race([fileReady, fileTimeout]);
-      console.log('📄 Canvas ready:', canvas.width, 'x', canvas.height);
-      
-      // Process document
-      console.log('🚀 Starting processing...');
-      const fullyProcessedDocument = await Promise.race([
-        advancedProcessor.processDocumentFull(canvas, currentFile, { useAdvancedCorrection: true }),
-        processingTimeout
-      ]);
-
-      console.log('✅ PIPELINE COMPLETE');
-      analysisStage = 'ocr-complete';
-      
-      displayComprehensiveResults(fullyProcessedDocument);
-      updateUIForStage();
-      window.lastProcessedDocument = fullyProcessedDocument;
-
-    } catch (err) {
-      console.error('❌ Error:', err.message);
-      
-      if (textContainer) {
-        textContainer.innerHTML = '<div style="padding:15px;background:#ffcdd2;border-left:4px solid #f44336;border-radius:4px;"><p style="margin:0 0 8px 0;color:#c62828;"><strong>⚠️ Processing Error</strong></p><p style="margin:0;color:#d32f2f;font-size:13px;">'+err.message+'</p></div>';
+    // OCR button - Full Document Processing Pipeline
+    elements.ocr.addEventListener('click', async () => {
+      // Check if libraries are ready
+      if (!window.libsReady) {
+        alert('⚠️ Libraries still loading. Please wait a moment and try again.');
+        return;
       }
       
-      analysisStage = 'layout-detected';
-      updateUIForStage();
-    }
-  });
-
-  // Export options feature listeners
-  const tableGridsCheckbox = document.getElementById('enable-table-grids');
-  const shapesCheckbox = document.getElementById('enable-shapes');
-  const imagesCheckbox = document.getElementById('include-images');
-  const formatTemplate = document.getElementById('format-template');
-
-  if (tableGridsCheckbox) {
-    tableGridsCheckbox.addEventListener('change', () => {
-      console.log('Table Grids enabled:', tableGridsCheckbox.checked);
-    });
-  }
-
-  if (shapesCheckbox) {
-    shapesCheckbox.addEventListener('change', () => {
-      console.log('Shapes/Flowcharts enabled:', shapesCheckbox.checked);
-    });
-  }
-
-  if (imagesCheckbox) {
-    imagesCheckbox.addEventListener('change', () => {
-      console.log('Include Images enabled:', imagesCheckbox.checked);
-    });
-  }
-
-  if (formatTemplate) {
-    formatTemplate.addEventListener('change', () => {
-      console.log('Format template selected:', formatTemplate.value);
-    });
-  }
-
-  // Download button handlers
-  const copyTextBtn = document.getElementById('copy-text-btn');
-  const downloadDocxBtn = document.getElementById('download-docx-btn');
-  const downloadPdfBtn = document.getElementById('download-pdf-btn');
-  const newAnalysisBtn = document.getElementById('new-analysis-btn');
-
-  if (copyTextBtn) {
-    copyTextBtn.addEventListener('click', () => {
-      let copyContent = '';
-      const doc = window.lastProcessedDocument;
+      if (!currentLayoutData) {
+        alert('Please analyze layout first.');
+        return;
+      }
       
-      // Add header
-      copyContent += '═══════════════════════════════════════\n';
-      copyContent += 'DOCUMENT ANALYSIS REPORT\n';
-      copyContent += '═══════════════════════════════════════\n\n';
+      if (!currentFile) {
+        alert('Please upload a document first.');
+        return;
+      }
+      console.log('🟦 Starting DOCUMENT PROCESSING with timeout protection');
       
-      // Add metadata
-      copyContent += `📊 METADATA\n`;
-      copyContent += `${'-'.repeat(40)}\n`;
-      copyContent += `Timestamp: ${new Date().toLocaleString()}\n`;
-      if (doc?.ocr?.language) copyContent += `Language: ${doc.ocr.language}\n`;
-      if (doc?.ocr?.confidence) copyContent += `Confidence: ${(doc.ocr.confidence * 100).toFixed(1)}%\n`;
-      if (doc?.ocr?.extractionMethod) copyContent += `Method: ${doc.ocr.extractionMethod}\n`;
-      copyContent += '\n';
+      // Show processing state
+      showState('processing');
       
-      // Check for hierarchical structure from region-based extraction
-      if (doc?.ocr?.hierarchical && doc.ocr.hierarchical.sections) {
-        // Use hierarchical structure
-        const hierarchy = doc.ocr.hierarchical;
-        copyContent += `📑 DOCUMENT STRUCTURE\n`;
-        copyContent += `${'-'.repeat(40)}\n`;
+      const textContainer = document.getElementById('scanned-text-container');
+      if (textContainer) {
+        textContainer.innerHTML = '<div style="padding:40px;text-align:center;"><div style="font-size:36px;margin:20px;">⏳</div><p><strong>Processing...</strong></p><p style="color:#666;font-size:13px;">Analyzing document (3-10 seconds)</p></div>';
+      }
+      
+      try {
+        // Setup timeouts
+        const fileTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('File reading timeout')), 5000)
+        );
         
-        hierarchy.sections.forEach((section, sIdx) => {
-          copyContent += `\n§${sIdx + 1} ${section.title.toUpperCase()}\n`;
-          copyContent += `${'─'.repeat(40)}\n`;
+        const processingTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Processing took too long')), 12000)
+        );
+        
+        // Read file
+        const fileReady = new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.onload = (event) => {
+            try {
+              const img = new Image();
+              img.onerror = () => reject(new Error('Failed to load image'));
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas);
+              };
+              img.src = event.target.result;
+            } catch (e) {
+              reject(e);
+            }
+          };
+          reader.readAsDataURL(currentFile);
+        });
+        
+        const canvas = await Promise.race([fileReady, fileTimeout]);
+        console.log('📄 Canvas ready:', canvas.width, 'x', canvas.height);
+        
+        // Process document
+        console.log('🚀 Starting processing...');
+        const fullyProcessedDocument = await Promise.race([
+          advancedProcessor.processDocumentFull(canvas, currentFile, { useAdvancedCorrection: true }),
+          processingTimeout
+        ]);
+
+        console.log('✅ PIPELINE COMPLETE');
+        analysisStage = 'ocr-complete';
+        
+        displayComprehensiveResults(fullyProcessedDocument);
+        updateUIForStage();
+        window.lastProcessedDocument = fullyProcessedDocument;
+
+      } catch (err) {
+        console.error('❌ Error:', err.message);
+        
+        if (textContainer) {
+          textContainer.innerHTML = '<div style="padding:15px;background:#ffcdd2;border-left:4px solid #f44336;border-radius:4px;"><p style="margin:0 0 8px 0;color:#c62828;"><strong>⚠️ Processing Error</strong></p><p style="margin:0;color:#d32f2f;font-size:13px;">'+err.message+'</p></div>';
+        }
+        
+        analysisStage = 'layout-detected';
+        updateUIForStage();
+      }
+    });
+
+    // Export options feature listeners
+    const tableGridsCheckbox = document.getElementById('enable-table-grids');
+    const shapesCheckbox = document.getElementById('enable-shapes');
+    const imagesCheckbox = document.getElementById('include-images');
+    const formatTemplate = document.getElementById('format-template');
+
+    if (tableGridsCheckbox) {
+      tableGridsCheckbox.addEventListener('change', () => {
+        console.log('Table Grids enabled:', tableGridsCheckbox.checked);
+      });
+    }
+
+    if (shapesCheckbox) {
+      shapesCheckbox.addEventListener('change', () => {
+        console.log('Shapes/Flowcharts enabled:', shapesCheckbox.checked);
+      });
+    }
+
+    if (imagesCheckbox) {
+      imagesCheckbox.addEventListener('change', () => {
+        console.log('Include Images enabled:', imagesCheckbox.checked);
+      });
+    }
+
+    if (formatTemplate) {
+      formatTemplate.addEventListener('change', () => {
+        console.log('Format template selected:', formatTemplate.value);
+      });
+    }
+
+    // Download button handlers
+    const copyTextBtn = document.getElementById('copy-text-btn');
+    const downloadDocxBtn = document.getElementById('download-docx-btn');
+    const downloadPdfBtn = document.getElementById('download-pdf-btn');
+    const newAnalysisBtn = document.getElementById('new-analysis-btn');
+
+    if (copyTextBtn) {
+      copyTextBtn.addEventListener('click', () => {
+        let copyContent = '';
+        const doc = window.lastProcessedDocument;
+        
+        // Add header
+        copyContent += '═══════════════════════════════════════\n';
+        copyContent += 'DOCUMENT ANALYSIS REPORT\n';
+        copyContent += '═══════════════════════════════════════\n\n';
+        
+        // Add metadata
+        copyContent += `📊 METADATA\n`;
+        copyContent += `${'-'.repeat(40)}\n`;
+        copyContent += `Timestamp: ${new Date().toLocaleString()}\n`;
+        if (doc?.ocr?.language) copyContent += `Language: ${doc.ocr.language}\n`;
+        if (doc?.ocr?.confidence) copyContent += `Confidence: ${(doc.ocr.confidence * 100).toFixed(1)}%\n`;
+        if (doc?.ocr?.extractionMethod) copyContent += `Method: ${doc.ocr.extractionMethod}\n`;
+        copyContent += '\n';
+        
+        // Check for hierarchical structure from region-based extraction
+        if (doc?.ocr?.hierarchical && doc.ocr.hierarchical.sections) {
+          // Use hierarchical structure
+          const hierarchy = doc.ocr.hierarchical;
+          copyContent += `📑 DOCUMENT STRUCTURE\n`;
+          copyContent += `${'-'.repeat(40)}\n`;
           
-          // Add section content from corresponding regions
+          hierarchy.sections.forEach((section, sIdx) => {
+            copyContent += `\n§${sIdx + 1} ${section.title.toUpperCase()}\n`;
+            copyContent += `${'─'.repeat(40)}\n`;
+            
+            // Add section content from corresponding regions
           if (doc.ocr.regionResults) {
             const sectionRegions = doc.ocr.regionResults.filter((_, idx) => 
               idx >= sIdx * 5 && idx < (sIdx + 1) * 5
@@ -7684,35 +7684,35 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
         alert('Failed to copy text: ' + err);
       });
     });
-  }
+    }
 
-  if (downloadDocxBtn) {
-    downloadDocxBtn.addEventListener('click', () => {
-      console.log('📥 Downloading professional DOCX document...');
-      exportAsProfessionalDOCX();
-    });
-  }
+    if (downloadDocxBtn) {
+      downloadDocxBtn.addEventListener('click', () => {
+        console.log('📥 Downloading professional DOCX document...');
+        exportAsProfessionalDOCX();
+      });
+    }
 
-  if (downloadPdfBtn) {
-    downloadPdfBtn.addEventListener('click', () => {
-      console.log('📥 Downloading professional PDF document...');
-      exportAsProfessionalPDF();
-    });
-  }
+    if (downloadPdfBtn) {
+      downloadPdfBtn.addEventListener('click', () => {
+        console.log('📥 Downloading professional PDF document...');
+        exportAsProfessionalPDF();
+      });
+    }
 
-  if (newAnalysisBtn) {
-    newAnalysisBtn.addEventListener('click', () => {
-      console.log('🔄 Starting new analysis...');
-      const placeholder = document.getElementById('preview-placeholder');
-      if (placeholder) placeholder.style.display = 'flex';
-      
-      currentFile = null;
-      currentLayoutData = null;
-      analysisStage = 'initial';
-      elements.fileInput.value = '';
-      clearUI();
-      updateUIForStage();
-    });
+    if (newAnalysisBtn) {
+      newAnalysisBtn.addEventListener('click', () => {
+        console.log('🔄 Starting new analysis...');
+        const placeholder = document.getElementById('preview-placeholder');
+        if (placeholder) placeholder.style.display = 'flex';
+        
+        currentFile = null;
+        currentLayoutData = null;
+        analysisStage = 'initial';
+        elements.fileInput.value = '';
+        clearUI();
+        updateUIForStage();
+      });
   }
 
   // Remove file button
@@ -7727,7 +7727,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
       updateUIForStage();
     });
   }
-  
+
   }); // End of DOMContentLoaded event listener
   
 
