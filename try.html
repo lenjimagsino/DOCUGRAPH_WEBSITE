@@ -450,6 +450,7 @@
 <script src="assets/main.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 
@@ -6447,18 +6448,21 @@
     }
 
     try {
-      const doc = window.lastProcessedDocument;
-      const { Document, Packer, Paragraph, Table, TableCell, TextRun, BorderStyle, VerticalAlign, AlignmentType, HeadingLevel, UnderlineType, convertInchesToTwip } = window.docx;
+      // Check if docx library is loaded
+      if (!window.docx) {
+        alert('DOCX library not loaded. Please refresh the page and try again.');
+        return;
+      }
 
-      // Generate document
+      const doc = window.lastProcessedDocument;
       const sections = [];
       
-      // Title Page
+      // Title
       sections.push(
-        new Paragraph({
+        new docx.Paragraph({
           text: 'DOCUMENT ANALYSIS REPORT',
-          heading: HeadingLevel.HEADING_1,
-          alignment: AlignmentType.CENTER,
+          heading: docx.HeadingLevel.HEADING_1,
+          alignment: docx.AlignmentType.CENTER,
           spacing: { before: 400, after: 100 },
           bold: true,
           size: 32
@@ -6466,9 +6470,9 @@
       );
       
       sections.push(
-        new Paragraph({
+        new docx.Paragraph({
           text: 'OCR Analysis & Structure Extraction',
-          alignment: AlignmentType.CENTER,
+          alignment: docx.AlignmentType.CENTER,
           spacing: { after: 300 },
           italic: true,
           size: 22,
@@ -6476,281 +6480,173 @@
         })
       );
       
-      // Metadata Section
+      // Metadata
       sections.push(
-        new Paragraph({
+        new docx.Paragraph({
           text: 'Report Metadata',
-          heading: HeadingLevel.HEADING_2,
+          heading: docx.HeadingLevel.HEADING_2,
           spacing: { before: 200, after: 100 }
         })
       );
       
-      const metadataTable = [
-        {
+      const metadataRows = [
+        new docx.TableRow({
           cells: [
-            new TableCell({ children: [new Paragraph({ text: 'Property', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' }, width: { size: 30, type: 'pct' } }),
-            new TableCell({ children: [new Paragraph({ text: 'Value', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' }, width: { size: 70, type: 'pct' } })
+            new docx.TableCell({ children: [new docx.Paragraph({ text: 'Property', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' } }),
+            new docx.TableCell({ children: [new docx.Paragraph({ text: 'Value', bold: true, color: 'FFFFFF' })], shading: { fill: '22C55E' } })
           ]
-        },
-        {
+        }),
+        new docx.TableRow({
           cells: [
-            new TableCell({ children: [new Paragraph('Generated')] }),
-            new TableCell({ children: [new Paragraph(new Date().toLocaleString())] })
+            new docx.TableCell({ children: [new docx.Paragraph('Generated')] }),
+            new docx.TableCell({ children: [new docx.Paragraph(new Date().toLocaleString())] })
           ]
-        },
-        {
+        }),
+        new docx.TableRow({
           cells: [
-            new TableCell({ children: [new Paragraph('Extraction Method')] }),
-            new TableCell({ children: [new Paragraph(doc.ocr?.extractionMethod || 'Standard OCR')] })
+            new docx.TableCell({ children: [new docx.Paragraph('Language')] }),
+            new docx.TableCell({ children: [new docx.Paragraph(doc.ocr?.language || 'Unknown')] })
           ]
-        },
-        {
+        }),
+        new docx.TableRow({
           cells: [
-            new TableCell({ children: [new Paragraph('Language')] }),
-            new TableCell({ children: [new Paragraph(doc.ocr?.language || 'Unknown')] })
+            new docx.TableCell({ children: [new docx.Paragraph('Confidence')] }),
+            new docx.TableCell({ children: [new docx.Paragraph(`${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`)] })
           ]
-        },
-        {
+        }),
+        new docx.TableRow({
           cells: [
-            new TableCell({ children: [new Paragraph('Confidence Score')] }),
-            new TableCell({ children: [new Paragraph(`${((doc.ocr?.confidence || 0) * 100).toFixed(1)}%`)] })
+            new docx.TableCell({ children: [new docx.Paragraph('Word Count')] }),
+            new docx.TableCell({ children: [new docx.Paragraph(String((doc.ocr?.words || []).length))] })
           ]
-        },
-        {
-          cells: [
-            new TableCell({ children: [new Paragraph('Word Count')] }),
-            new TableCell({ children: [new Paragraph(String((doc.ocr?.words || []).length))] })
-          ]
-        },
-        {
-          cells: [
-            new TableCell({ children: [new Paragraph('Regions Detected')] }),
-            new TableCell({ children: [new Paragraph(String((doc.ocr?.regionResults || []).length))] })
-          ]
-        }
+        })
       ];
       
       sections.push(
-        new Table({
-          width: { size: 100, type: 'pct' },
-          rows: metadataTable,
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' },
-            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' }
-          }
+        new docx.Table({
+          width: { size: 100, type: docx.WidthType.PERCENTAGE },
+          rows: metadataRows
         })
       );
       
-      // Hierarchical Structure (if available)
-      if (doc.ocr?.hierarchical && doc.ocr.hierarchical.sections) {
-        sections.push(
-          new Paragraph({
-            text: 'Document Structure',
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 300, after: 100 }
-          })
-        );
-        
-        doc.ocr.hierarchical.sections.forEach((section, sIdx) => {
-          sections.push(
-            new Paragraph({
-              text: `${section.title}`,
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 150, after: 100 },
-              border: {
-                bottom: {
-                  color: '22C55E',
-                  space: 1,
-                  style: BorderStyle.SINGLE,
-                  size: 6
-                }
-              }
-            })
-          );
-          
-          // Add section metadata
-          sections.push(
-            new Paragraph({
-              text: `Content length: ${section.contentLength} characters | Tables: ${section.tableCount}`,
-              spacing: { after: 100 },
-              italics: true,
-              size: 18,
-              color: '666666'
-            })
-          );
-          
-          // Add editable content field
-          sections.push(
-            new Paragraph({
-              text: '[--- Section Content ---]',
-              spacing: { after: 100 },
-              shading: { fill: 'F5F5F5' },
-              border: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-                left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-                right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
-              }
-            })
-          );
-        });
-      }
-      
-      // Extracted Text Section
+      sections.push(new docx.Paragraph({ text: '', spacing: { after: 300 } }));
+
+      // Extracted Text
       sections.push(
-        new Paragraph({
-          text: 'Extracted Text Content',
-          heading: HeadingLevel.HEADING_2,
+        new docx.Paragraph({
+          text: 'Extracted Text',
+          heading: docx.HeadingLevel.HEADING_2,
           spacing: { before: 300, after: 100 }
         })
       );
       
-      sections.push(
-        new Paragraph({
-          text: doc.ocr?.text || 'No text extracted',
-          spacing: { after: 200 },
-          border: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
-          }
-        })
-      );
-      
+      const extractedText = doc.ocr?.text || 'No text extracted';
+      const textLines = extractedText.split('\n').slice(0, 50);
+      textLines.forEach(line => {
+        if (line.trim()) {
+          sections.push(
+            new docx.Paragraph({
+              text: line,
+              spacing: { after: 50 }
+            })
+          );
+        }
+      });
+
+      sections.push(new docx.Paragraph({ text: '', spacing: { after: 300 } }));
+
       // Tables
       if ((doc.tables || []).length > 0) {
         sections.push(
-          new Paragraph({
+          new docx.Paragraph({
             text: `Detected Tables (${doc.tables.length})`,
-            heading: HeadingLevel.HEADING_2,
+            heading: docx.HeadingLevel.HEADING_2,
             spacing: { before: 300, after: 100 }
           })
         );
         
-        doc.tables.forEach((table, idx) => {
+        doc.tables.slice(0, 3).forEach((table, idx) => {
           sections.push(
-            new Paragraph({
+            new docx.Paragraph({
               text: `Table ${idx + 1}`,
-              heading: HeadingLevel.HEADING_3,
+              heading: docx.HeadingLevel.HEADING_3,
               spacing: { before: 150, after: 50 }
             })
           );
           
           sections.push(
-            new Paragraph({
+            new docx.Paragraph({
               text: table.markdown || table.csv || 'Table data',
-              spacing: { after: 150 },
-              shading: { fill: 'F9F9F9' },
-              border: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-                left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-                right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
-              }
+              spacing: { after: 150 }
             })
           );
         });
       }
-      
+
       // Quality Analysis
-      sections.push(
-        new Paragraph({
-          text: 'Quality Analysis',
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 300, after: 100 }
-        })
-      );
-      
       const errorFlags = doc.semantics?.errorFlags || [];
       if (errorFlags.length > 0) {
         sections.push(
-          new Paragraph({
-            text: `Low Confidence Words (${errorFlags.length} flagged)`,
-            heading: HeadingLevel.HEADING_3,
-            spacing: { before: 150, after: 50 }
+          new docx.Paragraph({
+            text: 'Quality Analysis',
+            heading: docx.HeadingLevel.HEADING_2,
+            spacing: { before: 300, after: 100 }
           })
         );
         
-        const flaggedTable = [
-          {
+        sections.push(
+          new docx.Paragraph({
+            text: `⚠️ ${errorFlags.length} low-confidence words flagged`,
+            spacing: { after: 100 },
+            color: 'B80000'
+          })
+        );
+
+        const flagRows = [
+          new docx.TableRow({
             cells: [
-              new TableCell({ children: [new Paragraph({ text: 'Word', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' }, width: { size: 60, type: 'pct' } }),
-              new TableCell({ children: [new Paragraph({ text: 'Confidence', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' }, width: { size: 40, type: 'pct' } })
+              new docx.TableCell({ children: [new docx.Paragraph({ text: 'Word', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' } }),
+              new docx.TableCell({ children: [new docx.Paragraph({ text: 'Confidence', bold: true, color: 'FFFFFF' })], shading: { fill: 'F97316' } })
             ]
-          },
-          ...errorFlags.slice(0, 20).map(w => ({
+          }),
+          ...errorFlags.slice(0, 15).map(w => new docx.TableRow({
             cells: [
-              new TableCell({ children: [new Paragraph(`"${w.text}"`)] }),
-              new TableCell({ children: [new Paragraph(`${((w.confidence || 0.5) * 100).toFixed(0)}%`)] })
+              new docx.TableCell({ children: [new docx.Paragraph(`"${w.text}"`)] }),
+              new docx.TableCell({ children: [new docx.Paragraph(`${((w.confidence || 0.5) * 100).toFixed(0)}%`)] })
             ]
           }))
         ];
-        
+
         sections.push(
-          new Table({
-            width: { size: 100, type: 'pct' },
-            rows: flaggedTable,
-            borders: {
-              top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-              bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-              left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-              right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-              insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' },
-              insideVertical: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' }
-            }
-          })
-        );
-      } else {
-        sections.push(
-          new Paragraph({
-            text: '✓ No quality issues detected',
-            spacing: { after: 100 },
-            color: '16A34A'
+          new docx.Table({
+            width: { size: 100, type: docx.WidthType.PERCENTAGE },
+            rows: flagRows
           })
         );
       }
-      
-      // Footer
-      sections.push(
-        new Paragraph({
-          text: '═══════════════════════════════════════',
-          spacing: { before: 300, after: 50 },
-          alignment: AlignmentType.CENTER,
-          size: 16,
-          color: 'CCCCCC'
-        })
-      );
-      
-      sections.push(
-        new Paragraph({
-          text: 'Generated by DOCUGRAPH — Advanced Document Intelligence',
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 50 },
-          size: 18,
-          color: '666666',
-          italics: true
-        })
-      );
 
-      const document = new Document({ sections: [{ children: sections }] });
+      // Create and save document
+      const docxDocument = new docx.Document({
+        sections: [{
+          children: sections
+        }]
+      });
 
-      Packer.toBlob(document).then(blob => {
+      docx.Packer.toBlob(docxDocument).then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `docugraph-analysis-${new Date().getTime()}.docx`;
         a.click();
         URL.revokeObjectURL(url);
-        console.log('✅ Enhanced DOCX export complete');
+        console.log('✅ DOCX export complete');
+      }).catch(err => {
+        console.error('Error during DOCX blob creation:', err);
+        alert('Error creating DOCX file: ' + err.message);
       });
     } catch (error) {
       console.error('Error generating DOCX:', error);
-      exportAsMarkdown();
+      alert('Error generating DOCX document:\n\n' + error.message + '\n\nPlease check the browser console for details.');
     }
   }
 
@@ -6764,8 +6660,14 @@
     }
 
     try {
+      // Check if jsPDF library is loaded
+      if (!window.jspdf) {
+        alert('PDF library not loaded. Please refresh the page and try again.');
+        return;
+      }
+
       const doc = window.lastProcessedDocument;
-      const { jsPDF } = window.jspdf;
+      const jsPDF = window.jspdf.jsPDF;
       const pdf = new jsPDF('p', 'mm', 'a4');
       
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -6839,21 +6741,30 @@
         ['Quality Flags', String((doc.semantics?.errorFlags || []).length)]
       ];
 
-      pdf.autoTable({
-        startY: yPosition,
-        head: [['Property', 'Value']],
-        body: metadata,
-        margin: { left: margin, right: margin },
-        headStyles: {
-          fillColor: [34, 197, 94],
-          textColor: [255, 255, 255],
-          fontSize: 10
-        },
-        bodyStyles: { fontSize: 9 },
-        alternateRowStyles: { fillColor: [250, 250, 250] }
-      });
-
-      yPosition = pdf.lastAutoTable.finalY + 8;
+      if (pdf.autoTable) {
+        pdf.autoTable({
+          startY: yPosition,
+          head: [['Property', 'Value']],
+          body: metadata,
+          margin: { left: margin, right: margin },
+          headStyles: {
+            fillColor: [34, 197, 94],
+            textColor: [255, 255, 255],
+            fontSize: 10
+          },
+          bodyStyles: { fontSize: 9 },
+          alternateRowStyles: { fillColor: [250, 250, 250] }
+        });
+        yPosition = pdf.lastAutoTable.finalY + 8;
+      } else {
+        // Fallback if autoTable is not available
+        pdf.setFontSize(10);
+        pdf.setTextColor(50, 50, 50);
+        metadata.forEach((row, i) => {
+          pdf.text(`${row[0]}: ${row[1]}`, margin + 3, yPosition + (i * 5));
+        });
+        yPosition += (metadata.length * 5) + 5;
+      }
 
       // Hierarchical Structure
       if (doc.ocr?.hierarchical?.sections?.length > 0) {
@@ -6998,19 +6909,29 @@
           `${((w.confidence || 0.5) * 100).toFixed(0)}%`
         ]);
 
-        pdf.autoTable({
-          startY: yPosition,
-          head: [['Word', 'Confidence']],
-          body: flagData,
-          margin: { left: margin, right: margin },
-          headStyles: {
-            fillColor: [240, 100, 100],
-            textColor: [255, 255, 255],
-            fontSize: 9
-          },
-          bodyStyles: { fontSize: 8 },
-          alternateRowStyles: { fillColor: [255, 245, 245] }
-        });
+        if (pdf.autoTable) {
+          pdf.autoTable({
+            startY: yPosition,
+            head: [['Word', 'Confidence']],
+            body: flagData,
+            margin: { left: margin, right: margin },
+            headStyles: {
+              fillColor: [240, 100, 100],
+              textColor: [255, 255, 255],
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [255, 245, 245] }
+          });
+        } else {
+          // Fallback if autoTable not available
+          pdf.setFontSize(9);
+          flagData.forEach((row, i) => {
+            pdf.setTextColor(50, 50, 50);
+            pdf.text(row[0], margin + 3, yPosition + (i * 4));
+            pdf.text(row[1], pageWidth - margin - 20, yPosition + (i * 4), { align: 'right' });
+          });
+        }
       } else {
         pdf.setFontSize(10);
         pdf.setTextColor(34, 197, 94);
@@ -7030,7 +6951,7 @@
       console.log('✅ Enhanced PDF export complete');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      exportAsMarkdown();
+      alert('Error generating PDF document:\n\n' + error.message + '\n\nPlease check the browser console for details.');
     }
   }
 
