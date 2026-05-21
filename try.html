@@ -452,6 +452,55 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://unpkg.com/docx@latest"></script>
+
+<!-- Wait for libraries to load before running main code -->
+<script>
+  // Check if required libraries are available
+  let libsReady = false;
+  
+  function checkLibrariesReady() {
+    const tesseractReady = typeof Tesseract !== 'undefined' && typeof Tesseract.recognize === 'function';
+    const d3Ready = typeof d3 !== 'undefined';
+    const jsPdfReady = typeof window.jspdf !== 'undefined';
+    const docxReady = typeof docx !== 'undefined';
+    
+    if (!tesseractReady) {
+      console.log('⏳ Waiting for Tesseract.js to load...');
+      setTimeout(checkLibrariesReady, 100);
+      return;
+    }
+    
+    if (!d3Ready) {
+      console.log('⏳ Waiting for D3.js to load...');
+      setTimeout(checkLibrariesReady, 100);
+      return;
+    }
+    
+    if (!jsPdfReady) {
+      console.log('⏳ Waiting for jsPDF to load...');
+      setTimeout(checkLibrariesReady, 100);
+      return;
+    }
+    
+    console.log('✅ All libraries ready');
+    libsReady = true;
+    
+    // Enable buttons once libraries are ready
+    const buttons = document.querySelectorAll('[id*="btn"], [id*="button"]');
+    buttons.forEach(btn => btn.disabled = false);
+  }
+  
+  // Start checking immediately
+  checkLibrariesReady();
+  
+  // Also check after a maximum wait time (libraries should be loaded within 5 seconds)
+  setTimeout(() => {
+    if (!libsReady) {
+      console.warn('⚠️ Some libraries failed to load, using graceful degradation');
+      libsReady = true;
+    }
+  }, 5000);
+</script>
 <script type="module">
   import { auth, onAuthStateChanged, logout } from "./assets/auth.js";
 
@@ -5784,6 +5833,13 @@
     // Show processing state
     showState('processing');
     
+    // Check if libraries are ready
+    if (!libsReady) {
+      alert('⚠️ Libraries still loading. Please wait a moment and try again.');
+      showState('initial');
+      return;
+    }
+    
     // Handle uploaded files - LAYOUT ANALYSIS ONLY
     if (currentFile && fileType === 'uploaded') {
       console.log('📊 Analyzing layout for uploaded file...');
@@ -7868,6 +7924,12 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
 
   // OCR button - Full Document Processing Pipeline
   elements.ocr.addEventListener('click', async () => {
+    // Check if libraries are ready
+    if (!libsReady) {
+      alert('⚠️ Libraries still loading. Please wait a moment and try again.');
+      return;
+    }
+    
     if (!currentLayoutData) {
       alert('Please analyze layout first.');
       return;
