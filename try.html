@@ -452,17 +452,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/0.18.11/docx.min.js"></script>
 
 <!-- Wait for libraries to load before running main code -->
 <script>
   // Check if required libraries are available (globally accessible)
   window.libsReady = false;
   
+  // Add timeout tracking
+  let libraryCheckStartTime = Date.now();
+  
   function checkLibrariesReady() {
     const tesseractReady = typeof Tesseract !== 'undefined' && typeof Tesseract.createWorker === 'function';
     const d3Ready = typeof d3 !== 'undefined';
     const jsPdfReady = typeof window.jspdf !== 'undefined';
+    const docxReady = typeof window.docx !== 'undefined';
+    
+    // Debug logging after 3 seconds
+    if (Date.now() - libraryCheckStartTime > 3000 && Date.now() - libraryCheckStartTime < 3100) {
+      console.log('📦 Library Status Check:');
+      console.log('  Tesseract.js:', tesseractReady ? '✅' : '❌', typeof Tesseract);
+      console.log('  D3.js:', d3Ready ? '✅' : '❌', typeof d3);
+      console.log('  jsPDF:', jsPdfReady ? '✅' : '❌', typeof window.jspdf);
+      console.log('  docx:', docxReady ? '✅' : '❌', typeof window.docx);
+      console.log('  Window keys with "doc":', Object.keys(window).filter(k => k.toLowerCase().includes('doc')));
+    }
     
     if (!tesseractReady) {
       console.log('⏳ Waiting for Tesseract.js to load...');
@@ -482,7 +496,13 @@
       return;
     }
     
-    console.log('✅ All libraries ready - Tesseract, D3, jsPDF');
+    if (!docxReady) {
+      console.log('⏳ Waiting for docx library to load...');
+      setTimeout(checkLibrariesReady, 100);
+      return;
+    }
+    
+    console.log('✅ All libraries ready - Tesseract, D3, jsPDF, docx');
     window.libsReady = true;
     
     // Enable buttons once libraries are ready
@@ -6447,13 +6467,14 @@
       return;
     }
 
-    try {
-      // Check if docx library is loaded
-      if (!window.docx) {
-        alert('DOCX library not loaded. Please refresh the page and try again.');
-        return;
-      }
+    // Wait for libraries to be ready
+    if (!window.docx) {
+      console.log('⏳ Waiting for docx library...');
+      alert('DOCX library is still loading. Please wait a moment and try again.');
+      return;
+    }
 
+    try {
       const doc = window.lastProcessedDocument;
       const sections = [];
       
@@ -6659,13 +6680,14 @@
       return;
     }
 
-    try {
-      // Check if jsPDF library is loaded
-      if (!window.jspdf) {
-        alert('PDF library not loaded. Please refresh the page and try again.');
-        return;
-      }
+    // Wait for libraries to be ready
+    if (!window.jspdf) {
+      console.log('⏳ Waiting for jsPDF library...');
+      alert('PDF library is still loading. Please wait a moment and try again.');
+      return;
+    }
 
+    try {
       const doc = window.lastProcessedDocument;
       const jsPDF = window.jspdf.jsPDF;
       const pdf = new jsPDF('p', 'mm', 'a4');
