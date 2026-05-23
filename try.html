@@ -2836,6 +2836,210 @@
         });
       }
     }
+
+    /**
+     * Grid-based layout segmentation for full page coverage
+     * Divides page into grid cells and analyzes each for content
+     */
+    analyzeLayoutWithGridSegmentation(imageData, width, height) {
+      console.log('📊 Starting grid-based segmentation...');
+      
+      const data = imageData.data;
+      
+      // Convert to grayscale
+      const grayscale = new Uint8ClampedArray(width * height);
+      for (let i = 0; i < data.length; i += 4) {
+        const idx = i / 4;
+        grayscale[idx] = Math.round(0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
+      }
+      
+      // Determine optimal grid size based on page dimensions
+      const gridCellWidth = Math.max(50, Math.floor(width / 6));
+      const gridCellHeight = Math.max(50, Math.floor(height / 8));
+      const gridCols = Math.ceil(width / gridCellWidth);
+      const gridRows = Math.ceil(height / gridCellHeight);
+      
+      console.log(`📐 Grid: ${gridCols}x${gridRows} cells (${gridCellWidth}x${gridCellHeight}px each)`);
+      
+      // Analyze each grid cell
+      const grid = [];
+      const contentMap = [];
+      
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          const x0 = col * gridCellWidth;
+          const y0 = row * gridCellHeight;
+          const x1 = Math.min(x0 + gridCellWidth, width);
+          const y1 = Math.min(y0 + gridCellHeight, height);
+          
+          const cellContent = this.analyzeCellContent(grayscale, x0, y0, x1, y1, width);
+          grid.push({
+            row, col,
+            x0, y0, x1, y1,
+            content: cellContent,
+            hasContent: cellContent.density > 0.15
+          });
+          contentMap.push(cellContent.density > 0.15 ? 1 : 0);
+        }
+      }
+      
+      // Group adjacent cells with content into regions
+      const visited = new Set();
+      const regions = [];
+      
+      for (let idx = 0; idx < grid.length; idx++) {
+        if (!visited.has(idx) && contentMap[idx] === 1) {
+          const cell = grid[idx];
+          const regionCells = this.floodFillGrid(grid, visited, cell.row, cell.col, gridRows, gridCols, contentMap);
+          
+          if (regionCells.length > 0) {
+            const region = this.createRegionFromCells(regionCells, width, height);
+            regions.push(region);
+          }
+        }
+      }
+      
+      // Fill any empty space with filler regions
+      const filledRegions = this.fillEmptySpace(regions, width, height);
+      
+      console.log(`✅ Segmentation complete: ${filledRegions.length} regions detected`);
+      
+      return {
+        regions: filledRegions,
+        confidence: Math.min(0.95, 0.65 + (filledRegions.length * 0.05)),
+        method: 'Grid-Based Segmentation'
+      };
+    }
+
+    analyzeCellContent(grayscale, x0, y0, x1, y1, width) {
+      let sum = 0, count = 0;
+      let darkPixels = 0;
+      
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const val = grayscale[y * width + x];
+          sum += val;
+          if (val < 200) darkPixels++; // Pixels darker than 200
+          count++;
+        }
+      }
+      
+      const avgBrightness = count > 0 ? sum / count : 255;
+      const density = count > 0 ? darkPixels / count : 0;
+      
+      return {
+        density,
+        brightness: avgBrightness,
+        contentType: density > 0.5 ? 'text' : density > 0.3 ? 'mixed' : 'empty'
+      };
+    }
+
+    floodFillGrid(grid, visited, startRow, startCol, gridRows, gridCols, contentMap) {
+      const queue = [[startRow, startCol]];
+      const cells = [];
+      const gridIndex = (r, c) => r * gridCols + c;
+      
+      while (queue.length > 0) {
+        const [row, col] = queue.shift();
+        
+        if (row < 0 || row >= gridRows || col < 0 || col >= gridCols) continue;
+        
+        const idx = gridIndex(row, col);
+        if (visited.has(idx) || contentMap[idx] !== 1) continue;
+        
+        visited.add(idx);
+        cells.push(grid[idx]);
+        
+        // Add adjacent cells
+        queue.push([row-1, col], [row+1, col], [row, col-1], [row, col+1]);
+      }
+      
+      return cells;
+    }
+
+    createRegionFromCells(cells, width, height) {
+      if (cells.length === 0) return null;
+      
+      let minX = width, maxX = 0, minY = height, maxY = 0;
+      
+      cells.forEach(cell => {
+        minX = Math.min(minX, cell.x0);
+        maxX = Math.max(maxX, cell.x1);
+        minY = Math.min(minY, cell.y0);
+        maxY = Math.max(maxY, cell.y1);
+      });
+      
+      const regionType = cells.some(c => c.content.density > 0.6) ? 'table' : 'para';
+      
+      return {
+        type: regionType,
+        bbox: [
+          (minX / width) * 100,
+          (minY / height) * 100,
+          (maxX / width) * 100,
+          (maxY / height) * 100
+        ],
+        confidence: 0.80,
+        cellCount: cells.length
+      };
+    }
+
+    fillEmptySpace(regions, width, height) {
+      if (regions.length === 0) {
+        // Entire page is empty - create default layout
+        return [
+          {
+            type: 'header',
+            bbox: [0, 0, 100, 15],
+            confidence: 0.60
+          },
+          {
+            type: 'para',
+            bbox: [0, 15, 100, 100],
+            confidence: 0.60
+          }
+        ];
+      }
+      
+      const result = [...regions];
+      const sortedByY = [...regions].sort((a, b) => a.bbox[1] - b.bbox[1]);
+      
+      // Fill gap at top
+      if (sortedByY[0].bbox[1] > 5) {
+        result.push({
+          type: 'header',
+          bbox: [0, 0, 100, sortedByY[0].bbox[1]],
+          confidence: 0.60
+        });
+      }
+      
+      // Fill gap at bottom
+      const lastRegion = sortedByY[sortedByY.length - 1];
+      if (lastRegion.bbox[3] < 95) {
+        result.push({
+          type: 'para',
+          bbox: [0, lastRegion.bbox[3], 100, 100],
+          confidence: 0.60
+        });
+      }
+      
+      // Fill gaps between regions
+      for (let i = 0; i < sortedByY.length - 1; i++) {
+        const current = sortedByY[i];
+        const next = sortedByY[i + 1];
+        const gap = next.bbox[1] - current.bbox[3];
+        
+        if (gap > 3) {
+          result.push({
+            type: 'para',
+            bbox: [0, current.bbox[3], 100, next.bbox[1]],
+            confidence: 0.55
+          });
+        }
+      }
+      
+      return result.sort((a, b) => a.bbox[1] - b.bbox[1]);
+    }
   }
 
   // 3. STRUCTURED SEGMENTATION
@@ -5704,9 +5908,9 @@
               confidence = 0.88;
             }
 
-            // If no shapes/tables, use GNN for general layout
+            // If no shapes/tables, use improved grid-based layout detection
             if (regions.length === 0) {
-              console.log('🎯 Starting layout detection with GNN (10s timeout)...');
+              console.log('🎯 Starting grid-based layout segmentation (10s timeout)...');
               
               // Wrap synchronous GNN analysis with timeout protection
               const layoutTimeout = new Promise((_, reject) => 
@@ -5714,9 +5918,9 @@
               );
               
               const gnnPromise = Promise.resolve().then(() => {
-                console.time('GNN Layout Analysis');
-                const result = gnnAnalyzer.analyzeLayout(imageData, canvas.width, canvas.height);
-                console.timeEnd('GNN Layout Analysis');
+                console.time('Grid-Based Layout Analysis');
+                const result = gnnAnalyzer.analyzeLayoutWithGridSegmentation(imageData, canvas.width, canvas.height);
+                console.timeEnd('Grid-Based Layout Analysis');
                 return result;
               });
               
@@ -5730,17 +5934,17 @@
                     conf: r.confidence || 0.75,
                     text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block'
                   }));
-                  analysisMethod = 'GNN-Based Layout Detection';
+                  analysisMethod = 'Grid-Based Layout Segmentation';
                   confidence = gnnResult.confidence || 0.75;
-                  console.log('✅ GNN layout analysis complete:', regions.length, 'regions');
+                  console.log('✅ Grid-based layout analysis complete:', regions.length, 'regions detected');
                 } else {
                   throw new Error('No regions detected');
                 }
               } catch (gnnErr) {
-                console.warn('⚠️ GNN analysis failed/timeout:', gnnErr.message);
+                console.warn('⚠️ Layout analysis failed/timeout:', gnnErr.message);
                 regions = generateFallbackRegions().regions;
                 confidence = 0.65;
-                analysisMethod = 'Fallback Layout Detection (GNN timeout)';
+                analysisMethod = 'Fallback Layout Detection (timeout)';
               }
             }
 
