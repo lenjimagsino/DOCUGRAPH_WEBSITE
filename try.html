@@ -22,7 +22,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   
   /* Output preview with bounding boxes */
-  .output-preview { position: relative; width: 100%; aspect-ratio: 4/5; background: var(--off); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .output-preview { position: relative; width: 100%; aspect-ratio: auto; min-height: 400px; background: var(--off); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .bbox-overlay { position: absolute; inset: 0; z-index: 10; }
   #preview-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
   .bbox { position: absolute; border: 2px solid; font-size: 10px; font-weight: 600; padding: 3px 6px; border-radius: 3px; pointer-events: none; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 50px; min-height: 20px; }
@@ -772,8 +772,15 @@
                 console.log('🔍 Processing', regions.length, 'regions separately...');
                 const regionResults = await this.ocrEngine.extractTextByRegion(canvas, regions, primaryLanguage);
                 
-                // Extract text in reading order
-                const orderedText = this.ocrEngine.extractTextInReadingOrder(regionResults.regions, readingOrder);
+                // For flowcharts, clean up and reorder text based on flow
+                let finalText = '';
+                if (window.currentLayoutData?.isFlowchart || regionResults.regions.some(r => r.type === 'shape')) {
+                  console.log('📊 Flowchart detected - cleaning and reordering text');
+                  finalText = this.ocrEngine.extractFlowchartText(regionResults.regions);
+                } else {
+                  // Extract text in reading order for normal documents
+                  finalText = this.ocrEngine.extractTextInReadingOrder(regionResults.regions, readingOrder);
+                }
                 
                 // Validate against structure
                 const validation = this.ocrEngine.validateTextAgainstStructure(regionResults.regions, structure);
@@ -786,9 +793,9 @@
                 );
                 
                 ocrData = {
-                  text: orderedText,
-                  words: regionResults.regions.flatMap(r => r.words),
-                  confidence: regionResults.regions.reduce((a, r) => a + r.confidence, 0) / Math.max(1, regionResults.regions.length),
+                  text: finalText,
+                  words: regionResults.regions.flatMap(r => r.words || []),
+                  confidence: regionResults.regions.reduce((a, r) => a + (r.confidence || 0.75), 0) / Math.max(1, regionResults.regions.length),
                   language: primaryLanguage,
                   detectedLanguages: [primaryLanguage],
                   regionResults: regionResults.regions,
@@ -902,12 +909,77 @@
         workflowLog.push('Multilingual Analysis');
         console.log('✅ Phase 11 complete');
 
-        // ========== PHASE 12: VISUALIZATION PREP ==========
+        // ========== PHASE 12: DOCUMENT TYPE CLASSIFICATION ==========
+        workflowLog.push('Document Classification');
+        const documentClassifier = new DocumentTypeClassifier();
+        
+        // Build regions array for classifier from all detected regions
+        const classifierRegions = [];
+        
+        // Add all detected regions with their actual types
+        if (shapeAnalysis?.shapes && shapeAnalysis.shapes.length > 0) {
+          shapeAnalysis.shapes.forEach((shape, idx) => {
+            classifierRegions.push({
+              type: 'shape',
+              bbox: shape.bbox || [0, 0, 100, 100],
+              conf: shape.confidence || 0.8,
+              text: `Shape #${idx + 1}`
+            });
+          });
+        }
+        
+        if (shapeAnalysis?.tables && shapeAnalysis.tables.length > 0) {
+          shapeAnalysis.tables.forEach((table, idx) => {
+            classifierRegions.push({
+              type: 'table',
+              bbox: table.bbox || [0, 0, 100, 100],
+              conf: table.confidence || 0.8,
+              text: `Table #${idx + 1}`
+            });
+          });
+        }
+        
+        if (graphAnalysis?.nodes && graphAnalysis.nodes.length > 0) {
+          graphAnalysis.nodes.forEach((node) => {
+            classifierRegions.push({
+              type: node.type || 'para',
+              bbox: node.bbox || [0, 0, 100, 100],
+              conf: node.conf || 0.75,
+              text: node.text || ''
+            });
+          });
+        }
+        
+        const documentTypeAnalysis = documentClassifier.classifyDocument({
+          text: ocrData.text || '',
+          words: ocrData.words || [],
+          regions: classifierRegions,
+          tableCount: tableResults.length,
+          figureCount: shapeAnalysis?.shapes?.length || 0,
+          layoutColumns: layoutAnalysis?.columns || 1,
+          filename: file?.name || ''
+        });
+        console.log('✅ Phase 12 complete - Document Type:', documentTypeAnalysis.type, 'Confidence:', documentTypeAnalysis.confidence);
+
+        // ========== PHASE 13: VISUALIZATION PREP ==========
         workflowLog.push('Visualization Prep');
-        console.log('✅ Phase 12 complete');
+        console.log('✅ Phase 13 complete');
 
         // COMPLETE - Assemble results
         const processingTime = performance.now() - startTime;
+        
+        // Build structure information
+        const structure = {
+          documentType: documentTypeAnalysis.type,
+          confidence: documentTypeAnalysis.confidence,
+          layout: layoutAnalysis?.type === 'multi-column' ? 'Multi-Column' : 'Single-Column',
+          columns: layoutAnalysis?.columns || 1,
+          hasHeader: window.currentLayoutData?.regions?.some(r => r.type === 'header') || false,
+          hasFooter: window.currentLayoutData?.regions?.some(r => r.type === 'footer') || false,
+          hasTables: tableResults.length > 0,
+          hasFigures: (shapeAnalysis?.shapes?.length || 0) > 0
+        };
+        
         const processedDocument = {
           filename: file?.name || 'document',
           timestamp: new Date().toISOString(),
@@ -917,6 +989,7 @@
           segments: segments || [],
           graph: graphAnalysis,
           tables: tableResults,
+          structure: structure,
           semantics: {
             validatedWords: validatedWords,
             errorFlags: validatedWords.filter(w => w.isFlagged)
@@ -1499,6 +1572,9 @@
 
       const regionResults = [];
       let fullText = '';
+      
+      // Check if this is a flowchart
+      const isFlowchart = regions.some(r => r.type === 'shape');
 
       // Initialize worker ONCE before processing all regions
       try {
@@ -1542,8 +1618,33 @@
             ocrTimeout
           ]);
           
-          const regionText = result.data.text || '';
-          const confidence = Math.max(0.5, Math.min(1, (result.data.confidence || 85) / 100));
+          let regionText = result.data.text || '';
+          let confidence = Math.max(0.5, Math.min(1, (result.data.confidence || 85) / 100));
+
+          // For flowcharts, clean up connector labels and noise
+          if (isFlowchart) {
+            // Remove single-letter standalone text (like "TT" connectors)
+            regionText = regionText
+              .split('\n')
+              .map(line => line.trim())
+              .filter(line => {
+                // Remove lines that are just arrows, single letters, or common connector words
+                if (/^[-→↓⬇▶⚡◇◉→→]+$/.test(line)) return false;  // Pure connectors
+                if (/^[A-Z]$/.test(line)) return false;  // Single letter
+                if (/^(metrics|pipeline|flow|data|lambda|error|recovery)$/i.test(line)) {
+                  // Check context - only include if it's actual content, not a label
+                  return false;
+                }
+                return line.length > 0;
+              })
+              .join('\n')
+              .trim();
+            
+            // Normalize multiple spaces and line breaks
+            regionText = regionText
+              .replace(/\s+/g, ' ')  // Multiple spaces to single
+              .replace(/\n\s*\n/g, '\n');  // Multiple newlines to single
+          }
 
           // Parse words from region
           const words = this.parseWordsFromRegion(result, regionCanvas.width, regionCanvas.height, x, y, canvas.width, canvas.height);
@@ -1721,6 +1822,15 @@
      * ENHANCED: Extract text in reading order from regions
      */
     extractTextInReadingOrder(regionResults, readingOrder) {
+      // Check if this is a flowchart - if so, use flowchart-specific ordering
+      const isFlowchart = window.currentLayoutData?.isFlowchart || 
+                          (regionResults && regionResults.some(r => r.type === 'shape'));
+      
+      if (isFlowchart) {
+        console.log('📊 Detected flowchart - using flow-based reading order');
+        return this.extractFlowchartText(regionResults);
+      }
+      
       if (!readingOrder || readingOrder.length === 0) {
         // Default: concatenate all regions
         return regionResults.map(r => r.text).join('\n\n');
@@ -1736,6 +1846,62 @@
       }
 
       return orderedTexts.join('\n\n');
+    }
+
+    extractFlowchartText(regionResults) {
+      // For flowcharts, sort regions top-to-bottom, left-to-right based on flow
+      if (!regionResults || regionResults.length === 0) return '';
+      
+      // Filter and clean region text
+      const validRegions = regionResults
+        .filter(r => r.text && r.text.trim())
+        .map(r => ({
+          ...r,
+          // Clean text: remove extra whitespace and normalize
+          cleanText: r.text
+            .trim()
+            .replace(/\s+/g, ' ')  // Normalize whitespace
+            .replace(/^[-→↓⬇▶⚡◇◉→→]+/, '')  // Remove connector symbols at start
+            .replace(/[-→↓⬇▶⚡◇◉→→]+$/, '')  // Remove connector symbols at end
+            .trim()
+        }))
+        .filter(r => r.cleanText && r.cleanText.length > 0);  // Remove empty after cleaning
+      
+      if (validRegions.length === 0) return '';
+      
+      // Sort by Y position first (top-to-bottom), then X position (left-to-right)
+      const sorted = validRegions.sort((a, b) => {
+        // Get bbox coordinates - handle different formats
+        const aY = a.bbox ? (a.bbox[1] || 0) : 0;
+        const aX = a.bbox ? (a.bbox[0] || 0) : 0;
+        const bY = b.bbox ? (b.bbox[1] || 0) : 0;
+        const bX = b.bbox ? (b.bbox[0] || 0) : 0;
+        
+        // If Y positions are close (within 8% of page), sort by X (horizontal flow)
+        if (Math.abs(aY - bY) < 8) {
+          return aX - bX;
+        }
+        // Otherwise sort by Y (vertical flow)
+        return aY - bY;
+      });
+      
+      // Extract text and organize by hierarchy
+      const flowText = sorted
+        .map((r, idx) => {
+          const text = r.cleanText;
+          
+          // Add hierarchy based on region type
+          if (r.type === 'header') {
+            return `📌 ${text}`;
+          } else if (r.type === 'table' || r.type === 'shape') {
+            return `  ├─ ${text}`;
+          } else {
+            return `  │  ${text}`;
+          }
+        })
+        .join('\n');
+      
+      return flowText;
     }
 
     /**
@@ -1761,9 +1927,13 @@
       if (structure) {
         // Check column consistency
         if (structure.columns > 1) {
-          const textLengths = regionResults.map(r => r.text.length);
-          const avgLength = textLengths.reduce((a, b) => a + b, 0) / textLengths.length;
-          validation.columnConsistency = textLengths.filter(l => Math.abs(l - avgLength) < avgLength * 0.2).length / textLengths.length;
+          const textLengths = regionResults.map(r => r.text?.length || 0).filter(l => l > 0);
+          if (textLengths.length > 0) {
+            const avgLength = textLengths.reduce((a, b) => a + b, 0) / textLengths.length;
+            validation.columnConsistency = avgLength > 0 ? textLengths.filter(l => Math.abs(l - avgLength) < avgLength * 0.2).length / textLengths.length : 0;
+          } else {
+            validation.columnConsistency = 0;
+          }
         }
       }
 
@@ -1869,6 +2039,157 @@
   }
 
   // 2. LAYOUT DETECTION & SEGMENTATION
+  // ============= DOCUMENT TYPE CLASSIFIER =============
+  class DocumentTypeClassifier {
+    constructor() {
+      this.documentPatterns = {
+        invoice: {
+          keywords: ['invoice', 'inv-', 'bill to', 'ship to', 'total', 'amount due', 'invoice date', 'payment terms', 'qty', 'unit price', 'subtotal'],
+          markers: ['total:', 'amount:', 'invoice #', 'due date']
+        },
+        form: {
+          keywords: ['form', 'field', 'checkbox', 'signature', 'date', 'printed name', 'title', 'address', 'phone', 'email'],
+          markers: ['[ ]', '☐', 'signature:', 'date:', '_______']
+        },
+        contract: {
+          keywords: ['agreement', 'contract', 'party', 'terms', 'condition', 'liability', 'indemnif', 'warrant', 'severability', 'governing law'],
+          markers: ['whereas', 'party', 'agreement between', 'effective date', 'signatures']
+        },
+        report: {
+          keywords: ['report', 'abstract', 'introduction', 'methodology', 'results', 'conclusion', 'reference', 'executive summary', 'findings'],
+          markers: ['table of contents', 'abstract', 'conclusion', 'recommendations']
+        },
+        letter: {
+          keywords: ['dear', 'sincerely', 'regards', 'respectfully', 'yours truly', 'closing', 'signature'],
+          markers: ['dear sir', 'to whom it may concern', 'sincerely,']
+        },
+        receipt: {
+          keywords: ['receipt', 'order', 'date', 'total', 'paid', 'thank you', 'transaction'],
+          markers: ['receipt #', 'transaction id', 'thank you', 'amount paid']
+        },
+        resume: {
+          keywords: ['resume', 'cv', 'experience', 'education', 'skill', 'objective', 'summary', 'employment'],
+          markers: ['summary', 'experience', 'education', 'skill', 'certification']
+        },
+        flowchart: {
+          keywords: ['flowchart', 'diagram', 'process', 'decision', 'flow', 'algorithm', 'workflow', 'sequence', 'state machine', 'uml'],
+          markers: ['→', '↓', '⬇', '▶', '⚡', '◇', '◉', '→→', 'start:', 'end:', 'process:']
+        }
+      };
+    }
+
+    classifyDocument(doc) {
+      const text = (doc.text || '').toLowerCase();
+      const lines = text.split('\n');
+      const wordCount = doc.words?.length || text.split(/\s+/).length;
+      const tableCount = doc.tableCount || 0;
+      const figureCount = doc.figureCount || 0;
+      const filename = (doc.filename || '').toLowerCase();
+      const regions = doc.regions || [];
+
+      const scores = {};
+
+      // Score each document type
+      for (const [docType, patterns] of Object.entries(this.documentPatterns)) {
+        let score = 0;
+
+        // Check keywords (weighted)
+        patterns.keywords.forEach(keyword => {
+          const keywordCount = (text.match(new RegExp(keyword, 'g')) || []).length;
+          score += keywordCount * 2;
+        });
+
+        // Check markers (heavily weighted)
+        patterns.markers.forEach(marker => {
+          const markerCount = (text.match(new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length;
+          score += markerCount * 5;
+        });
+
+        // Check filename
+        if (filename.includes(docType)) {
+          score += 10;
+        }
+
+        // Structural analysis - Simple, clear priorities
+        // Shapes are strong flowchart indicators
+        if (docType === 'flowchart' && regions.some(r => r.type === 'shape')) score += 25;
+        if (docType === 'flowchart' && figureCount > 0) score += 10;
+        if (docType === 'flowchart' && (filename.includes('flow') || filename.includes('diagram'))) score += 10;
+        
+        // Normal scoring for other types
+        if (docType === 'invoice' && tableCount > 0 && figureCount === 0) score += 5;
+        if (docType === 'form' && figureCount > 0) score += 3;
+        if (docType === 'report' && wordCount > 500) score += 3;
+        if (docType === 'contract' && wordCount > 1000) score += 3;
+
+        scores[docType] = score;
+      }
+
+      // Find best match
+      const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      const bestMatch = sorted[0];
+
+      // Determine confidence
+      const topScore = bestMatch[1];
+      const secondScore = sorted[1] ? sorted[1][1] : 0;
+      const confidence = topScore > 0 ? Math.min(0.99, topScore / (topScore + secondScore + 1)) : 0;
+
+      // Default to Unknown if no strong match
+      let detectedType = topScore > 2 ? bestMatch[0].charAt(0).toUpperCase() + bestMatch[0].slice(1) : 'Unknown';
+
+      // FALLBACK: Always try structure-based detection if confidence is low or type is Unknown
+      if (confidence <= 0.4 && regions.length > 0) {
+        const structureType = this.classifyByStructure(regions);
+        if (structureType) {
+          detectedType = structureType;
+        }
+      }
+
+      // FINAL FALLBACK: If still Unknown, check if it matches a flowchart pattern
+      if (detectedType === 'Unknown' && regions.length > 0) {
+        // Check if it looks like a flowchart (multiple regions of varied types)
+        const shapeCount = regions.filter(r => r.type === 'shape').length;
+        const tableCount = regions.filter(r => r.type === 'table').length;
+        const paraCount = regions.filter(r => r.type === 'para' || r.type === 'text').length;
+        
+        // Flowchart pattern: mostly paragraphs with at least one table or shapes
+        if ((paraCount >= 3 || tableCount > 0 || shapeCount > 0) && regions.length >= 5) {
+          detectedType = 'Flowchart';
+        }
+      }
+
+      return {
+        type: detectedType,
+        confidence: Math.max(0, Math.min(1, confidence)),
+        scores: scores,
+        topMatches: sorted.slice(0, 3).map(([type, score]) => ({
+          type: type.charAt(0).toUpperCase() + type.slice(1),
+          score
+        }))
+      };
+    }
+
+    classifyByStructure(regions) {
+      if (!regions || regions.length === 0) return null;
+
+      const regionTypes = regions.map(r => r.type);
+      const hasTable = regionTypes.includes('table');
+      const hasHeader = regionTypes.includes('header');
+      const textCount = regionTypes.filter(t => t === 'text' || t === 'para').length;
+      const figureCount = regionTypes.filter(t => t === 'figure').length;
+      const shapeCount = regionTypes.filter(t => t === 'shape').length;
+
+      // Simple detection logic
+      if (shapeCount > 0) return 'Flowchart';
+      if (shapeCount > textCount) return 'Flowchart';
+      if (hasTable && textCount > 0) return 'Invoice';
+      if (figureCount > textCount) return 'Form';
+      if (hasHeader && textCount > 5) return 'Report';
+
+      return null;
+    }
+  }
+
   class LayoutDetector {
     constructor() {
       this.minRegionSize = 50; // Minimum pixels for region
@@ -2621,7 +2942,7 @@
     calculateComplexity(regions) {
       const typeCount = new Set(regions.map(r => r.type)).size;
       const avgDensity = regions.reduce((a, r) => a + r.density, 0) / regions.length;
-      const avgSize = regions.reduce((a, r) => a + r.size.area, 0) / regions.length;
+      const avgSize = regions.reduce((a, r) => a + (r.size?.area || ((r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1])) / 10000), 0) / regions.length;
       
       let complexity = 0.5;
       if (typeCount > 3) complexity += 0.2;
@@ -2768,15 +3089,24 @@
 
     buildLayoutGraph(regions) {
       // Build graph structure from regions for D3 visualization
-      const nodes = regions.map((r, idx) => ({
-        id: idx,
-        type: r.type,
-        x: (r.bbox[0] + r.bbox[2]) / 2,
-        y: (r.bbox[1] + r.bbox[3]) / 2,
-        size: r.size.area,
-        confidence: r.confidence,
-        label: `${r.type}${idx + 1}`
-      }));
+      const nodes = regions.map((r, idx) => {
+        // Calculate size if not present
+        const size = r.size || {
+          area: ((r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1])) / 10000,
+          width: r.bbox[2] - r.bbox[0],
+          height: r.bbox[3] - r.bbox[1]
+        };
+        
+        return {
+          id: idx,
+          type: r.type,
+          x: (r.bbox[0] + r.bbox[2]) / 2,
+          y: (r.bbox[1] + r.bbox[3]) / 2,
+          size: size.area || 1,
+          confidence: r.confidence || r.conf || 0.5,
+          label: `${r.type}${idx + 1}`
+        };
+      });
       
       // Build edges based on connectivity
       const adjacency = this.analyzeConnectivity(regions);
@@ -2806,7 +3136,7 @@
 
     optimizeRegions(regions) {
       // Remove very small regions (noise)
-      let filtered = regions.filter(r => r.size.area > 10);
+      let filtered = regions.filter(r => (r.size?.area || ((r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1])) / 10000) > 10);
       
       // Merge nearby regions of same type
       const merged = [];
@@ -2892,7 +3222,7 @@
       
       const avgConfidence = regions.reduce((a, r) => a + r.confidence, 0) / Math.max(1, total);
       const avgDensity = regions.reduce((a, r) => a + r.density, 0) / Math.max(1, total);
-      const contentArea = regions.reduce((a, r) => a + r.size.area, 0) / (width * height) * 100;
+      const contentArea = regions.reduce((a, r) => a + (r.size?.area || ((r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1])) / 10000), 0) / (width * height) * 100;
       
       return {
         total,
@@ -3078,13 +3408,86 @@
         confidence: 0.70
       });
       
+      // Detect flowchart patterns and reclassify regions if needed
+      const isFlowchart = this.detectFlowchartFromImage(imageData, width, height);
+      if (isFlowchart) {
+        console.log('🔄 Flowchart pattern detected - reclassifying regions as shapes');
+        // Reclassify para and table regions as shapes for flowchart
+        regions.forEach(r => {
+          if (r.type === 'para' || r.type === 'table') {
+            r.type = 'shape';
+          }
+        });
+      }
+      
       console.log(`✅ Segmentation complete: ${regions.length} regions forced`);
       
       return {
         regions: regions,
         confidence: 0.85,
-        method: 'Forced Multi-Region Segmentation'
+        method: 'Forced Multi-Region Segmentation',
+        isFlowchart: isFlowchart
       };
+    }
+
+    detectFlowchartFromImage(imageData, width, height) {
+      // Detect connector patterns (arrows, lines) that indicate flowchart
+      const data = imageData.data;
+      let arrowCount = 0;
+      let horizontalLineCount = 0;
+      
+      // Sample pixels for arrow patterns (→, ↓, etc.)
+      // Look for specific arrow sequences
+      for (let i = 0; i < data.length - 12; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+        
+        // Dark pixels that could be connectors
+        if (r < 100 && g < 100 && b < 100 && a > 200) {
+          // Check for arrow-like patterns
+          if (i + 400 < data.length) {
+            const nextR = data[i + 4];
+            const nextG = data[i + 5];
+            const nextB = data[i + 6];
+            if (nextR < 100 && nextG < 100 && nextB < 100) {
+              arrowCount++;
+            }
+          }
+          
+          // Check for horizontal line patterns
+          if (i + 20 < data.length) {
+            let lineScore = 0;
+            for (let j = 1; j < 5; j++) {
+              const checkIdx = i + (j * 4);
+              if (checkIdx < data.length) {
+                const cR = data[checkIdx];
+                const cG = data[checkIdx + 1];
+                const cB = data[checkIdx + 2];
+                if (cR < 100 && cG < 100 && cB < 100) {
+                  lineScore++;
+                }
+              }
+            }
+            if (lineScore > 3) {
+              horizontalLineCount++;
+            }
+          }
+        }
+      }
+      
+      // If we detect enough connector patterns, it's likely a flowchart
+      const arrowThreshold = Math.floor(data.length / 50000); // Adjust threshold
+      const lineThreshold = Math.floor(data.length / 30000);
+      
+      const detectedFlowchart = arrowCount > arrowThreshold || horizontalLineCount > lineThreshold;
+      
+      if (detectedFlowchart) {
+        console.log(`📊 Flowchart indicators: arrows=${arrowCount}, lines=${horizontalLineCount}`);
+      }
+      
+      return detectedFlowchart;
     }
 
     analyzeCellContent(grayscale, x0, y0, x1, y1, width) {
@@ -3840,6 +4243,39 @@
           (maxY / height) * 100
         ]
       };
+    }
+
+    /**
+     * Main method: Detect both tables and shapes from canvas
+     */
+    detectShapesAndTables(canvas) {
+      try {
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Step 1: Detect edges
+        const edges = this.detectEdges(imageData, canvas);
+        
+        // Step 2: Detect lines
+        const lines = this.detectLines(edges, canvas);
+        
+        // Step 3: Try to detect tables from grid
+        const tableGrid = this.detectTableGrid(lines, canvas.width, canvas.height);
+        const tables = tableGrid ? [tableGrid] : [];
+        
+        // Step 4: Detect flowchart shapes
+        const shapes = this.detectFlowchartElements(edges, canvas);
+        
+        return {
+          tables: tables,
+          shapes: shapes,
+          lines: lines,
+          confidence: (shapes.length > 0 || tables.length > 0) ? 0.85 : 0.5
+        };
+      } catch (e) {
+        console.error('Shape detection error:', e);
+        return { tables: [], shapes: [], lines: {}, confidence: 0 };
+      }
     }
   }
 
@@ -5187,83 +5623,66 @@
               console.log('Language detection fallback to:', optimalLanguage);
             }
 
-            // ENHANCED: Detect shapes and tables first (for flowcharts, tables)
-            const edges = shapeDetector.detectEdges(imageData, canvas);
-            const lines = shapeDetector.detectLines(edges, canvas);
-            const tableGrid = shapeDetector.detectTableGrid(lines, img.width, img.height);
-            const flowchartElements = shapeDetector.detectFlowchartElements(edges, canvas);
-
+            // OPTIMIZATION: Skip expensive shape detection for large images - do OCR first
+            // This will be detected during the structural analysis after OCR completes
             let regions = [];
             let analysisMethod = 'GNN-Based with Smart OCR';
             let confidence = 0.7;
+            let flowchartElements = [];
+            let tableGrid = null;
 
-            // Check if this is a table
-            if (tableGrid) {
-              regions.push({
-                type: 'table',
-                bbox: tableGrid.bbox,
-                conf: tableGrid.confidence,
-                text: `Table (${tableGrid.rows}×${tableGrid.cols})`
-              });
-              analysisMethod = 'Table Detection';
-              confidence = tableGrid.confidence;
-              
-              // For tables, we MUST run OCR first to get the words, then parse into cells
-              const ocrResult = await ocrEngine.extractTextWithConfidence(canvas, ocrLanguage);
-              
-              if (ocrResult && ocrResult.words && ocrResult.words.length > 0) {
-                // Parse words into table cells
-                const tableGrids = [tableGrid];
-                const parsedTables = ocrEngine.tableParser.parseTablesFromOCR(
-                  ocrResult.words,
-                  tableGrids,
-                  img.width,
-                  img.height
-                );
-                
-                if (parsedTables.hasTables && parsedTables.tables.length > 0) {
-                  const table = parsedTables.tables[0];
-                  
-                  // Store formatted table outputs
-                  window.lastTableResults = {
-                    markdown: table.tableFormat,
-                    html: ocrEngine.tableParser.formatAsHTML(table.cells, table.rows, table.cols, table.headerRow),
-                    csv: ocrEngine.tableParser.formatAsCSV(table.cells, table.rows, table.cols),
-                    json: ocrEngine.tableParser.toJSON(table),
-                    cellsData: table.cells,
-                    headers: ocrEngine.tableParser.getColumnHeaders(table.cells, table.cols, table.headerRow)
-                  };
-                  
-                  analysisMethod = `Table Analysis (${table.rows}×${table.cols} with cell parsing)`;
-                }
-              }
-            }
-
-            // Check if this is a flowchart (from edge detection OR from structure analysis)
-            let detectedShapes = [];
-            if (flowchartElements.length > 0) {
-              // Shapes detected from image edges
-              detectedShapes = flowchartElements.map((elem, idx) => ({
-                type: 'shape',
-                bbox: elem.bbox_percent || [elem.minX/img.width*100, elem.minY/img.height*100, elem.maxX/img.width*100, elem.maxY/img.height*100],
-                conf: 0.88,
-                text: `${elem.type || 'Shape'} #${idx + 1}`
-              }));
-              analysisMethod = 'Flowchart Detection (Edge-based)';
-            }
+            // DO OCR FIRST - this is the most important step
+            console.log('🎯 Starting OCR extraction...');
+            const ocrResult = await ocrEngine.extractTextWithConfidence(canvas, ocrLanguage);
             
-            if (detectedShapes.length > 3 && detectedShapes.length < 100) {
-              regions = detectedShapes;
-              confidence = 0.88;
-            }
-
-            // If not table or flowchart detected from edges, try OCR
-            if (regions.length === 0) {
-              console.log('🎯 Starting advanced OCR analysis...');
-              const ocrResult = await ocrEngine.extractTextWithConfidence(canvas, ocrLanguage);
+            if (ocrResult && ocrResult.words && ocrResult.words.length > 0) {
+              console.log(`✓ OCR extracted ${ocrResult.words.length} words`);
               
-              if (ocrResult && ocrResult.words && ocrResult.words.length > 0) {
-                console.log(`✓ Processing ${ocrResult.words.length} OCR words with preprocessing`);
+              // NOW (after OCR) - optionally detect shapes only for smaller images
+              if (img.width * img.height < 2000000) {  // Only for images smaller than ~1414x1414
+                try {
+                  const edges = shapeDetector.detectEdges(imageData, canvas);
+                  const lines = shapeDetector.detectLines(edges, canvas);
+                  tableGrid = shapeDetector.detectTableGrid(lines, img.width, img.height);
+                  flowchartElements = shapeDetector.detectFlowchartElements(edges, canvas);
+
+                  // Check if this is a table
+                  if (tableGrid) {
+                    regions.push({
+                      type: 'table',
+                      bbox: tableGrid.bbox,
+                      conf: tableGrid.confidence,
+                      text: `Table (${tableGrid.rows}×${tableGrid.cols})`
+                    });
+                    analysisMethod = 'Table Detection';
+                    confidence = tableGrid.confidence;
+                  }
+
+                  // Check if this is a flowchart
+                  let detectedShapes = [];
+                  if (flowchartElements.length > 0) {
+                    detectedShapes = flowchartElements.map((elem, idx) => ({
+                      type: 'shape',
+                      bbox: elem.bbox_percent || [elem.minX/img.width*100, elem.minY/img.height*100, elem.maxX/img.width*100, elem.maxY/img.height*100],
+                      conf: 0.88,
+                      text: `${elem.type || 'Shape'} #${idx + 1}`
+                    }));
+                    analysisMethod = 'Flowchart Detection (Edge-based)';
+                  }
+                  
+                  if (detectedShapes.length > 3 && detectedShapes.length < 100) {
+                    regions = detectedShapes;
+                    confidence = 0.88;
+                  }
+                } catch (shapeErr) {
+                  console.log('ℹ️ Shape detection skipped (large image or error):', shapeErr.message);
+                }
+              } else {
+                console.log('ℹ️ Image too large for shape detection, skipping for performance');
+              }
+
+              // Parse table if detected, otherwise do standard layout detection
+              if (regions.length === 0 || !regions.some(r => r.type === 'table')) {
                 console.log(`📊 Error Report: ${ocrResult.errorReport.totalFlags} words flagged`);
                 
                 // Detect layout and multi-column structure
@@ -6051,6 +6470,8 @@
             let regions = [];
             let analysisMethod = 'Grid-Based Segmentation';
             let confidence = 0.7;
+            let tableGrid = null;
+            let flowchartElements = [];
             
             // Wrap synchronous GNN analysis with timeout protection
             const layoutTimeout = new Promise((_, reject) => 
@@ -6072,7 +6493,14 @@
                   type: r.type || 'para',
                   bbox: r.bbox,
                   conf: r.confidence || 0.75,
-                  text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block'
+                  text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block',
+                  size: {
+                    area: ((r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1])) / 10000,
+                    width: r.bbox[2] - r.bbox[0],
+                    height: r.bbox[3] - r.bbox[1]
+                  },
+                  density: 0.5,
+                  confidence: r.confidence || 0.75
                 }));
                 analysisMethod = 'Grid-Based Layout Segmentation';
                 confidence = gnnResult.confidence || 0.75;
@@ -6087,29 +6515,23 @@
               analysisMethod = 'Fallback Layout Detection (timeout)';
             }
 
-            // Bonus: Try to detect specific shapes/tables and enhance regions
+            // Bonus: Lightweight enhancement - DO NOT modify regions
             try {
-              const edges = shapeDetector.detectEdges(imageData, canvas);
-              const lines = shapeDetector.detectLines(edges, canvas);
-              const tableGrid = shapeDetector.detectTableGrid(lines, img.width, img.height);
-              const flowchartElements = shapeDetector.detectFlowchartElements(edges, canvas);
+              // Just detect if this looks like a flowchart based on simple heuristics
+              // But don't change region types - let full processing handle detection
+              const regionText = regions.map(r => r.text || '').join(' ').toLowerCase();
               
-              // Update region types if we detected a clear table
-              if (tableGrid) {
-                // Mark the region that contains the table
-                regions.forEach(r => {
-                  if (r.type === 'table' || (r.bbox[0] <= tableGrid.bbox[0] && r.bbox[2] >= tableGrid.bbox[2])) {
-                    r.type = 'table';
-                    r.conf = Math.max(r.conf, 0.85);
-                  }
-                });
+              const hasFlowchartMarkers = regionText.includes('→') || regionText.includes('↓') || 
+                                         regionText.includes('◇') || regionText.includes('⚡');
+              
+              if (hasFlowchartMarkers) {
+                console.log('📊 Potential flowchart detected (has visual markers)');
               }
               
-              if (flowchartElements.length > 0) {
-                console.log(`📊 Enhanced with ${flowchartElements.length} flowchart elements`);
-              }
+              tableGrid = null;
+              flowchartElements = [];
             } catch (enhanceErr) {
-              console.log('ℹ️ Shape enhancement skipped:', enhanceErr.message);
+              console.log('ℹ️ Enhancement skipped:', enhanceErr.message);
             }
 
             // Ensure regions cover full page - fill gaps
@@ -6129,6 +6551,68 @@
               total: regions.length
             };
 
+            // Determine basic structure properties
+            const hasMultipleColumns = regions.some(r => r.bbox[0] > img.width * 0.3 && r.bbox[0] < img.width * 0.7);
+            const layoutType = hasMultipleColumns ? 'Multi-Column' : 'Single-Column';
+            
+            // FLOWCHART DETECTION: Multiple strategies
+            // Strategy 1: Check if many small regions spaced apart
+            const smallRegions = regions.filter(r => {
+              const width = r.bbox[2] - r.bbox[0];
+              const height = r.bbox[3] - r.bbox[1];
+              const area = width * height;
+              const maxArea = (img.width * img.height) * 0.2; // Max 20% of page
+              return area < maxArea && area > 500; // Small but not tiny
+            });
+            
+            const avgSpacing = smallRegions.length > 1 ? smallRegions.reduce((sum, r, i, arr) => {
+              if (i === 0) return sum;
+              const prev = arr[i - 1];
+              const gap = Math.abs(r.bbox[1] - prev.bbox[3]);
+              return sum + gap;
+            }, 0) / (smallRegions.length - 1) : 0;
+            
+            const isFlowchartLayout = smallRegions.length > 3 && avgSpacing > 20; // Many small boxes with spacing
+            
+            // Strategy 2: Check region pattern for flowchart misdetection
+            // Flowcharts often detected as: 1 table + multiple paragraphs (4-6) + 1 header
+            const isFlowchartPattern = stats.total < 10 && 
+                                       stats.tables === 1 && 
+                                       stats.paragraphs >= 3 && 
+                                       stats.paragraphs <= 8;
+            
+            // Basic document type detection based on structure
+            let basicDocType = 'Document';
+            
+            // PRIORITY: Detect flowchart patterns first (shapes, small spaced regions, or misdetected pattern)
+            if (stats.shapes > 0) basicDocType = 'Flowchart';
+            else if (isFlowchartLayout) basicDocType = 'Flowchart'; // Many small spaced boxes = flowchart
+            else if (isFlowchartPattern) basicDocType = 'Flowchart'; // Typical flowchart misdetection pattern
+            else if (stats.tables > 0 && stats.paragraphs > 0) basicDocType = 'Invoice/Report';
+            else if (stats.figures > stats.paragraphs * 1.5) basicDocType = 'Flowchart/Diagram';
+            else if (stats.figures > stats.paragraphs) basicDocType = 'Form';
+            else if (stats.paragraphs > 5) basicDocType = 'Report';
+            else if (stats.tables > 0) basicDocType = 'Table';
+            else if (stats.headers > 0) basicDocType = 'Document';
+
+            // Log flowchart detection
+            if (isFlowchartLayout || isFlowchartPattern) {
+              console.log('📊 Flowchart detected - Layout: ' + isFlowchartLayout + ', Pattern: ' + isFlowchartPattern + ', Stats: ' + stats.total + ' regions, ' + stats.tables + ' tables, ' + stats.paragraphs + ' paragraphs');
+            }
+
+            // Basic structure for initial display
+            const structure = {
+              documentType: basicDocType,
+              confidence: confidence * 0.8,
+              layout: layoutType,
+              columns: hasMultipleColumns ? 2 : 1,
+              hasHeader: stats.headers > 0,
+              hasFooter: false,
+              hasTables: stats.tables > 0,
+              hasFigures: stats.figures > 0,
+              hasFlowchart: stats.shapes > 0 || stats.figures > stats.paragraphs
+            };
+
             // Combine text from regions as fallback
             const fallbackText = regions
               .map(r => r.text)
@@ -6143,6 +6627,7 @@
               regions: regions,
               confidence: confidence,
               stats: stats,
+              structure: structure,
               text: fallbackText,
               fullText: fallbackText,
               tables: [],  // Will be populated after OCR
@@ -6233,28 +6718,42 @@
     
     // Display image if available
     if (isUploaded && data.imageBase64) {
-      const img = document.createElement('img');
-      img.src = data.imageBase64;
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '100%';
-      img.style.objectFit = 'contain';
       const preview = document.querySelector('.output-preview');
+      
+      // Clear existing content first
       const existingImg = preview.querySelector('img');
       if (existingImg) existingImg.remove();
-      preview.insertBefore(img, preview.firstChild);
       
-      // Dynamically set preview aspect ratio to match image dimensions
-      const imageWidth = data.metadata?.imageWidth || 800;
-      const imageHeight = data.metadata?.imageHeight || 1000;
-      const aspectRatio = imageWidth / imageHeight;
-      preview.style.aspectRatio = aspectRatio.toString();
+      // Create and configure image
+      const img = document.createElement('img');
+      img.style.position = 'absolute';
+      img.style.top = '0';
+      img.style.left = '0';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      img.style.zIndex = '5';
       
-      // Store image dimensions for bbox calculation
-      window.currentImageDimensions = { width: imageWidth, height: imageHeight };
+      // Wait for image to load before setting aspect ratio
+      img.onload = () => {
+        const imageWidth = img.naturalWidth;
+        const imageHeight = img.naturalHeight;
+        const aspectRatio = imageWidth / imageHeight;
+        preview.style.aspectRatio = aspectRatio.toString();
+        preview.style.minHeight = 'auto';
+        
+        // Store image dimensions for bbox calculation
+        window.currentImageDimensions = { width: imageWidth, height: imageHeight };
+        
+        // Draw bounding boxes AFTER image loads and aspect ratio is set
+        setTimeout(() => {
+          elements.bboxContainer.innerHTML = '';
+          renderBoundingBoxes(data.regions);
+        }, 50);
+      };
       
-      // Draw bounding boxes
-      elements.bboxContainer.innerHTML = '';
-      renderBoundingBoxes(data.regions);
+      img.src = data.imageBase64;
+      preview.appendChild(img);
     }
     
     // Update statistics
@@ -6557,15 +7056,16 @@
     // Calculate confidence breakdown for display
     const regions = data.regions || [];
     const typeCount = new Set(regions.map(r => r.type)).size;
-    const densities = regions.map(r => r.density);
-    const avgDensity = densities.length > 0 ? densities.reduce((a, d) => a + d, 0) / densities.length : 0;
+    const densities = regions.map(r => r.density || 0.5).filter(d => d !== undefined && !isNaN(d));
+    const avgDensity = densities.length > 0 ? densities.reduce((a, d) => a + d, 0) / densities.length : 0.5;
     const densityVariance = densities.length > 0 ? densities.reduce((a, d) => a + Math.pow(d - avgDensity, 2), 0) / densities.length : 0;
     const coherence = Math.max(0.6, 1 - Math.sqrt(densityVariance));
     
-    // Individual region confidence
-    const avgConf = regions.length > 0 ? regions.reduce((a, r) => a + r.confidence, 0) / regions.length : 0;
-    const variance = regions.length > 0 ? regions.reduce((a, r) => a + Math.pow(r.confidence - avgConf, 2), 0) / regions.length : 0;
-    const consistency = regions.length > 0 ? 1 - Math.sqrt(variance) : 0;
+    // Individual region confidence - handle missing/invalid values
+    const validRegions = regions.map(r => r.confidence || r.conf || 0.75).filter(c => c !== undefined && !isNaN(c));
+    const avgConf = validRegions.length > 0 ? validRegions.reduce((a, c) => a + c, 0) / validRegions.length : 0.7;
+    const variance = validRegions.length > 0 ? validRegions.reduce((a, c) => a + Math.pow(c - avgConf, 2), 0) / validRegions.length : 0;
+    const consistency = validRegions.length > 0 ? Math.max(0, Math.min(1, 1 - Math.sqrt(variance))) : 0.7;
 
     const metrics = [
       { label: 'Total Regions', value: data.stats.total, tooltip: 'Number of detected layout regions' },
@@ -6574,9 +7074,9 @@
       { label: 'Tables', value: data.stats.tables, tooltip: 'Table structures detected' },
       { label: 'Figures', value: data.stats.figures, tooltip: 'Large image/figure regions' },
       { label: 'Overall Confidence', value: (data.confidence * 100).toFixed(1) + '%', tooltip: 'Composite confidence score' },
-      { label: 'Region Agreement', value: (avgConf * 100).toFixed(1) + '%', tooltip: 'Avg individual region confidence' },
-      { label: 'Consistency', value: (consistency * 100).toFixed(1) + '%', tooltip: 'Uniformity of region confidences' },
-      { label: 'Structural Coherence', value: (coherence * 100).toFixed(1) + '%', tooltip: 'Layout structure consistency' },
+      { label: 'Region Agreement', value: (!isNaN(avgConf) ? (avgConf * 100).toFixed(1) : 'N/A') + '%', tooltip: 'Avg individual region confidence' },
+      { label: 'Consistency', value: (!isNaN(consistency) ? (consistency * 100).toFixed(1) : 'N/A') + '%', tooltip: 'Uniformity of region confidences' },
+      { label: 'Structural Coherence', value: (!isNaN(coherence) ? (coherence * 100).toFixed(1) : 'N/A') + '%', tooltip: 'Layout structure consistency' },
       { label: 'Region Diversity', value: typeCount + ' types', tooltip: 'Number of different region types' },
       { label: 'Document Type', value: data.structure?.documentType || 'Unknown', tooltip: 'Detected document classification' },
       { label: 'Layout', value: data.structure?.layout || 'Unknown', tooltip: 'Single/multi-column layout' },
@@ -6747,8 +7247,41 @@
       return;
     }
 
-    // ========== DISPLAY EXTRACTED TEXT ==========
+    // ========== DISPLAY DOCUMENT CLASSIFICATION ==========
     const textContainer = document.getElementById('scanned-text-container');
+    const structure = processedDocument.structure || {};
+    
+    const classificationHtml = `
+      <div style="margin-bottom: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px; border-radius: 8px; color: white;">
+        <h5 style="margin-top: 0; margin-bottom: 12px; color: white; display: flex; align-items: center; gap: 8px;">
+          <span>📋 Document Classification</span>
+        </h5>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 6px; border-left: 3px solid white;">
+            <div style="font-size: 12px; opacity: 0.9;">Document Type</div>
+            <div style="font-size: 18px; font-weight: 700; margin-top: 4px;">${structure.documentType || 'Unknown'}</div>
+            <div style="font-size: 11px; margin-top: 4px; opacity: 0.8;">Confidence: ${((structure.confidence || 0) * 100).toFixed(0)}%</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 6px; border-left: 3px solid white;">
+            <div style="font-size: 12px; opacity: 0.9;">Layout Type</div>
+            <div style="font-size: 18px; font-weight: 700; margin-top: 4px;">${structure.layout || 'Unknown'}</div>
+            <div style="font-size: 11px; margin-top: 4px; opacity: 0.8;">Columns: ${structure.columns || 1}</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 6px; border-left: 3px solid white;">
+            <div style="font-size: 12px; opacity: 0.9;">Structure Elements</div>
+            <div style="font-size: 13px; margin-top: 6px; line-height: 1.6;">
+              ${structure.hasHeader ? '✅ Header' : '❌ No Header'} • 
+              ${structure.hasTables ? '✅ Tables' : '❌ No Tables'} • 
+              ${structure.hasFigures ? '✅ Figures' : '❌ No Figures'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    textContainer.innerHTML = classificationHtml;
+
+    // ========== DISPLAY EXTRACTED TEXT ==========
     let extractedText = processedDocument.ocr?.text || processedDocument.text || '';
     
     if (!extractedText.trim()) {
@@ -6759,7 +7292,7 @@
     const extractionMethod = processedDocument.ocr?.extractionMethod || 'Standard OCR';
     const isRegionBased = extractionMethod.includes('Region-Based');
     
-    textContainer.innerHTML = `
+    textContainer.innerHTML += `
       <div style="margin-bottom: 20px;">
         <div style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #2196F3;">
           <strong style="color: #1976D2;">OCR Analysis Report ${isRegionBased ? '✨ (Enhanced Region-Based)' : ''}</strong>
