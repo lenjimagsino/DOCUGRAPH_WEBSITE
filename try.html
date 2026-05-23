@@ -5650,13 +5650,15 @@
 
         img.onload = async () => {
           try {
-            // Prepare canvas
+            // Prepare canvas - use full image dimensions
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
             canvas.height = img.height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            console.log(`📐 Analyzing full document: ${img.width}x${img.height}px`);
 
             // Detect language (for metadata)
             const detectedScripts = multilingualProcessor.detectMultilingualContent(file.name);
@@ -5742,6 +5744,11 @@
               }
             }
 
+            // Ensure regions cover full page - fill gaps
+            if (regions.length > 0) {
+              regions = ensureFullPageCoverage(regions, 100, 100);
+            }
+
             // Count region types
             const stats = {
               headers: regions.filter(r => r.type === 'header').length,
@@ -5792,6 +5799,63 @@
     });
   }
 
+  /**
+   * Ensure regions cover the full page by filling gaps
+   */
+  function ensureFullPageCoverage(regions, pageWidth = 100, pageHeight = 100) {
+    if (!regions || regions.length === 0) return regions;
+
+    // Sort regions by top position
+    const sorted = [...regions].sort((a, b) => a.bbox[1] - b.bbox[1]);
+
+    // Find gaps and fill them
+    const enhanced = [];
+    let lastBottom = 0;
+
+    sorted.forEach((region, idx) => {
+      const [left, top, right, bottom] = region.bbox;
+
+      // If there's a gap from the last region
+      if (top > lastBottom && lastBottom > 0) {
+        // Add a filler region for the gap
+        enhanced.push({
+          type: 'para',
+          bbox: [0, lastBottom, 100, top],
+          conf: 0.60,
+          text: 'Content Area',
+          isFiller: true
+        });
+      }
+
+      enhanced.push(region);
+      lastBottom = bottom;
+    });
+
+    // Fill any remaining space at bottom
+    if (lastBottom < pageHeight - 5) {
+      enhanced.push({
+        type: 'para',
+        bbox: [0, lastBottom, 100, pageHeight],
+        conf: 0.60,
+        text: 'Content Area',
+        isFiller: true
+      });
+    }
+
+    // Fill any remaining space at top
+    if (sorted.length > 0 && sorted[0].bbox[1] > 5) {
+      enhanced.unshift({
+        type: 'header',
+        bbox: [0, 0, 100, sorted[0].bbox[1]],
+        conf: 0.60,
+        text: 'Header Area',
+        isFiller: true
+      });
+    }
+
+    return enhanced;
+  }
+
   function displayLayoutAnalysisResults(data, isUploaded) {
     // Hide placeholder
     const placeholder = document.getElementById('preview-placeholder');
@@ -5808,6 +5872,15 @@
       const existingImg = preview.querySelector('img');
       if (existingImg) existingImg.remove();
       preview.insertBefore(img, preview.firstChild);
+      
+      // Dynamically set preview aspect ratio to match image dimensions
+      const imageWidth = data.metadata?.imageWidth || 800;
+      const imageHeight = data.metadata?.imageHeight || 1000;
+      const aspectRatio = imageWidth / imageHeight;
+      preview.style.aspectRatio = aspectRatio.toString();
+      
+      // Store image dimensions for bbox calculation
+      window.currentImageDimensions = { width: imageWidth, height: imageHeight };
       
       // Draw bounding boxes
       elements.bboxContainer.innerHTML = '';
