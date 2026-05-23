@@ -1355,7 +1355,7 @@ improvement across all region categories.</pre>
   });
 
   // Download PDF
-  document.getElementById('download-pdf-btn').addEventListener('click', e => {
+  document.getElementById('download-pdf-btn').addEventListener('click', async e => {
     if (!currentAnalysisData) {
       alert('No analysis data available for download');
       return;
@@ -1366,25 +1366,133 @@ improvement across all region categories.</pre>
     btn.disabled = true;
     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
     
-    setTimeout(() => {
+    try {
+      const { jsPDF } = window.jspdf;
+      
+      // Load logo as image data
+      let logoImg = null;
+      try {
+        const response = await fetch('assets/logo.png');
+        if (response.ok) {
+          const blob = await response.blob();
+          logoImg = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (err) {
+        console.warn('Logo loading failed:', err);
+      }
+      
+      // Create PDF with header
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      let yPosition = 10;
+      
+      // Add logo if available
+      if (logoImg) {
+        try {
+          pdf.addImage(logoImg, 'PNG', 80, yPosition, 40, 20);
+          yPosition += 25;
+        } catch (err) {
+          console.warn('Logo insertion failed:', err);
+        }
+      }
+      
+      // Add title
+      pdf.setFontSize(28);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(26, 26, 26);
+      pdf.text('DOCUGRAPH', 105, yPosition, { align: 'center' });
+      yPosition += 12;
+      
+      // Add subtitle
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(102, 102, 102);
+      pdf.text('Document Analysis Report', 105, yPosition, { align: 'center' });
+      yPosition += 10;
+      
+      // Add divider line
+      pdf.setDrawColor(229, 231, 235);
+      pdf.line(20, yPosition, 190, yPosition);
+      yPosition += 5;
+      
+      // Get content
       const element = document.getElementById('tab-text');
-      const filename = currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-analysis.pdf';
-      const opt = {
-        margin: 10,
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
-      };
-      html2pdf().set(opt).from(element).save().then(() => {
+      
+      // Use html2canvas to capture the content
+      html2canvas(element, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        allowTaint: true,
+        useCORS: true
+      }).then(canvas => {
+        const contentImage = canvas.toDataURL('image/jpeg', 0.95);
+        
+        // Calculate image dimensions to fit on page
+        const imgWidth = 170;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        
+        let contentY = yPosition;
+        let remainingHeight = imgHeight;
+        let sourceY = 0;
+        
+        // Handle content that spans multiple pages
+        while (remainingHeight > 0) {
+          const availableHeight = pageHeight - contentY - 10;
+          
+          if (availableHeight <= 0) {
+            // Add new page
+            pdf.addPage();
+            contentY = 10;
+          } else {
+            // Calculate how much of the image to fit on this page
+            const heightToAdd = Math.min(availableHeight, remainingHeight);
+            const sourceHeight = (heightToAdd / imgWidth) * canvas.width;
+            
+            // Create a canvas for this portion
+            const portionCanvas = document.createElement('canvas');
+            portionCanvas.width = canvas.width;
+            portionCanvas.height = sourceHeight;
+            const ctx = portionCanvas.getContext('2d');
+            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+            
+            const portionImage = portionCanvas.toDataURL('image/jpeg', 0.95);
+            pdf.addImage(portionImage, 'JPEG', 20, contentY, imgWidth, heightToAdd);
+            
+            contentY += heightToAdd;
+            sourceY += sourceHeight;
+            remainingHeight -= heightToAdd;
+          }
+        }
+        
+        // Save the PDF
+        const filename = currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-analysis.pdf';
+        pdf.save(filename);
+        
         btn.innerHTML = original;
         btn.disabled = false;
-      }).catch(() => {
-        alert('Error generating PDF. Please try again.');
+        window.Toast?.success('PDF downloaded successfully');
+      }).catch(err => {
+        console.error('Canvas rendering error:', err);
+        alert('Error generating PDF content. Please try again.');
         btn.innerHTML = original;
         btn.disabled = false;
       });
-    }, 300);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('Error generating PDF. Please try again.');
+      btn.innerHTML = original;
+      btn.disabled = false;
+    }
   });
 
   // Download DOCX - Creates editable Word document with real tables, shapes, and formatting
