@@ -377,10 +377,6 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
               Copy Text
             </button>
-            <button class="btn btn-primary" id="download-docx-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Download DOCX
-            </button>
             <button class="btn btn-primary" id="download-pdf-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Download PDF
@@ -7573,7 +7569,6 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
 
     // Download button handlers
     const copyTextBtn = document.getElementById('copy-text-btn');
-    const downloadDocxBtn = document.getElementById('download-docx-btn');
     const downloadPdfBtn = document.getElementById('download-pdf-btn');
     const newAnalysisBtn = document.getElementById('new-analysis-btn');
 
@@ -7694,13 +7689,6 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
         alert('Failed to copy text: ' + err);
       });
     });
-    }
-
-    if (downloadDocxBtn) {
-      downloadDocxBtn.addEventListener('click', () => {
-        console.log('📥 Downloading professional DOCX document...');
-        exportAsProfessionalDOCX();
-      });
     }
 
     if (downloadPdfBtn) {
