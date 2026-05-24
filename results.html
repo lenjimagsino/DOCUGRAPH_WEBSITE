@@ -20,7 +20,6 @@
     margin-top: 48px;
   }
 
-  /* Hierarchy visualization panel (left column) */
   .hierarchy-panel {
     background: var(--white);
     border: 1px solid var(--line);
@@ -75,7 +74,6 @@
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
   }
 
-  /* Two-column layout for document + results */
   .results-content-wrapper {
     display: grid;
     grid-template-columns: 1fr 1.2fr;
@@ -145,35 +143,11 @@
     backdrop-filter: blur(2px);
   }
   
-  .bbox.header {
-    border-color: var(--green-700);
-    background: rgba(28, 122, 57, 0.15);
-    color: var(--green-900);
-  }
-  
-  .bbox.para {
-    border-color: var(--green-500);
-    background: rgba(62, 200, 92, 0.12);
-    color: var(--green-700);
-  }
-  
-  .bbox.table {
-    border-color: #d97706;
-    background: rgba(217, 119, 6, 0.12);
-    color: #92400e;
-  }
-  
-  .bbox.figure {
-    border-color: #7c3aed;
-    background: rgba(124, 58, 237, 0.12);
-    color: #5b21b6;
-  }
-  
-  .bbox.shape {
-    border-color: #ec4899;
-    background: rgba(236, 72, 153, 0.12);
-    color: #be185d;
-  }
+  .bbox.header  { border-color: var(--green-700); background: rgba(28,122,57,0.15); color: var(--green-900); }
+  .bbox.para    { border-color: var(--green-500); background: rgba(62,200,92,0.12); color: var(--green-700); }
+  .bbox.table   { border-color: #d97706; background: rgba(217,119,6,0.12); color: #92400e; }
+  .bbox.figure  { border-color: #7c3aed; background: rgba(124,58,237,0.12); color: #5b21b6; }
+  .bbox.shape   { border-color: #ec4899; background: rgba(236,72,153,0.12); color: #be185d; }
   
   .confidence-badge {
     position: absolute;
@@ -186,21 +160,8 @@
     font-size: 12px;
     font-weight: 600;
     z-index: 10;
-    box-shadow: 0 4px 12px rgba(42, 168, 74, 0.3);
+    box-shadow: 0 4px 12px rgba(42,168,74,0.3);
   }
-
-  .confidence-indicator {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 6px;
-    vertical-align: middle;
-  }
-
-  .confidence-high { background-color: #10b981; }
-  .confidence-medium { background-color: #f59e0b; }
-  .confidence-low { background-color: #ef4444; }
 
   .quality-metrics {
     background: var(--green-50);
@@ -213,26 +174,9 @@
     gap: 12px;
   }
 
-  .quality-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .quality-metric-value {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--green-700);
-    font-family: var(--font-mono);
-  }
-
-  .quality-metric-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--ink-500);
-  }
+  .quality-metric { display: flex; flex-direction: column; gap: 4px; }
+  .quality-metric-value { font-size: 18px; font-weight: 700; color: var(--green-700); font-family: var(--font-mono); }
+  .quality-metric-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-500); }
   
   .doc-stats {
     display: grid;
@@ -243,26 +187,10 @@
     border-top: 1px solid var(--line);
   }
   
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  .stat-item { display: flex; flex-direction: column; gap: 6px; }
+  .stat-label { font-size: 12px; color: var(--ink-500); font-weight: 500; }
+  .stat-value { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--green-700); }
   
-  .stat-label {
-    font-size: 12px;
-    color: var(--ink-500);
-    font-weight: 500;
-  }
-  
-  .stat-value {
-    font-family: var(--font-display);
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--green-700);
-  }
-  
-  /* ===== TABS & OUTPUT ===== */
   .result-output {
     background: var(--white);
     border-radius: var(--radius-lg);
@@ -297,14 +225,8 @@
     transition: color .2s, border-color .2s;
   }
   
-  .tabs button:hover {
-    color: var(--green-700);
-  }
-  
-  .tabs button.active {
-    color: var(--green-700);
-    border-bottom-color: var(--green-600);
-  }
+  .tabs button:hover { color: var(--green-700); }
+  .tabs button.active { color: var(--green-700); border-bottom-color: var(--green-600); }
   
   .tab-body {
     padding: 24px;
@@ -326,45 +248,13 @@
     line-height: 1.5;
   }
   
-  .tab-body h2 {
-    margin: 0 0 12px 0;
-    font-family: var(--font-display);
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--ink-900);
-  }
+  .tab-body h2  { margin: 0 0 12px 0; font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--ink-900); }
+  .tab-body h3  { margin: 16px 0 8px 0; font-size: 14px; font-weight: 600; color: var(--ink-900); }
+  .tab-body p   { margin: 0 0 12px 0; }
   
-  .tab-body h3 {
-    margin: 16px 0 8px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--ink-900);
-  }
-  
-  .tab-body p {
-    margin: 0 0 12px 0;
-  }
-  
-  .tab-body table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0;
-    font-size: 12px;
-  }
-  
-  .tab-body table th {
-    background: var(--off);
-    padding: 8px 12px;
-    text-align: left;
-    font-weight: 600;
-    border-bottom: 1px solid var(--line);
-    color: var(--ink-800);
-  }
-  
-  .tab-body table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--line);
-  }
+  .tab-body table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px; }
+  .tab-body table th { background: var(--off); padding: 8px 12px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--line); color: var(--ink-800); }
+  .tab-body table td { padding: 8px 12px; border-bottom: 1px solid var(--line); }
   
   .result-actions {
     display: flex;
@@ -373,69 +263,14 @@
     border-top: 1px solid var(--line);
     background: var(--off);
   }
-  
-  /* ===== LEGEND ===== */
-  .legend {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 32px;
-    justify-content: flex-start;
-  }
-  
-  .legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--white);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    font-size: 13px;
-    color: var(--ink-700);
-  }
-  
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-  }
-  
-  /* ===== RESPONSIVE ===== */
-  @media (max-width: 1400px) {
-    .results-content-wrapper {
-      grid-template-columns: 1fr;
-      gap: 32px;
-    }
-  }
 
-  @media (max-width: 1024px) {
-    .results-grid {
-      gap: 32px;
-    }
-    .tab-body {
-      max-height: 400px;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .hierarchy-panel {
-      max-height: 500px;
-    }
-    
-    .results-content-wrapper {
-      grid-template-columns: 1fr;
-    }
-    
-    .doc-render {
-      aspect-ratio: 4/5;
-    }
-  }
+  @media (max-width: 1400px) { .results-content-wrapper { grid-template-columns: 1fr; gap: 32px; } }
+  @media (max-width: 1024px) { .results-grid { gap: 32px; } .tab-body { max-height: 400px; } }
+  @media (max-width: 768px)  { .hierarchy-panel { max-height: 500px; } .results-content-wrapper { grid-template-columns: 1fr; } .doc-render { aspect-ratio: 4/5; } }
 </style>
 </head>
 <body>
 
-<!-- Backend Configuration -->
 <script>
   window.BACKEND_URL = 'https://docugraph.site:5000';
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -523,45 +358,30 @@
     <div class="hierarchy-panel reveal" id="hierarchy-section" style="display:none;">
       <h3>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:-2px;"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 6v6m-3-3h6"/></svg>
-        Document Hierarchy & Confidence
+        Document Hierarchy &amp; Confidence
       </h3>
       <div id="hierarchyVisualization" style="min-height: 300px; padding: 20px; overflow-x: auto;"></div>
     </div>
 
-    <!-- Two-Column Content: Document + Results -->
+    <!-- Two-Column Content -->
     <div class="results-content-wrapper reveal">
-      <!-- Left: Document with bounding boxes -->
       <div class="doc-column">
         <div class="result-doc">
           <h3 id="doc-title">Document Analysis</h3>
-          <div class="doc-render" id="doc-render">
-            <!-- Dynamic content will be inserted here -->
-          </div>
-          <div class="confidence-badge" id="confidence-badge" style="position: absolute; top: 24px; right: 24px;">
+          <div class="doc-render" id="doc-render"></div>
+          <div class="confidence-badge" id="confidence-badge" style="position:absolute; top:24px; right:24px;">
             Confidence: <span id="result-confidence">0%</span>
           </div>
           <div class="doc-stats" id="doc-stats">
-            <div class="stat-item">
-              <span class="stat-label">Regions Found</span>
-              <span class="stat-value" id="stat-total">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Headers</span>
-              <span class="stat-value" id="stat-headers">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Tables</span>
-              <span class="stat-value" id="stat-tables">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Shapes</span>
-              <span class="stat-value" id="stat-shapes">0</span>
-            </div>
+            <div class="stat-item"><span class="stat-label">Regions Found</span><span class="stat-value" id="stat-total">0</span></div>
+            <div class="stat-item"><span class="stat-label">Headers</span><span class="stat-value" id="stat-headers">0</span></div>
+            <div class="stat-item"><span class="stat-label">Tables</span><span class="stat-value" id="stat-tables">0</span></div>
+            <div class="stat-item"><span class="stat-label">Shapes</span><span class="stat-value" id="stat-shapes">0</span></div>
           </div>
         </div>
       </div>
 
-      <!-- Right: Structured output with tabs -->
+      <!-- Right: Tabs -->
       <div class="result-output reveal" style="transition-delay:.1s">
         <div class="tabs">
           <button class="active" data-tab="text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Text</button>
@@ -572,20 +392,14 @@
 
         <div class="tab-body" id="tab-text">
           <h2>Graph Neural Networks for Document Understanding</h2>
-          <p>Document layout analysis remains a foundational task in computer vision and natural-language processing. Traditional CNN-based pipelines treat pages as flat pixel grids and miss the relational structure between visual regions.</p>
-
+          <p>Document layout analysis remains a foundational task in computer vision and natural-language processing.</p>
           <h3>2. Methodology</h3>
-          <p>We model each page as a graph where nodes represent visual regions detected by a backbone CNN, and edges encode spatial proximity and reading-order relationships. A two-layer Graph Attention Network propagates context.</p>
-
+          <p>We model each page as a graph where nodes represent visual regions detected by a backbone CNN.</p>
           <table>
             <tr><th>Method</th><th>F1</th><th>mAP</th></tr>
             <tr><td>CNN baseline</td><td>0.891</td><td>0.842</td></tr>
             <tr><td>DOCUGRAPH (ours)</td><td><b>0.974</b></td><td><b>0.928</b></td></tr>
           </table>
-
-          <p style="font-size:12.5px; color:var(--ink-500); font-style:italic;">[Figure 1 — Pipeline overview]</p>
-
-          <p>Results on the PubLayNet benchmark show consistent improvement across all region categories, with the most significant gains on tables and figures.</p>
         </div>
 
         <div class="tab-body" id="tab-json" style="display:none;">
@@ -593,81 +407,27 @@
   "document_id": "doc_20260507_a8f2",
   "pages": 1,
   "confidence": 0.968,
-  "regions": [
-    {
-      "type": "header",
-      "bbox": [40, 38, 660, 84],
-      "text": "Graph Neural Networks for…",
-      "confidence": 0.992,
-      "level": 1
-    },
-    {
-      "type": "paragraph",
-      "bbox": [40, 100, 660, 178],
-      "text": "Document layout analysis…",
-      "confidence": 0.978
-    },
-    {
-      "type": "header",
-      "bbox": [40, 200, 200, 234],
-      "text": "2. Methodology",
-      "confidence": 0.985,
-      "level": 2
-    },
-    {
-      "type": "table",
-      "bbox": [40, 320, 660, 410],
-      "rows": 3,
-      "cols": 3,
-      "confidence": 0.951
-    },
-    {
-      "type": "figure",
-      "bbox": [40, 430, 660, 540],
-      "caption": "Figure 1 · Pipeline overview",
-      "confidence": 0.947
-    }
-  ]
+  "regions": []
 }</pre>
         </div>
 
         <div class="tab-body" id="tab-markdown" style="display:none;">
 <pre># Graph Neural Networks for Document Understanding
 
-Document layout analysis remains a foundational task
-in computer vision and natural-language processing.
-Traditional CNN-based pipelines treat pages as flat
-pixel grids and miss the relational structure between
-visual regions.
-
-## 2. Methodology
-
-We model each page as a graph where nodes represent
-visual regions detected by a backbone CNN, and edges
-encode spatial proximity and reading-order relationships.
-
-| Method            | F1    | mAP   |
-|-------------------|-------|-------|
-| CNN baseline      | 0.891 | 0.842 |
-| DOCUGRAPH (ours)  | 0.974 | 0.928 |
-
-![Figure 1 — Pipeline overview](fig1.png)
-
-Results on the PubLayNet benchmark show consistent
-improvement across all region categories.</pre>
+Document layout analysis remains a foundational task.</pre>
         </div>
 
         <div class="tab-body" id="tab-table" style="display:none;">
           <h2>Detected Tables</h2>
-          <div id="table-content" style="margin-top: 20px;">
-            <p style="color: var(--ink-500); font-style: italic;">No tables detected in this document.</p>
+          <div id="table-content" style="margin-top:20px;">
+            <p style="color:var(--ink-500); font-style:italic;">No tables detected in this document.</p>
           </div>
-          <div id="table-export-btns" style="margin-top: 20px; display: flex; gap: 12px;">
-            <button onclick="downloadTableData('csv')" class="btn btn-secondary" id="table-csv-btn" style="display: none;">
+          <div id="table-export-btns" style="margin-top:20px; display:flex; gap:12px;">
+            <button onclick="downloadTableData('csv')" class="btn btn-secondary" id="table-csv-btn" style="display:none;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export CSV
             </button>
-            <button onclick="downloadTableData('json')" class="btn btn-secondary" id="table-json-btn" style="display: none;">
+            <button onclick="downloadTableData('json')" class="btn btn-secondary" id="table-json-btn" style="display:none;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export JSON
             </button>
@@ -696,62 +456,50 @@ improvement across all region categories.</pre>
 <script src="assets/main.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 
-<!-- Fallback docx library loader -->
+<!-- Fallback docx loader -->
 <script>
   setTimeout(() => {
     if (!window.docx && typeof docx === 'undefined') {
-      console.log('Loading fallback docx library...');
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
-      document.head.appendChild(script);
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
+      document.head.appendChild(s);
     }
   }, 2000);
 </script>
 
 <script>
-  // Global storage for analysis data
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Global state
+  // ─────────────────────────────────────────────────────────────────────────────
   let currentAnalysisData = null;
 
-  // Load analysis data from sessionStorage (from try.html)
   document.addEventListener('DOMContentLoaded', () => {
-    const analysisDataStr = sessionStorage.getItem('analysisData');
-    
-    if (analysisDataStr) {
+    const str = sessionStorage.getItem('analysisData');
+    if (str) {
       try {
-        currentAnalysisData = JSON.parse(analysisDataStr);
+        currentAnalysisData = JSON.parse(str);
         displayUploadedImageResults(currentAnalysisData);
-        // Reveal the export bar now that we have data
         const expBar = document.getElementById('export-bar');
         if (expBar) expBar.style.display = 'inline-flex';
-        
-        // Display hierarchy visualization if available (read from sessionStorage, not window ref)
-        const hierarchyStr = sessionStorage.getItem('hierarchyData');
-        if (hierarchyStr) {
-          try {
-            const hierarchyData = JSON.parse(hierarchyStr);
-            displayHierarchyVisualization(hierarchyData);
-          } catch (he) {
-            console.warn('Could not parse hierarchy data:', he);
-          }
+
+        const hierStr = sessionStorage.getItem('hierarchyData');
+        if (hierStr) {
+          try { displayHierarchyVisualization(JSON.parse(hierStr)); } catch(e) {}
         }
-      } catch (e) {
-        console.error('Error parsing analysis data:', e);
-      }
+      } catch(e) { console.error('Error parsing analysis data:', e); }
     }
   });
 
-  // ---------- Export functions ----------
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Export bar (JSON / MD / TXT / Copy)
+  // ─────────────────────────────────────────────────────────────────────────────
   function downloadBlob(content, filename, type) {
     const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   }
   function baseFilename() {
@@ -759,620 +507,367 @@ improvement across all region categories.</pre>
     return currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-docugraph';
   }
   function toMarkdown(d) {
-    let md = `# ${d.filename || 'Document'}\n\n`;
-    md += `**Confidence:** ${((d.confidence || 0) * 100).toFixed(1)}%  \n`;
-    md += `**Regions:** ${d.regions?.length || 0}\n\n---\n\n`;
-    (d.regions || []).forEach((r, i) => {
-      md += `## Region ${i + 1} · ${r.type || 'text'}\n`;
-      md += `> Confidence: ${((r.conf || 0) * 100).toFixed(1)}%\n\n`;
+    let md = `# ${d.filename || 'Document'}\n\n**Confidence:** ${((d.confidence||0)*100).toFixed(1)}%\n**Regions:** ${d.regions?.length||0}\n\n---\n\n`;
+    (d.regions||[]).forEach((r,i) => {
+      md += `## Region ${i+1} · ${r.type||'text'}\n> Confidence: ${((r.conf||0)*100).toFixed(1)}%\n\n`;
       if (r.text) md += `${r.text}\n\n`;
     });
     return md;
   }
   function toText(d) {
-    let txt = `${d.filename || 'Document'}\n${'='.repeat((d.filename || 'Document').length)}\n\n`;
-    (d.regions || []).forEach((r, i) => {
-      txt += `[${(r.type || 'text').toUpperCase()}] (conf ${((r.conf || 0) * 100).toFixed(1)}%)\n`;
+    let txt = `${d.filename||'Document'}\n${'='.repeat((d.filename||'Document').length)}\n\n`;
+    (d.regions||[]).forEach((r,i) => {
+      txt += `[${(r.type||'text').toUpperCase()}] (conf ${((r.conf||0)*100).toFixed(1)}%)\n`;
       if (r.text) txt += r.text + '\n';
       txt += '\n';
     });
     return txt;
   }
-  document.addEventListener('click', async (e) => {
+  document.addEventListener('click', async e => {
     const b = e.target.closest('[data-export]');
     if (!b) return;
     if (!currentAnalysisData) { window.Toast?.error('No analysis data to export'); return; }
-    const kind = b.dataset.export;
-    const base = baseFilename();
+    const kind = b.dataset.export, base = baseFilename();
     try {
-      if (kind === 'json') {
-        downloadBlob(JSON.stringify(currentAnalysisData, null, 2), base + '.json', 'application/json');
-        window.Toast?.success('Downloaded ' + base + '.json');
-      } else if (kind === 'md') {
-        downloadBlob(toMarkdown(currentAnalysisData), base + '.md', 'text/markdown');
-        window.Toast?.success('Downloaded ' + base + '.md');
-      } else if (kind === 'txt') {
-        downloadBlob(toText(currentAnalysisData), base + '.txt', 'text/plain');
-        window.Toast?.success('Downloaded ' + base + '.txt');
-      } else if (kind === 'copy') {
-        await navigator.clipboard.writeText(toText(currentAnalysisData));
-        window.Toast?.success('Copied text to clipboard');
-      }
-    } catch (err) {
-      window.Toast?.error('Export failed: ' + (err.message || 'unknown'));
-    }
+      if (kind==='json')  { downloadBlob(JSON.stringify(currentAnalysisData,null,2), base+'.json','application/json'); window.Toast?.success('Downloaded '+base+'.json'); }
+      else if (kind==='md')   { downloadBlob(toMarkdown(currentAnalysisData), base+'.md','text/markdown'); window.Toast?.success('Downloaded '+base+'.md'); }
+      else if (kind==='txt')  { downloadBlob(toText(currentAnalysisData), base+'.txt','text/plain'); window.Toast?.success('Downloaded '+base+'.txt'); }
+      else if (kind==='copy') { await navigator.clipboard.writeText(toText(currentAnalysisData)); window.Toast?.success('Copied to clipboard'); }
+    } catch(err) { window.Toast?.error('Export failed: '+(err.message||'unknown')); }
   });
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Display results
+  // ─────────────────────────────────────────────────────────────────────────────
   function displayUploadedImageResults(data) {
-    const docRender = document.getElementById('doc-render');
-    const docTitle = document.getElementById('doc-title');
+    const docRender       = document.getElementById('doc-render');
+    const docTitle        = document.getElementById('doc-title');
     const confidenceBadge = document.getElementById('result-confidence');
-    const pageSummary = document.getElementById('page-summary');
-    
-    // Calculate quality metrics
-    const qualityMetrics = data.qualityMetrics || {};
-    const avgConfidence = qualityMetrics.averageConfidence || 
-      (data.regions && data.regions.length > 0 
-        ? data.regions.reduce((a, r) => a + r.conf, 0) / data.regions.length
-        : 0.85);
-    const highConfidence = data.regions ? data.regions.filter(r => r.conf > 0.85).length : 0;
-    const mediumConfidence = data.regions ? data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length : 0;
-    const lowConfidence = data.regions ? data.regions.filter(r => r.conf < 0.7).length : 0;
-    
-    // Update title with filename
-    const filename = data.filename.replace(/\.[^/.]+$/, '');
+    const pageSummary     = document.getElementById('page-summary');
+
+    const avgConf = data.regions && data.regions.length
+      ? data.regions.reduce((a,r) => a+(r.conf||0), 0) / data.regions.length : 0.85;
+    const hi  = data.regions ? data.regions.filter(r=>r.conf>0.85).length  : 0;
+    const med = data.regions ? data.regions.filter(r=>r.conf>=0.7&&r.conf<=0.85).length : 0;
+    const lo  = data.regions ? data.regions.filter(r=>r.conf<0.7).length   : 0;
+
+    const filename = data.filename.replace(/\.[^/.]+$/,'');
     docTitle.textContent = filename;
-    confidenceBadge.textContent = (data.confidence * 100).toFixed(1) + '%';
-    
-    // Update statistics
+    confidenceBadge.textContent = (data.confidence*100).toFixed(1)+'%';
+
     const stats = {
-      total: data.regions ? data.regions.length : 0,
-      headers: data.regions ? data.regions.filter(r => r.type === 'header').length : 0,
-      tables: data.regions ? data.regions.filter(r => r.type === 'table').length : 0,
-      shapes: data.regions ? data.regions.filter(r => r.type === 'shape').length : 0,
-      paragraphs: data.regions ? data.regions.filter(r => r.type === 'para').length : 0,
-      figures: data.regions ? data.regions.filter(r => r.type === 'figure').length : 0
+      total:      data.regions ? data.regions.length : 0,
+      headers:    data.regions ? data.regions.filter(r=>r.type==='header').length : 0,
+      tables:     data.regions ? data.regions.filter(r=>r.type==='table').length  : 0,
+      shapes:     data.regions ? data.regions.filter(r=>r.type==='shape').length  : 0,
+      paragraphs: data.regions ? data.regions.filter(r=>r.type==='para').length   : 0,
+      figures:    data.regions ? data.regions.filter(r=>r.type==='figure').length : 0,
     };
-    
-    document.getElementById('stat-total').textContent = stats.total;
+
+    document.getElementById('stat-total').textContent   = stats.total;
     document.getElementById('stat-headers').textContent = stats.headers;
-    document.getElementById('stat-tables').textContent = stats.tables;
-    document.getElementById('stat-shapes').textContent = stats.shapes;
-    
-    // Add quality metrics visualization before page summary
-    let qualityHTML = '<div class="quality-metrics">';
-    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${(avgConfidence * 100).toFixed(1)}%</div><div class="quality-metric-label">Avg Confidence</div></div>`;
-    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${highConfidence}</div><div class="quality-metric-label">High (>85%)</div></div>`;
-    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${mediumConfidence}</div><div class="quality-metric-label">Medium (70-85%)</div></div>`;
-    qualityHTML += `<div class="quality-metric"><div class="quality-metric-value">${lowConfidence}</div><div class="quality-metric-label">Low (<70%)</div></div>`;
-    qualityHTML += '</div>';
-    
-    // Insert quality metrics after page summary
+    document.getElementById('stat-tables').textContent  = stats.tables;
+    document.getElementById('stat-shapes').textContent  = stats.shapes;
+
+    let qHTML = `<div class="quality-metrics">
+      <div class="quality-metric"><div class="quality-metric-value">${(avgConf*100).toFixed(1)}%</div><div class="quality-metric-label">Avg Confidence</div></div>
+      <div class="quality-metric"><div class="quality-metric-value">${hi}</div><div class="quality-metric-label">High (&gt;85%)</div></div>
+      <div class="quality-metric"><div class="quality-metric-value">${med}</div><div class="quality-metric-label">Medium (70-85%)</div></div>
+      <div class="quality-metric"><div class="quality-metric-value">${lo}</div><div class="quality-metric-label">Low (&lt;70%)</div></div>
+    </div>`;
     if (!document.getElementById('quality-metrics-container')) {
-      pageSummary.insertAdjacentHTML('afterend', `<div id="quality-metrics-container">${qualityHTML}</div>`);
+      pageSummary.insertAdjacentHTML('afterend', `<div id="quality-metrics-container">${qHTML}</div>`);
     } else {
-      document.getElementById('quality-metrics-container').innerHTML = qualityHTML;
+      document.getElementById('quality-metrics-container').innerHTML = qHTML;
     }
-    
-    // Update page summary
-    const detections = [];
-    if (stats.headers > 0) detections.push(`${stats.headers} header${stats.headers !== 1 ? 's' : ''}`);
-    if (stats.paragraphs > 0) detections.push(`${stats.paragraphs} paragraph${stats.paragraphs !== 1 ? 's' : ''}`);
-    if (stats.tables > 0) detections.push(`${stats.tables} table${stats.tables !== 1 ? 's' : ''}`);
-    if (stats.figures > 0) detections.push(`${stats.figures} figure${stats.figures !== 1 ? 's' : ''}`);
-    if (stats.shapes > 0) detections.push(`${stats.shapes} shape${stats.shapes !== 1 ? 's' : ''}`);
-    
-    const summaryText = detections.length > 0 
-      ? `${detections.join(' · ')} — confidence ${(data.confidence * 100).toFixed(1)}%`
-      : `${stats.total} elements detected — confidence ${(data.confidence * 100).toFixed(1)}%`;
-    
-    pageSummary.textContent = summaryText;
-    
-    // Update tab content with actual data
+
+    const dets = [];
+    if (stats.headers>0)    dets.push(`${stats.headers} header${stats.headers!==1?'s':''}`);
+    if (stats.paragraphs>0) dets.push(`${stats.paragraphs} paragraph${stats.paragraphs!==1?'s':''}`);
+    if (stats.tables>0)     dets.push(`${stats.tables} table${stats.tables!==1?'s':''}`);
+    if (stats.figures>0)    dets.push(`${stats.figures} figure${stats.figures!==1?'s':''}`);
+    if (stats.shapes>0)     dets.push(`${stats.shapes} shape${stats.shapes!==1?'s':''}`);
+    pageSummary.textContent = dets.length
+      ? `${dets.join(' · ')} — confidence ${(data.confidence*100).toFixed(1)}%`
+      : `${stats.total} elements detected — confidence ${(data.confidence*100).toFixed(1)}%`;
+
     updateTabContent(data);
-    
-    // If image data exists, display it
+
     if (data.imageBase64 || data.imageData) {
-      const imageSource = data.imageBase64 || data.imageData;
+      const src = data.imageBase64 || data.imageData;
       const img = document.createElement('img');
-      img.src = imageSource;
-      img.alt = data.filename;
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '100%';
-      img.style.objectFit = 'contain';
+      img.src = src; img.alt = data.filename;
+      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
       docRender.innerHTML = '';
       docRender.appendChild(img);
-      
-      // Add bounding boxes overlay
+
       const bboxContainer = document.createElement('div');
       bboxContainer.className = 'bbox-container';
-      
-      // Calculate image dimensions for bbox positioning
+
       img.onload = () => {
-        const imgWidth  = img.naturalWidth;
-        const imgHeight = img.naturalHeight;
-
-        // Override CSS aspect-ratio to match actual image proportions
-        docRender.style.aspectRatio = `${imgWidth} / ${imgHeight}`;
-
-        // Wait one frame for the reflow before measuring
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        docRender.style.aspectRatio = `${iw} / ${ih}`;
         requestAnimationFrame(() => {
-          const containerWidth  = docRender.offsetWidth;
-          const containerHeight = docRender.offsetHeight;
+          const cw = docRender.offsetWidth, ch = docRender.offsetHeight;
+          const scale = Math.min(cw/iw, ch/ih);
+          const dw = iw*scale, dh = ih*scale;
+          const ox = (cw-dw)/2, oy = (ch-dh)/2;
 
-          const scaleX = containerWidth / imgWidth;
-          const scaleY = containerHeight / imgHeight;
-          const scale = Math.min(scaleX, scaleY);
-
-          const displayWidth = imgWidth * scale;
-          const displayHeight = imgHeight * scale;
-          const offsetX = (containerWidth - displayWidth) / 2;
-          const offsetY = (containerHeight - displayHeight) / 2;
-
-          // Render bounding boxes
-          data.regions.forEach((region, idx) => {
+          data.regions.forEach(region => {
             const bbox = document.createElement('div');
             bbox.className = `bbox ${region.type}`;
-
-            // Parse bbox coordinates (percentage format)
-            const [x1, y1, x2, y2] = region.bbox;
-
-            // Convert from percentage to pixels on original image
-            const left = (x1 / 100) * imgWidth;
-            const top = (y1 / 100) * imgHeight;
-            const width = ((x2 - x1) / 100) * imgWidth;
-            const height = ((y2 - y1) / 100) * imgHeight;
-
-            // Scale to display size
-            bbox.style.left = (offsetX + left * scale) + 'px';
-            bbox.style.top = (offsetY + top * scale) + 'px';
-            bbox.style.width = (width * scale) + 'px';
-            bbox.style.height = (height * scale) + 'px';
-
-            // Add label
-            const confidence = region.conf ? (region.conf * 100).toFixed(0) : '0';
-            bbox.innerHTML = `<strong>${region.type.toUpperCase()}</strong> · ${confidence}%`;
-
+            const [x1,y1,x2,y2] = region.bbox;
+            bbox.style.left   = (ox + (x1/100)*iw*scale) + 'px';
+            bbox.style.top    = (oy + (y1/100)*ih*scale) + 'px';
+            bbox.style.width  = ((x2-x1)/100*iw*scale) + 'px';
+            bbox.style.height = ((y2-y1)/100*ih*scale) + 'px';
+            const conf = region.conf ? (region.conf*100).toFixed(0) : '0';
+            bbox.innerHTML = `<strong>${region.type.toUpperCase()}</strong> · ${conf}%`;
             bboxContainer.appendChild(bbox);
           });
-
           docRender.appendChild(bboxContainer);
         });
       };
     } else {
-      // Demo mode - show placeholder with regions
-      docRender.innerHTML = '<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--ink-500); font-size:14px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg> Demo results from test case</div>';
+      docRender.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--ink-500);font-size:14px;">Demo results from test case</div>';
     }
   }
 
   function updateTabContent(data) {
-    // Generate formatted document content from regions
-    const filename = data.filename.replace(/\.[^/.]+$/, ''); // Remove extension
-    
-    // Calculate quality metrics
-    const qualityMetrics = data.qualityMetrics || {};
-    const lowConfidenceCount = qualityMetrics.lowConfidenceRegions || 
-      (data.regions ? data.regions.filter(r => r.conf < 0.7).length : 0);
-    const avgConfidence = qualityMetrics.averageConfidence || 
-      (data.regions && data.regions.length > 0 
-        ? data.regions.reduce((a, r) => a + r.conf, 0) / data.regions.length
-        : 0.85);
-    
-    // Text Tab - Plain formatted text
-    let textContent = `${filename.toUpperCase()}\n`;
-    textContent += `${'='.repeat(filename.length)}\n\n`;
-    textContent += `Analysis Date: ${new Date(data.timestamp).toLocaleString()}\n`;
-    textContent += `Confidence Score: ${(data.confidence * 100).toFixed(1)}%\n`;
-    textContent += `Average Region Confidence: ${(avgConfidence * 100).toFixed(1)}%\n`;
-    textContent += `Low-Confidence Regions: ${lowConfidenceCount}\n`;
-    
-    // Add advanced metadata if available
+    const filename = data.filename.replace(/\.[^/.]+$/,'');
+    const avgConf  = data.regions && data.regions.length
+      ? data.regions.reduce((a,r)=>a+(r.conf||0),0)/data.regions.length : 0.85;
+    const lowCount = data.regions ? data.regions.filter(r=>r.conf<0.7).length : 0;
+
+    // ── Text tab ────────────────────────────────────────────────────────────
+    let txt = `${filename.toUpperCase()}\n${'='.repeat(filename.length)}\n\n`;
+    txt += `Analysis Date: ${new Date(data.timestamp).toLocaleString()}\n`;
+    txt += `Confidence Score: ${(data.confidence*100).toFixed(1)}%\n`;
+    txt += `Average Region Confidence: ${(avgConf*100).toFixed(1)}%\n`;
+    txt += `Low-Confidence Regions: ${lowCount}\n`;
     if (data.metadata) {
-      textContent += `\nANALYSIS METADATA:\n`;
-      textContent += `  • Method: ${data.metadata.analysisMethod || 'Smart OCR Recognition'}\n`;
-      textContent += `  • Language: ${data.metadata.language || 'English'}\n`;
-      textContent += `  • Segmentation: ${data.metadata.segmentationLevel || 'Basic'}\n`;
-      textContent += `  • Preprocessing: ${data.metadata.preprocessingApplied ? 'Yes' : 'No'}\n`;
-      if (data.metadata.detectedFlowchart) {
-        textContent += `  • Flowchart Detected: Yes\n`;
-      }
-      if (data.metadata.detectedTable) {
-        textContent += `  • Table Detected: Yes\n`;
-      }
-      textContent += `\n`;
+      txt += `\nANALYSIS METADATA:\n`;
+      txt += `  • Method: ${data.metadata.analysisMethod||'Smart OCR Recognition'}\n`;
+      txt += `  • Language: ${data.metadata.language||'English'}\n`;
+      txt += `  • Segmentation: ${data.metadata.segmentationLevel||'Basic'}\n`;
+      txt += `  • Preprocessing: ${data.metadata.preprocessingApplied?'Yes':'No'}\n`;
+      if (data.metadata.detectedFlowchart) txt += `  • Flowchart Detected: Yes\n`;
+      if (data.metadata.detectedTable)     txt += `  • Table Detected: Yes\n`;
+      txt += `\n`;
     }
-    
-    textContent += `Total Regions Detected: ${data.regions.length}\n`;
-    textContent += `  • Headers: ${data.regions.filter(r => r.type === 'header').length}\n`;
-    textContent += `  • Paragraphs: ${data.regions.filter(r => r.type === 'para').length}\n`;
-    textContent += `  • Tables: ${data.regions.filter(r => r.type === 'table').length}\n`;
-    textContent += `  • Figures: ${data.regions.filter(r => r.type === 'figure').length}\n`;
-    textContent += `  • Shapes: ${data.regions.filter(r => r.type === 'shape').length}\n`;
-    
-    // Add confidence breakdown
-    textContent += `\nCONFIDENCE BREAKDOWN:\n`;
-    textContent += `  • High (>0.85): ${data.regions.filter(r => r.conf > 0.85).length} regions\n`;
-    textContent += `  • Medium (0.70-0.85): ${data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length} regions\n`;
-    textContent += `  • Low (<0.70): ${data.regions.filter(r => r.conf < 0.7).length} regions\n`;
-    textContent += `\n${'='.repeat(50)}\n\n`;
-    
-    data.regions.forEach((region, idx) => {
-      const conf = region.conf ? (region.conf * 100).toFixed(0) : '0';
-      const typeLabel = region.type.charAt(0).toUpperCase() + region.type.slice(1);
-      const confidenceColor = region.conf > 0.85 ? '✓' : region.conf >= 0.7 ? '◐' : '✗';
-      textContent += `[${idx + 1}] ${typeLabel} (Confidence: ${conf}%) ${confidenceColor}\n`;
-      
-      // Special handling for tables
-      if (region.type === 'table' && typeof region.text === 'string' && region.text.includes('Table')) {
-        textContent += `${region.text}\n`;
-      } else if (region.text) {
-        textContent += `${region.text}\n`;
-      } else {
-        textContent += `[${typeLabel.toUpperCase()} REGION]\n`;
-      }
-      textContent += `\n`;
+    txt += `Total Regions Detected: ${data.regions.length}\n`;
+    txt += `  • Headers:    ${data.regions.filter(r=>r.type==='header').length}\n`;
+    txt += `  • Paragraphs: ${data.regions.filter(r=>r.type==='para').length}\n`;
+    txt += `  • Tables:     ${data.regions.filter(r=>r.type==='table').length}\n`;
+    txt += `  • Figures:    ${data.regions.filter(r=>r.type==='figure').length}\n`;
+    txt += `  • Shapes:     ${data.regions.filter(r=>r.type==='shape').length}\n`;
+    txt += `\nCONFIDENCE BREAKDOWN:\n`;
+    txt += `  • High (>0.85):      ${data.regions.filter(r=>r.conf>0.85).length} regions\n`;
+    txt += `  • Medium (0.70-0.85): ${data.regions.filter(r=>r.conf>=0.7&&r.conf<=0.85).length} regions\n`;
+    txt += `  • Low (<0.70):       ${lowCount} regions\n`;
+    txt += `\n${'='.repeat(50)}\n\n`;
+    data.regions.forEach((r,i) => {
+      const c   = r.conf ? (r.conf*100).toFixed(0) : '0';
+      const lbl = r.type.charAt(0).toUpperCase()+r.type.slice(1);
+      const sym = r.conf>0.85 ? '✓' : r.conf>=0.7 ? '◐' : '✗';
+      txt += `[${i+1}] ${lbl} (Confidence: ${c}%) ${sym}\n`;
+      if (r.text) txt += r.text+'\n';
+      else        txt += `[${lbl.toUpperCase()} REGION]\n`;
+      txt += '\n';
     });
-    
-    document.getElementById('tab-text').innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(textContent)}</pre>`;
-    
-    // JSON Tab - Structured data with advanced metadata
+    document.getElementById('tab-text').innerHTML =
+      `<pre style="white-space:pre-wrap;word-wrap:break-word;">${escapeHtml(txt)}</pre>`;
+
+    // ── JSON tab ────────────────────────────────────────────────────────────
     const jsonData = {
-      document_id: 'doc_' + Date.now(),
-      filename: data.filename,
-      analysis_date: data.timestamp,
-      confidence: data.confidence,
+      document_id: 'doc_'+Date.now(), filename: data.filename,
+      analysis_date: data.timestamp, confidence: data.confidence,
       regions_detected: data.regions.length,
       quality_metrics: {
-        average_confidence: avgConfidence,
-        low_confidence_regions: lowConfidenceCount,
-        high_confidence: data.regions.filter(r => r.conf > 0.85).length,
-        medium_confidence: data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length
+        average_confidence: avgConf, low_confidence_regions: lowCount,
+        high_confidence: data.regions.filter(r=>r.conf>0.85).length,
+        medium_confidence: data.regions.filter(r=>r.conf>=0.7&&r.conf<=0.85).length
       },
-      regions: data.regions,
-      stats: data.stats || {},
+      regions: data.regions, stats: data.stats||{},
       advanced_analysis: data.metadata ? {
-        method: data.metadata.analysisMethod,
-        language: data.metadata.language,
+        method: data.metadata.analysisMethod, language: data.metadata.language,
         segmentation: data.metadata.segmentationLevel,
-        preprocessing_applied: data.metadata.preprocessingApplied || false,
-        detected_flowchart: data.metadata.detectedFlowchart || false,
-        detected_table: data.metadata.detectedTable || false,
-        layout_type: data.metadata.layoutType || 'single',
-        detected_scripts: data.metadata.scriptTypes || {}
+        preprocessing_applied: data.metadata.preprocessingApplied||false,
+        detected_flowchart: data.metadata.detectedFlowchart||false,
+        detected_table: data.metadata.detectedTable||false,
+        layout_type: data.metadata.layoutType||'single'
       } : null
     };
-    document.getElementById('tab-json').innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${JSON.stringify(jsonData, null, 2)}</pre>`;
-    
-    // Markdown Tab with metadata
-    let markdownContent = `# ${filename}\n\n`;
-    markdownContent += `**Analysis Date:** ${new Date(data.timestamp).toLocaleString()}\n`;
-    markdownContent += `**Confidence Score:** ${(data.confidence * 100).toFixed(1)}%\n`;
-    markdownContent += `**Average Region Confidence:** ${(avgConfidence * 100).toFixed(1)}%\n\n`;
-    
-    if (data.metadata) {
-      markdownContent += `## Analysis Information\n`;
-      markdownContent += `- **Method:** ${data.metadata.analysisMethod || 'Smart OCR Recognition'}\n`;
-      markdownContent += `- **Language:** ${data.metadata.language || 'English'}\n`;
-      markdownContent += `- **Segmentation:** ${data.metadata.segmentationLevel || 'Basic'}\n`;
-      markdownContent += `- **Preprocessing:** ${data.metadata.preprocessingApplied ? 'Applied' : 'Not Applied'}\n`;
-      if (data.metadata.detectedFlowchart) {
-        markdownContent += `- **Flowchart:** Yes (detected ${data.regions.filter(r => r.type === 'shape').length} shapes)\n`;
-      }
-      if (data.metadata.detectedTable) {
-        markdownContent += `- **Table:** Yes (${data.regions.filter(r => r.type === 'table').length} table(s))\n`;
-      }
-      markdownContent += `\n`;
-    }
-    
-    markdownContent += `## Quality Assessment\n`;
-    markdownContent += `- **High Confidence (>85%):** ${data.regions.filter(r => r.conf > 0.85).length} regions\n`;
-    markdownContent += `- **Medium Confidence (70-85%):** ${data.regions.filter(r => r.conf >= 0.7 && r.conf <= 0.85).length} regions\n`;
-    markdownContent += `- **Low Confidence (<70%):** ${lowConfidenceCount} regions\n\n`;
-    
-    markdownContent += `## Document Summary\n`;
-    markdownContent += `- **Total Elements:** ${data.regions.length}\n`;
-    markdownContent += `- **Headers:** ${data.regions.filter(r => r.type === 'header').length}\n`;
-    markdownContent += `- **Paragraphs:** ${data.regions.filter(r => r.type === 'para').length}\n`;
-    markdownContent += `- **Tables:** ${data.regions.filter(r => r.type === 'table').length}\n`;
-    markdownContent += `- **Figures:** ${data.regions.filter(r => r.type === 'figure').length}\n`;
-    markdownContent += `- **Flowchart Elements:** ${data.regions.filter(r => r.type === 'shape').length}\n\n`;
-    markdownContent += `---\n\n`;
-    
-    data.regions.forEach((region, idx) => {
-      const conf = region.conf ? (region.conf * 100).toFixed(0) : '0';
-      const typeLabel = region.type.charAt(0).toUpperCase() + region.type.slice(1);
-      const confidenceLevel = region.conf > 0.85 ? 'High' : region.conf >= 0.7 ? 'Medium' : 'Low';
-      markdownContent += `### ${idx + 1}. ${typeLabel} *(${conf}% confidence - ${confidenceLevel})*\n`;
-      if (region.text) {
-        markdownContent += `${region.text}\n`;
-      }
-      markdownContent += `\n`;
+    document.getElementById('tab-json').innerHTML =
+      `<pre style="white-space:pre-wrap;word-wrap:break-word;">${JSON.stringify(jsonData,null,2)}</pre>`;
+
+    // ── Markdown tab ─────────────────────────────────────────────────────────
+    let md = `# ${filename}\n\n**Analysis Date:** ${new Date(data.timestamp).toLocaleString()}\n`;
+    md += `**Confidence Score:** ${(data.confidence*100).toFixed(1)}%\n`;
+    md += `**Average Region Confidence:** ${(avgConf*100).toFixed(1)}%\n\n`;
+    md += `## Quality Assessment\n`;
+    md += `- **High Confidence (>85%):** ${data.regions.filter(r=>r.conf>0.85).length} regions\n`;
+    md += `- **Medium Confidence (70-85%):** ${data.regions.filter(r=>r.conf>=0.7&&r.conf<=0.85).length} regions\n`;
+    md += `- **Low Confidence (<70%):** ${lowCount} regions\n\n`;
+    md += `## Document Summary\n`;
+    md += `- **Total:** ${data.regions.length}\n`;
+    md += `- **Headers:** ${data.regions.filter(r=>r.type==='header').length}\n`;
+    md += `- **Paragraphs:** ${data.regions.filter(r=>r.type==='para').length}\n`;
+    md += `- **Tables:** ${data.regions.filter(r=>r.type==='table').length}\n`;
+    md += `- **Figures:** ${data.regions.filter(r=>r.type==='figure').length}\n`;
+    md += `- **Shapes:** ${data.regions.filter(r=>r.type==='shape').length}\n\n---\n\n`;
+    data.regions.forEach((r,i)=>{
+      const c   = r.conf?(r.conf*100).toFixed(0):'0';
+      const lbl = r.type.charAt(0).toUpperCase()+r.type.slice(1);
+      const lvl = r.conf>0.85?'High':r.conf>=0.7?'Medium':'Low';
+      md += `### ${i+1}. ${lbl} *(${c}% confidence — ${lvl})*\n`;
+      if (r.text) md += `${r.text}\n`;
+      md += '\n';
     });
-    
-    document.getElementById('tab-markdown').innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(markdownContent)}</pre>`;
-    
-    // Table Tab - Display parsed table data if available
+    document.getElementById('tab-markdown').innerHTML =
+      `<pre style="white-space:pre-wrap;word-wrap:break-word;">${escapeHtml(md)}</pre>`;
+
     displayTableResults(data);
   }
 
   function displayTableResults(data) {
     const tableContent = document.getElementById('table-content');
-    const tableTab = document.getElementById('table-tab');
-    const tableRealBtn = document.getElementById('table-csv-btn');
-    const tableJsonBtn = document.getElementById('table-json-btn');
-    
-    // Check if we have table results in lastTableResults (from OCR engine)
-    if (window.lastTableResults && window.lastTableResults.cellsData && window.lastTableResults.cellsData.length > 0) {
-      tableTab.style.display = 'inline-flex';
-      tableRealBtn.style.display = 'inline-flex';
-      tableJsonBtn.style.display = 'inline-flex';
-      
-      // Display the HTML table
-      const htmlTable = window.lastTableResults.html;
-      tableContent.innerHTML = `<div style="overflow-x: auto; margin-top: 20px;">${htmlTable}</div>
-        <div style="margin-top: 20px; padding: 12px; background: var(--green-50); border: 1px solid var(--line); border-radius: var(--radius-md);">
+    const tableTab     = document.getElementById('table-tab');
+    const csvBtn       = document.getElementById('table-csv-btn');
+    const jsonBtn      = document.getElementById('table-json-btn');
+    const tr = window.lastTableResults;
+    if (tr && tr.cellsData && tr.cellsData.length > 0) {
+      tableTab.style.display = csvBtn.style.display = jsonBtn.style.display = 'inline-flex';
+      tableContent.innerHTML = `<div style="overflow-x:auto;margin-top:20px;">${tr.html}</div>
+        <div style="margin-top:20px;padding:12px;background:var(--green-50);border:1px solid var(--line);border-radius:var(--radius-md);">
           <strong>Table Information:</strong><br/>
-          Rows: ${window.lastTableResults.cellsData.filter(c => c.row === 0).length > 0 ? Math.max(...window.lastTableResults.cellsData.map(c => c.row)) + 1 : 0}<br/>
-          Columns: ${window.lastTableResults.headers.length}<br/>
-          Confidence: ${(window.lastTableResults.cellsData[0]?.confidence * 100 || 0).toFixed(1)}%<br/>
-          <strong>Headers:</strong> ${window.lastTableResults.headers.join(', ')}
+          Rows: ${Math.max(...tr.cellsData.map(c=>c.row))+1}<br/>
+          Columns: ${tr.headers.length}<br/>
+          Confidence: ${((tr.cellsData[0]?.confidence||0)*100).toFixed(1)}%<br/>
+          <strong>Headers:</strong> ${tr.headers.join(', ')}
         </div>`;
     } else {
-      tableTab.style.display = 'none';
-      tableRealBtn.style.display = 'none';
-      tableJsonBtn.style.display = 'none';
-      tableContent.innerHTML = '<p style="color: var(--ink-500); font-style: italic;">No tables detected in this document.</p>';
+      tableTab.style.display = csvBtn.style.display = jsonBtn.style.display = 'none';
+      tableContent.innerHTML = '<p style="color:var(--ink-500);font-style:italic;">No tables detected in this document.</p>';
     }
   }
 
   function displayHierarchyVisualization(hierarchyData) {
-    const hierarchySection = document.getElementById('hierarchy-section');
-    const hierarchyViz = document.getElementById('hierarchyVisualization');
-    
-    if (!hierarchyData || !hierarchyViz) return;
-    
-    // Show the hierarchy panel
-    hierarchySection.style.display = 'block';
-    
-    // Create a simple DocumentStructureVisualizer instance to render the tree
+    const section = document.getElementById('hierarchy-section');
+    const viz     = document.getElementById('hierarchyVisualization');
+    if (!hierarchyData || !viz) return;
+    section.style.display = 'block';
+
     class SimpleHierarchyVisualizer {
-      constructor() {
-        this.nodeWidth = 160;
-        this.nodeHeight = 60;
-        this.verticalGap = 100;
-        this.horizontalGap = 40;
+      constructor() { this.nodeWidth=160; this.nodeHeight=60; this.verticalGap=100; this.horizontalGap=40; }
+      getTypeColor(t) {
+        return ({header:'#1c7a39',para:'#3ec85c',table:'#d97706',figure:'#7c3aed',shape:'#ec4899',
+                 document:'#059669',section:'#10b981',paragraph:'#34d399',sentence:'#6ee7b7',word:'#a7f3d0'})[t]||'#999';
       }
-
-      getTypeColor(type) {
-        const colors = {
-          'header': '#1c7a39',
-          'para': '#3ec85c',
-          'table': '#d97706',
-          'figure': '#7c3aed',
-          'shape': '#ec4899',
-          'document': '#059669',
-          'section': '#10b981',
-          'paragraph': '#34d399',
-          'sentence': '#6ee7b7',
-          'word': '#a7f3d0'
-        };
-        return colors[type] || '#999';
-      }
-
-      calculateTreeDimensions(node, depth = 0) {
-        if (!node) return { width: 0, height: 0 };
-        
-        let maxWidth = this.nodeWidth + this.horizontalGap;
-        let totalHeight = this.nodeHeight + this.verticalGap;
-
-        if (node.children && node.children.length > 0) {
-          let childrenWidth = 0;
-          let maxChildHeight = 0;
-
-          for (const child of node.children) {
-            const childDim = this.calculateTreeDimensions(child, depth + 1);
-            childrenWidth += childDim.width;
-            maxChildHeight = Math.max(maxChildHeight, childDim.height);
-          }
-
-          maxWidth = Math.max(maxWidth, childrenWidth);
-          totalHeight += maxChildHeight;
+      calculateTreeDimensions(node, depth=0) {
+        if (!node) return {width:0,height:0};
+        let maxW = this.nodeWidth+this.horizontalGap, totalH = this.nodeHeight+this.verticalGap;
+        if (node.children?.length) {
+          let cW=0, mCH=0;
+          for (const c of node.children) { const d=this.calculateTreeDimensions(c,depth+1); cW+=d.width; mCH=Math.max(mCH,d.height); }
+          maxW = Math.max(maxW,cW); totalH += mCH;
         }
-
-        return { 
-          width: Math.max(maxWidth, this.nodeWidth), 
-          height: totalHeight 
-        };
+        return {width:Math.max(maxW,this.nodeWidth),height:totalH};
       }
-
       render(container, hierarchy) {
-        container.innerHTML = '';
-        
-        const dimensions = this.calculateTreeDimensions(hierarchy);
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', (dimensions.height + 60) + 'px');
-        svg.setAttribute('viewBox', `0 0 ${dimensions.width + 60} ${dimensions.height + 60}`);
-        svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
-        svg.setAttribute('style', `border: 2px solid #e5e7eb; background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%); display: block; width: 100%; overflow: visible;`);
-
-        // Create defs for gradients
-        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-        grad.setAttribute('id', 'nodeGradient');
-        grad.setAttribute('x1', '0%');
-        grad.setAttribute('y1', '0%');
-        grad.setAttribute('x2', '0%');
-        grad.setAttribute('y2', '100%');
-        
-        const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-        stop1.setAttribute('offset', '0%');
-        stop1.setAttribute('stop-color', '#ffffff');
-        grad.appendChild(stop1);
-        
-        const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-        stop2.setAttribute('offset', '100%');
-        stop2.setAttribute('stop-color', '#f3f4f6');
-        grad.appendChild(stop2);
-        
-        defs.appendChild(grad);
-        svg.appendChild(defs);
-
-        // Draw tree nodes and connections
-        this.drawTreeNode(svg, hierarchy, 30, 30, 0, dimensions.width);
+        container.innerHTML='';
+        const dim = this.calculateTreeDimensions(hierarchy);
+        const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svg.setAttribute('width','100%'); svg.setAttribute('height',(dim.height+60)+'px');
+        svg.setAttribute('viewBox',`0 0 ${dim.width+60} ${dim.height+60}`);
+        svg.setAttribute('preserveAspectRatio','xMidYMin meet');
+        svg.setAttribute('style','display:block;width:100%;overflow:visible;');
+        this.drawTreeNode(svg,hierarchy,30,30,0,dim.width);
         container.appendChild(svg);
       }
-
-      drawTreeNode(svg, node, x, y, depth, treeWidth) {
+      drawTreeNode(svg,node,x,y,depth,treeWidth) {
         if (!node) return;
-
-        const nodeType = node.type || 'document';
-        const confidence = Math.round((node.confidence || 0.85) * 100);
-        const bgColor = this.getTypeColor(nodeType);
-        
-        // Draw node background
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('x', x - this.nodeWidth / 2);
-        rect.setAttribute('y', y);
-        rect.setAttribute('width', this.nodeWidth);
-        rect.setAttribute('height', this.nodeHeight);
-        rect.setAttribute('fill', bgColor);
-        rect.setAttribute('fill-opacity', '0.12');
-        rect.setAttribute('stroke', bgColor);
-        rect.setAttribute('stroke-width', '2');
-        rect.setAttribute('rx', '8');
-        rect.setAttribute('ry', '8');
-        rect.setAttribute('class', 'tree-node-box');
-        rect.setAttribute('style', 'cursor: pointer; transition: all 0.2s; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));');
+        const t    = node.type||'document';
+        const conf = Math.round((node.confidence||0.85)*100);
+        const col  = this.getTypeColor(t);
+        const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        rect.setAttribute('x',x-this.nodeWidth/2); rect.setAttribute('y',y);
+        rect.setAttribute('width',this.nodeWidth); rect.setAttribute('height',this.nodeHeight);
+        rect.setAttribute('fill',col); rect.setAttribute('fill-opacity','0.12');
+        rect.setAttribute('stroke',col); rect.setAttribute('stroke-width','2');
+        rect.setAttribute('rx','8'); rect.setAttribute('ry','8');
+        rect.setAttribute('class','tree-node-box'); rect.setAttribute('style','cursor:pointer;transition:all 0.2s;');
         svg.appendChild(rect);
-
-        // Draw type label
-        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        typeText.setAttribute('x', x);
-        typeText.setAttribute('y', y + 20);
-        typeText.setAttribute('font-size', '11px');
-        typeText.setAttribute('font-weight', '700');
-        typeText.setAttribute('fill', bgColor);
-        typeText.setAttribute('text-anchor', 'middle');
-        typeText.setAttribute('font-family', 'monospace');
-        typeText.textContent = nodeType.toUpperCase();
-        svg.appendChild(typeText);
-
-        // Draw confidence percentage
-        const confText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        confText.setAttribute('x', x);
-        confText.setAttribute('y', y + 40);
-        confText.setAttribute('font-size', '13px');
-        confText.setAttribute('font-weight', '700');
-        confText.setAttribute('fill', confidence > 85 ? '#059669' : confidence > 70 ? '#f59e0b' : '#ef4444');
-        confText.setAttribute('text-anchor', 'middle');
-        confText.setAttribute('font-family', 'var(--font-display)');
-        confText.textContent = `${confidence}%`;
-        svg.appendChild(confText);
-
-        // Draw connections to children
-        if (node.children && node.children.length > 0) {
-          const childCount = node.children.length;
-          const startX = x - ((childCount - 1) * (this.nodeWidth + this.horizontalGap)) / 2;
-
-          node.children.forEach((child, idx) => {
-            const childX = startX + idx * (this.nodeWidth + this.horizontalGap);
-            const childY = y + this.nodeHeight + this.verticalGap;
-
-            // Draw connection line
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            line.setAttribute('d', `M ${x} ${y + this.nodeHeight} Q ${x} ${(y + this.nodeHeight + childY) / 2} ${childX} ${childY}`);
-            line.setAttribute('stroke', '#d1d5db');
-            line.setAttribute('stroke-width', '2');
-            line.setAttribute('fill', 'none');
-            line.setAttribute('stroke-linecap', 'round');
-            svg.appendChild(line);
-
-            // Recursively draw child node
-            this.drawTreeNode(svg, child, childX, childY, depth + 1, treeWidth);
+        const tl = document.createElementNS('http://www.w3.org/2000/svg','text');
+        tl.setAttribute('x',x); tl.setAttribute('y',y+20); tl.setAttribute('font-size','11px');
+        tl.setAttribute('font-weight','700'); tl.setAttribute('fill',col); tl.setAttribute('text-anchor','middle');
+        tl.setAttribute('font-family','monospace'); tl.textContent=t.toUpperCase(); svg.appendChild(tl);
+        const cl = document.createElementNS('http://www.w3.org/2000/svg','text');
+        cl.setAttribute('x',x); cl.setAttribute('y',y+40); cl.setAttribute('font-size','13px');
+        cl.setAttribute('font-weight','700');
+        cl.setAttribute('fill',conf>85?'#059669':conf>70?'#f59e0b':'#ef4444');
+        cl.setAttribute('text-anchor','middle'); cl.textContent=`${conf}%`; svg.appendChild(cl);
+        if (node.children?.length) {
+          const n=node.children.length, sx=x-((n-1)*(this.nodeWidth+this.horizontalGap))/2;
+          node.children.forEach((ch,i) => {
+            const cx=sx+i*(this.nodeWidth+this.horizontalGap), cy=y+this.nodeHeight+this.verticalGap;
+            const ln=document.createElementNS('http://www.w3.org/2000/svg','path');
+            ln.setAttribute('d',`M ${x} ${y+this.nodeHeight} Q ${x} ${(y+this.nodeHeight+cy)/2} ${cx} ${cy}`);
+            ln.setAttribute('stroke','#d1d5db'); ln.setAttribute('stroke-width','2');
+            ln.setAttribute('fill','none'); ln.setAttribute('stroke-linecap','round');
+            svg.appendChild(ln);
+            this.drawTreeNode(svg,ch,cx,cy,depth+1,treeWidth);
           });
         }
       }
     }
-
-    const visualizer = new SimpleHierarchyVisualizer();
-    visualizer.render(hierarchyViz, hierarchyData);
+    new SimpleHierarchyVisualizer().render(viz, hierarchyData);
   }
 
   function downloadTableData(format) {
-    if (!window.lastTableResults) {
-      alert('No table data available');
-      return;
-    }
-
+    const tr = window.lastTableResults;
+    if (!tr) { alert('No table data available'); return; }
     let content, filename, type;
-
-    if (format === 'csv') {
-      content = window.lastTableResults.csv;
-      filename = (currentAnalysisData?.filename?.replace(/\.[^/.]+$/, '') || 'table') + '.csv';
-      type = 'text/csv';
-    } else if (format === 'json') {
-      content = JSON.stringify(window.lastTableResults.json, null, 2);
-      filename = (currentAnalysisData?.filename?.replace(/\.[^/.]+$/, '') || 'table') + '.json';
-      type = 'application/json';
-    } else {
-      return;
-    }
-
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (format==='csv')  { content=tr.csv; filename=(currentAnalysisData?.filename?.replace(/\.[^/.]+$/,'')||'table')+'.csv'; type='text/csv'; }
+    else if (format==='json') { content=JSON.stringify(tr.json,null,2); filename=(currentAnalysisData?.filename?.replace(/\.[^/.]+$/,'')||'table')+'.json'; type='application/json'; }
+    else return;
+    const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
   }
 
   function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    const d=document.createElement('div'); d.textContent=text; return d.innerHTML;
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
   // Tab switching
-  const tabs = document.querySelectorAll('.tabs button');
-  const bodies = { 
-    text: document.getElementById('tab-text'), 
-    json: document.getElementById('tab-json'), 
-    markdown: document.getElementById('tab-markdown'),
-    table: document.getElementById('tab-table')
-  };
-  tabs.forEach(b => {
-    b.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      b.classList.add('active');
-      Object.values(bodies).forEach(el => {
-        if (el) el.style.display = 'none';
-      });
-      if (bodies[b.dataset.tab]) {
-        bodies[b.dataset.tab].style.display = 'block';
-      }
-    });
-  });
-
-  // Copy text
-  document.getElementById('copy-btn').addEventListener('click', e => {
-    const active = document.querySelector('.tabs button.active').dataset.tab;
-    const text = bodies[active].innerText;
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = e.currentTarget;
-      const original = btn.innerHTML;
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied';
-      setTimeout(() => { btn.innerHTML = original; }, 1500);
-    }).catch(() => {
-      alert('Failed to copy text. Please try again.');
-    });
-  });
+  // ─────────────────────────────────────────────────────────────────────────────
+  const tabs   = document.querySelectorAll('.tabs button');
+  const bodies = { text:document.getElementById('tab-text'), json:document.getElementById('tab-json'),
+                   markdown:document.getElementById('tab-markdown'), table:document.getElementById('tab-table') };
+  tabs.forEach(b => b.addEventListener('click', () => {
+    tabs.forEach(t=>t.classList.remove('active')); b.classList.add('active');
+    Object.values(bodies).forEach(el=>{ if(el) el.style.display='none'; });
+    if (bodies[b.dataset.tab]) bodies[b.dataset.tab].style.display='block';
+  }));
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Download PDF — programmatic build with jsPDF + autoTable
-  // Includes: text regions, real tables, metadata, confidence breakdown
+  // Copy text
+  // ─────────────────────────────────────────────────────────────────────────────
+  document.getElementById('copy-btn').addEventListener('click', e => {
+    const active = document.querySelector('.tabs button.active').dataset.tab;
+    navigator.clipboard.writeText(bodies[active].innerText).then(() => {
+      const btn=e.currentTarget, orig=btn.innerHTML;
+      btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied';
+      setTimeout(()=>{ btn.innerHTML=orig; },1500);
+    }).catch(()=>alert('Failed to copy text.'));
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+  // Download PDF — type-aware renderer
+  // Supports: Flowchart, Invoice/Receipt, Report, Contract, Form, Resume, Letter,
+  //           Table-heavy docs, and generic text. Embeds original scan image.
+  //           Falls back to raw OCR text when 0 regions detected.
   // ─────────────────────────────────────────────────────────────────────────────
   document.getElementById('download-pdf-btn').addEventListener('click', async e => {
     if (!currentAnalysisData) { alert('No analysis data available for download'); return; }
@@ -1383,213 +878,738 @@ improvement across all region categories.</pre>
 
     try {
       const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      const pdf  = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
       const data = currentAnalysisData;
-      const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
-      const margin=20, contentW=pageW-margin*2;
-      let y = margin;
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const M = 15;                      // margin
+      const CW = pageW - M*2;            // content width
+      let y = M;
 
-      // ── colour palette ──────────────────────────────────────────────────
-      const GREEN   = [28, 122, 57];
-      const AMBER   = [217, 119, 6];
-      const GRAY    = [102, 102, 102];
-      const BLACK   = [26, 26, 26];
-      const LGRAY   = [229, 231, 235];
-      const BGGREEN = [240, 253, 244];
-      const BGAMBER = [255, 251, 235];
+      // ── Palette ─────────────────────────────────────────────────────────
+      const C = {
+        green:   [28,122,57],   greenLt: [240,253,244],
+        amber:   [217,119,6],   amberLt: [255,251,235],
+        blue:    [37,99,235],   blueLt:  [239,246,255],
+        purple:  [124,58,237],  purpleLt:[245,243,255],
+        pink:    [236,72,153],  pinkLt:  [253,242,248],
+        red:     [185,28,28],   redLt:   [254,226,226],
+        teal:    [13,148,136],  tealLt:  [240,253,250],
+        slate:   [71,85,105],   slateLt: [248,250,252],
+        gray:    [102,102,102], lgray:   [229,231,235],
+        black:   [26,26,26],    white:   [255,255,255],
+      };
 
-      // ── helpers ─────────────────────────────────────────────────────────
+      // ── Detect document type ─────────────────────────────────────────────
+      const regions      = data.regions || [];
+      const rawText      = (data.text || data.fullText || '').trim();
+      const docTypeMeta  = (data.metadata?.documentType || data.structure?.documentType || '').toLowerCase();
+      const detectedType = (() => {
+        if (/flowchart|diagram/i.test(docTypeMeta))           return 'flowchart';
+        if (/receipt/i.test(docTypeMeta))                     return 'receipt';
+        if (/invoice/i.test(docTypeMeta))                     return 'invoice';
+        if (/resume|cv/i.test(docTypeMeta))                   return 'resume';
+        if (/contract|agreement/i.test(docTypeMeta))          return 'contract';
+        if (/report/i.test(docTypeMeta))                      return 'report';
+        if (/letter/i.test(docTypeMeta))                      return 'letter';
+        if (/form/i.test(docTypeMeta))                        return 'form';
+        // Heuristic fallbacks from region mix
+        if (regions.filter(r=>r.type==='shape').length > 0 || data.metadata?.detectedFlowchart) return 'flowchart';
+        if (regions.filter(r=>r.type==='table').length > 2)  return 'invoice';
+        if (/receipt|gcash|transaction|ref no|amount/i.test(rawText)) return 'receipt';
+        if (/invoice|bill to|ship to|total due/i.test(rawText))       return 'invoice';
+        if (/sincerely|dear |regards/i.test(rawText))                 return 'letter';
+        if (/experience|education|skills|resume|curriculum/i.test(rawText)) return 'resume';
+        if (/agreement|contract|party|whereas|liability/i.test(rawText))    return 'contract';
+        if (/abstract|introduction|methodology|conclusion/i.test(rawText))  return 'report';
+        return 'generic';
+      })();
+
+      const shapeRegions  = regions.filter(r=>r.type==='shape');
+      const tableRegions  = regions.filter(r=>r.type==='table');
+      const headerRegions = regions.filter(r=>r.type==='header');
+      const paraRegions   = regions.filter(r=>r.type==='para'||r.type==='text');
+      const zeroRegions   = regions.length === 0;
+
+      // ── Type→accent colour map ───────────────────────────────────────────
+      const TYPE_COLOR = {
+        flowchart: C.pink,   receipt:  C.teal,  invoice:  C.amber,
+        resume:    C.blue,   contract: C.purple, report:   C.green,
+        letter:    C.slate,  form:     C.red,    generic:  C.gray,
+      };
+      const ACCENT    = TYPE_COLOR[detectedType] || C.gray;
+      const ACCENT_LT = ACCENT.map(v=>Math.min(255,v+190));
+      const TYPE_LABEL = {
+        flowchart:'Flowchart / Diagram', receipt:'Receipt / Transaction',
+        invoice:'Invoice / Bill',        resume:'Résumé / CV',
+        contract:'Contract / Agreement', report:'Report / Research',
+        letter:'Letter / Correspondence',form:'Form / Application',
+        generic:'Document',
+      };
+
+      // ── Shared helpers ───────────────────────────────────────────────────
       function checkPage(needed=10) {
-        if (y+needed > pageH-margin) { pdf.addPage(); y=margin; }
+        if (y+needed > pageH-10) { pdf.addPage(); y=M; }
       }
-      function sectionHeader(title, color=GREEN) {
+      function rule(color=C.lgray) {
+        checkPage(4);
+        pdf.setDrawColor(...color); pdf.setLineWidth(0.25);
+        pdf.line(M, y, pageW-M, y); y+=3.5;
+      }
+      function sectionBadge(label, accentColor=ACCENT) {
         checkPage(14);
-        pdf.setFillColor(...BGGREEN);
-        pdf.roundedRect(margin, y, contentW, 10, 2, 2, 'F');
-        pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(...color);
-        pdf.text(title, margin+4, y+7);
-        y += 14;
+        pdf.setFillColor(...accentColor);
+        pdf.roundedRect(M, y, CW, 8.5, 1.5,1.5,'F');
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(9);
+        pdf.setTextColor(255,255,255);
+        pdf.text(label, M+4, y+6);
+        y += 12;
       }
-      function bodyText(text, opts={}) {
-        pdf.setFontSize(opts.size||10);
-        pdf.setFont('helvetica', opts.bold?'bold':'normal');
-        pdf.setTextColor(...(opts.color||BLACK));
-        const lines = pdf.splitTextToSize(text, contentW);
-        lines.forEach(line => { checkPage(6); pdf.text(line, margin, y); y+=5.5; });
+      function para(text, opts={}) {
+        if (!text) return;
+        const sz   = opts.size  || 9;
+        const col  = opts.color || C.black;
+        const ind  = opts.indent|| 0;
+        const bold = opts.bold  || false;
+        pdf.setFont('helvetica', bold?'bold':'normal');
+        pdf.setFontSize(sz); pdf.setTextColor(...col);
+        pdf.splitTextToSize(String(text), CW-ind)
+          .forEach(ln=>{ checkPage(sz*0.5+1); pdf.text(ln, M+ind, y); y+=sz*0.5+1; });
       }
-      function rule() {
-        checkPage(4); pdf.setDrawColor(...LGRAY); pdf.line(margin, y, pageW-margin, y); y+=4;
+      function kv(key, value, keyColor=ACCENT) {
+        checkPage(6);
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...keyColor);
+        pdf.text(key+':', M, y);
+        pdf.setFont('helvetica','normal'); pdf.setTextColor(...C.black);
+        const kw = pdf.getTextWidth(key+': ');
+        pdf.splitTextToSize(String(value||'—'), CW-kw)
+          .forEach((ln,i)=>{ pdf.text(ln, M+kw+(i?kw*0:0), y+(i*5)); if(i) y+=5; });
+        y+=5.5;
+      }
+      function badge(text, fillRGB, textRGB=[255,255,255]) {
+        const tw = pdf.getTextWidth(text)+4;
+        pdf.setFillColor(...fillRGB); pdf.setDrawColor(...fillRGB);
+        pdf.roundedRect(M, y, tw, 5, 1.2,1.2,'F');
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5);
+        pdf.setTextColor(...textRGB); pdf.text(text, M+2, y+3.6);
+        return tw+3;
       }
 
-      // ── PAGE HEADER BAR ─────────────────────────────────────────────────
-      pdf.setFillColor(...GREEN); pdf.rect(0, 0, pageW, 22, 'F');
-      pdf.setFontSize(16); pdf.setFont('helvetica','bold'); pdf.setTextColor(255,255,255);
-      pdf.text('DOCUGRAPH', margin, 14);
-      pdf.setFontSize(10); pdf.setFont('helvetica','normal');
-      pdf.text('Document Analysis Report', margin, 20);
+      // ════════════════════════════════════════════════════════════════════
+      // PAGE HEADER BAR
+      // ════════════════════════════════════════════════════════════════════
+      pdf.setFillColor(...ACCENT); pdf.rect(0,0,pageW,19,'F');
+
+      // Type badge (left)
+      pdf.setFillColor(255,255,255,0.2);
+      pdf.roundedRect(M, 4, 40, 7, 1.5,1.5,'F');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(7);
+      pdf.setTextColor(...ACCENT); pdf.text(TYPE_LABEL[detectedType].toUpperCase(), M+2, 9.2);
+
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(14);
+      pdf.setTextColor(255,255,255);
+      pdf.text('DOCUGRAPH', M+44, 12);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+      pdf.text('Document Analysis Report', M+44, 17);
+
       const fname=(data.filename||'document').replace(/\.[^/.]+$/,'');
-      pdf.setFontSize(9); pdf.setTextColor(200,255,220);
-      pdf.text(fname, pageW-margin, 14, {align:'right'});
-      y=32;
+      pdf.setFontSize(7.5); pdf.setTextColor(220,255,230);
+      pdf.text(fname, pageW-M, 10, {align:'right'});
+      pdf.text(new Date(data.timestamp).toLocaleDateString(), pageW-M, 16, {align:'right'});
+      y = 25;
 
-      // ── SUMMARY TABLE ────────────────────────────────────────────────────
-      const regions = data.regions||[];
-      const conf    = (data.confidence*100).toFixed(1);
-      const date    = new Date(data.timestamp).toLocaleString();
+      // ── Summary strip ────────────────────────────────────────────────────
+      pdf.setFillColor(...ACCENT_LT);
+      pdf.rect(M, y, CW, 14,'F');
+      const conf = (data.confidence*100).toFixed(1);
       const avgConf = regions.length
         ? (regions.reduce((a,r)=>a+(r.conf||0),0)/regions.length*100).toFixed(1) : '—';
-
-      pdf.autoTable({
-        startY: y, margin:{left:margin,right:margin}, theme:'plain',
-        styles:{fontSize:9,cellPadding:3},
-        columnStyles:{0:{fontStyle:'bold',textColor:GREEN,cellWidth:52},1:{textColor:BLACK}},
-        body:[
-          ['Analysis Date', date],
-          ['Overall Confidence', `${conf}%`],
-          ['Average Region Confidence', `${avgConf}%`],
-          ['Total Regions', regions.length.toString()],
-        ],
+      const summaryItems = [
+        ['Confidence', conf+'%'],
+        ['Avg Region', avgConf+(avgConf==='—'?'':' %')],
+        ['Regions', regions.length.toString()],
+        ['Tables', tableRegions.length.toString()],
+        ['Shapes', shapeRegions.length.toString()],
+        ['Language', data.metadata?.language||'eng'],
+      ];
+      const colW2 = CW/summaryItems.length;
+      summaryItems.forEach(([k,v],i)=>{
+        const x=M+i*colW2+colW2/2;
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(...ACCENT);
+        pdf.text(v, x, y+8, {align:'center'});
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...C.gray);
+        pdf.text(k, x, y+12.5, {align:'center'});
       });
-      y = pdf.lastAutoTable.finalY + 8; rule();
+      y += 18; rule();
 
-      // ── REGION BREAKDOWN ─────────────────────────────────────────────────
-      if (regions.length) {
-        const cnt = {
-          Headers:    regions.filter(r=>r.type==='header').length,
-          Paragraphs: regions.filter(r=>r.type==='para').length,
-          Tables:     regions.filter(r=>r.type==='table').length,
-          Figures:    regions.filter(r=>r.type==='figure').length,
-          Shapes:     regions.filter(r=>r.type==='shape').length,
-        };
-        const hi  = regions.filter(r=>r.conf>0.85).length;
-        const med = regions.filter(r=>r.conf>=0.70&&r.conf<=0.85).length;
-        const lo  = regions.filter(r=>r.conf<0.70).length;
-
-        sectionHeader('Region Breakdown');
-        pdf.autoTable({
-          startY:y, margin:{left:margin,right:margin}, theme:'grid',
-          headStyles:{fillColor:GREEN,textColor:[255,255,255],fontStyle:'bold',fontSize:9},
-          bodyStyles:{fontSize:9},
-          alternateRowStyles:{fillColor:BGGREEN},
-          head:[['Type','Count','Confidence Band','Count']],
-          body:[
-            ['Headers',    cnt.Headers,    'High (>85%)',     hi],
-            ['Paragraphs', cnt.Paragraphs, 'Medium (70-85%)', med],
-            ['Tables',     cnt.Tables,     'Low (<70%)',      lo],
-            ['Figures',    cnt.Figures,    '', ''],
-            ['Shapes',     cnt.Shapes,     '', ''],
-          ],
-        });
-        y = pdf.lastAutoTable.finalY + 8; rule();
+      // ════════════════════════════════════════════════════════════════════
+      // ORIGINAL DOCUMENT IMAGE
+      // ════════════════════════════════════════════════════════════════════
+      const imgSrc = data.imageBase64 || data.imageData;
+      if (imgSrc) {
+        sectionBadge('Original Document Scan');
+        try {
+          const tmpImg = new Image();
+          await new Promise(res=>{ tmpImg.onload=res; tmpImg.onerror=res; tmpImg.src=imgSrc; });
+          const iW=tmpImg.naturalWidth||1, iH=tmpImg.naturalHeight||1;
+          const maxW=CW, maxH=90;
+          const sc=Math.min(maxW/iW, maxH/iH);
+          const dW=iW*sc, dH=iH*sc;
+          checkPage(dH+4);
+          const ix=M+(CW-dW)/2;
+          pdf.setDrawColor(...C.lgray); pdf.setLineWidth(0.3);
+          pdf.rect(ix-0.5, y-0.5, dW+1, dH+1);
+          pdf.addImage(imgSrc, imgSrc.startsWith('data:image/png')?'PNG':'JPEG', ix, y, dW, dH);
+          y+=dH+5;
+        } catch(ie){ para('[Image unavailable: '+ie.message+']',{color:C.gray}); }
+        rule();
       }
 
-      // ── EXTRACTED TEXT REGIONS ───────────────────────────────────────────
-      sectionHeader('Extracted Text Content');
-      const textRegions = regions.filter(r=>r.text);
-      if (textRegions.length) {
-        textRegions.forEach((r,i) => {
-          checkPage(10);
-          const c   = r.conf?(r.conf*100).toFixed(0):'0';
-          const lbl = `[${i+1}] ${r.type.toUpperCase()}  ·  ${c}%`;
-          bodyText(lbl, {bold:true, color:GREEN, size:9});
-          bodyText(r.text, {size:9, color:BLACK});
+      // ════════════════════════════════════════════════════════════════════
+      // TYPE-SPECIFIC CONTENT SECTIONS
+      // ════════════════════════════════════════════════════════════════════
+
+      // ── Helper: emit all region text nicely ──────────────────────────────
+      function emitRegionText(label='Extracted Content', filterFn=r=>r.text) {
+        const items = regions.filter(filterFn);
+        if (!items.length && !rawText) return;
+        sectionBadge(label);
+        if (items.length) {
+          items.forEach((r,i)=>{
+            checkPage(10);
+            const c=((r.conf||0)*100).toFixed(0);
+            pdf.setFillColor(...ACCENT_LT);
+            pdf.roundedRect(M, y, CW, 6, 1,1,'F');
+            pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); pdf.setTextColor(...ACCENT);
+            pdf.text(`${r.type.toUpperCase()}  ·  ${c}%`, M+2, y+4.5);
+            y+=7;
+            if (r.text) para(r.text,{size:8.5,indent:3});
+            y+=1.5;
+          });
+        } else if (rawText) {
+          emitRawText();
+        }
+      }
+
+      // ── Helper: emit raw OCR text in paginated shaded block ──────────────
+      function emitRawText(label='') {
+        if (!rawText) return;
+        if (label) sectionBadge(label);
+        const lns = pdf.splitTextToSize(rawText, CW-6);
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...C.black);
+        lns.forEach(ln=>{ checkPage(6); pdf.setFillColor(248,250,252); pdf.rect(M,y-3.5,CW,5.2,'F'); pdf.text(ln,M+3,y); y+=5; });
+        y+=3;
+      }
+
+      // ── Helper: render table from lastTableResults or tableRegions ────────
+      function emitTables(label='Detected Tables') {
+        const tr=window.lastTableResults;
+        if (tr && tr.cellsData && tr.cellsData.length>0) {
+          sectionBadge(label, C.amber);
+          const maxRow=Math.max(...tr.cellsData.map(c=>c.row));
+          const tHead=[tr.headers];
+          const tBody=[];
+          for(let r=0;r<=maxRow;r++)
+            tBody.push(tr.cellsData.filter(c=>c.row===r).sort((a,b)=>a.col-b.col).map(c=>c.text||''));
+          pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'striped',
+            headStyles:{fillColor:C.amber,textColor:C.white,fontStyle:'bold',fontSize:8},
+            bodyStyles:{fontSize:8},alternateRowStyles:{fillColor:C.amberLt},
+            head:tHead,body:tBody});
+          y=pdf.lastAutoTable.finalY+5;
+        } else if (tableRegions.length) {
+          sectionBadge(label, C.amber);
+          tableRegions.forEach((tbl,ti)=>{
+            checkPage(12);
+            para(`Table ${ti+1}  ·  confidence ${((tbl.conf||0)*100).toFixed(0)}%`,{bold:true,color:C.amber,size:8});
+            if (tbl.rows&&tbl.cols) {
+              const hRow=Array.from({length:tbl.cols},(_,i)=>`Col ${i+1}`);
+              const bRows=Array.from({length:tbl.rows},()=>Array.from({length:tbl.cols},()=>'—'));
+              pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'grid',
+                headStyles:{fillColor:C.amber,textColor:C.white,fontSize:7.5},
+                bodyStyles:{fontSize:7.5,textColor:C.gray},head:[hRow],body:bRows});
+              y=pdf.lastAutoTable.finalY+4;
+            } else if (tbl.text) { para(tbl.text,{size:8}); }
+          });
+        }
+        rule();
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── FLOWCHART / DIAGRAM ─────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      if (detectedType==='flowchart') {
+        sectionBadge('Flowchart / Diagram Reconstruction', C.pink);
+
+        let flowNodes=[];
+        if (shapeRegions.length>0) {
+          flowNodes=[...shapeRegions]
+            .sort((a,b)=>{
+              const dy=(a.bbox[1]+a.bbox[3])/2-(b.bbox[1]+b.bbox[3])/2;
+              return Math.abs(dy)>4?dy:(a.bbox[0]+a.bbox[2])/2-(b.bbox[0]+b.bbox[2])/2;
+            })
+            .map((r,i)=>({label:(r.text||`Step ${i+1}`).trim().replace(/\s+/g,' '),conf:r.conf||0.8}));
+        } else {
+          const lines=rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>1&&!/^[-=─]+$/.test(l));
+          flowNodes=lines.filter(l=>l.length<=80).slice(0,20).map(l=>({label:l,conf:data.confidence||0.85}));
+          if(!flowNodes.length) flowNodes=lines.slice(0,12).map(l=>({label:l.slice(0,60),conf:0.8}));
+        }
+
+        if (!flowNodes.length) {
+          para('No flowchart elements detected.',{color:C.gray});
+        } else {
+          pdf.setFontSize(7); pdf.setFont('helvetica','italic'); pdf.setTextColor(...C.gray);
+          pdf.text(`${flowNodes.length} element(s) from ${shapeRegions.length>0?'shape regions':'OCR text'}`, M, y); y+=5;
+
+          const BOX_W=60, BOX_H=14, ARR=9;
+          const bx=M+(CW-BOX_W)/2;
+          const COLS=flowNodes.length>6?Math.max(2,Math.floor(CW/(BOX_W+8))):1;
+
+          if (COLS===1) {
+            flowNodes.forEach((nd,idx)=>{
+              const isFirst=idx===0,isLast=idx===flowNodes.length-1;
+              const isDecision=/\?|yes\b|no\b|\bif\b|decision|check/i.test(nd.label);
+              checkPage(BOX_H+ARR+4);
+              let fillRGB,strokeRGB,textRGB;
+              if(isFirst){fillRGB=[220,252,231];strokeRGB=C.green;textRGB=C.green;}
+              else if(isLast){fillRGB=C.redLt;strokeRGB=C.red;textRGB=C.red;}
+              else if(isDecision){fillRGB=C.amberLt;strokeRGB=C.amber;textRGB=C.amber;}
+              else{fillRGB=C.slateLt;strokeRGB=C.slate;textRGB=C.slate;}
+              pdf.setFillColor(...fillRGB);pdf.setDrawColor(...strokeRGB);pdf.setLineWidth(0.7);
+              if(isDecision){
+                const cx=bx+BOX_W/2,cy=y+BOX_H/2,hw=BOX_W/2,hh=BOX_H/2;
+                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,'F');
+                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,'D');
+              } else if(isFirst||isLast){
+                pdf.roundedRect(bx,y,BOX_W,BOX_H,BOX_H/2,BOX_H/2,'FD');
+              } else {
+                pdf.roundedRect(bx,y,BOX_W,BOX_H,2,2,'FD');
+              }
+              const lns=pdf.splitTextToSize(nd.label,BOX_W-8).slice(0,2);
+              const lh=3.8,ty=y+BOX_H/2-(lns.length*lh)/2+lh*0.75;
+              pdf.setFont('helvetica',isFirst||isLast?'bold':'normal');
+              pdf.setFontSize(7.5);pdf.setTextColor(...textRGB);
+              lns.forEach((ln,li)=>pdf.text(ln,bx+BOX_W/2,ty+li*lh,{align:'center'}));
+              // conf chip
+              pdf.setFillColor(...strokeRGB);pdf.roundedRect(bx+BOX_W-17,y+1,16,4,1.5,1.5,'F');
+              pdf.setFontSize(5.5);pdf.setTextColor(255,255,255);
+              pdf.text(`${(nd.conf*100).toFixed(0)}%`,bx+BOX_W-9,y+3.8,{align:'center'});
+              y+=BOX_H;
+              if(idx<flowNodes.length-1){
+                const ax=bx+BOX_W/2;
+                pdf.setDrawColor(...C.gray);pdf.setLineWidth(0.5);
+                pdf.line(ax,y,ax,y+ARR-3);
+                pdf.setFillColor(...C.gray);
+                pdf.triangle(ax-2,y+ARR-3,ax+2,y+ARR-3,ax,y+ARR,'F');
+                y+=ARR;
+              }
+            });
+          } else {
+            const colW3=CW/COLS,nW=colW3-6,nH=12;
+            let col=0,ry=y;
+            flowNodes.forEach((nd,idx)=>{
+              if(col===0)checkPage(nH+6);
+              const nx=M+col*colW3,ny=ry;
+              const isDecision=/\?|yes\b|no\b|\bif\b|decision/i.test(nd.label);
+              pdf.setFillColor(...(isDecision?C.amberLt:C.slateLt));
+              pdf.setDrawColor(...(isDecision?C.amber:C.slate));
+              pdf.setLineWidth(0.5);pdf.roundedRect(nx,ny,nW,nH,1.5,1.5,'FD');
+              pdf.setFillColor(...(isDecision?C.amber:C.slate));pdf.circle(nx+5,ny+5,3,'F');
+              pdf.setFontSize(5.5);pdf.setTextColor(255,255,255);pdf.text(`${idx+1}`,nx+5,ny+5+1.8,{align:'center'});
+              const lns=pdf.splitTextToSize(nd.label,nW-12).slice(0,2);
+              pdf.setFontSize(7);pdf.setTextColor(...(isDecision?C.amber:C.slate));
+              lns.forEach((ln,li)=>pdf.text(ln,nx+10,ny+nH/2-((lns.length-1)*3.5)/2+li*3.5));
+              pdf.setFontSize(5);pdf.setTextColor(...C.gray);
+              pdf.text(`${(nd.conf*100).toFixed(0)}%`,nx+nW-2,ny+nH-2,{align:'right'});
+              col++;
+              if(col>=COLS){col=0;ry+=nH+6;y=ry;}
+            });
+            if(col>0)y=ry+nH+6;
+          }
+          // Legend
+          y+=3;checkPage(10);
+          pdf.setFontSize(7);pdf.setFont('helvetica','bold');pdf.setTextColor(...C.gray);
+          pdf.text('Legend:',M,y);y+=4;
+          [[  [220,252,231],C.green,'Start/End'],[C.slateLt,C.slate,'Process Step'],[C.amberLt,C.amber,'Decision']].forEach(([f,s,lbl],i)=>{
+            const lx=M+i*38;
+            pdf.setFillColor(...f);pdf.setDrawColor(...s);pdf.setLineWidth(0.3);pdf.roundedRect(lx,y,5,4,0.8,0.8,'FD');
+            pdf.setFontSize(6.5);pdf.setTextColor(...C.black);pdf.text(lbl,lx+6.5,y+3);
+          });
+          y+=8;
+        }
+        rule();
+        // Supplementary raw text
+        if (rawText) { sectionBadge('Supplementary OCR Text',C.gray); emitRawText(); rule(); }
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── RECEIPT / TRANSACTION ───────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='receipt') {
+        sectionBadge('Transaction Details', C.teal);
+        // Parse key-value pairs from raw text
+        const kvPairs=[], misc=[];
+        const kvPatterns=[
+          [/ref\s*no[.:#]?\s*(.+)/i,'Reference No'],
+          [/transaction\s*(id|no)[.:#]?\s*(.+)/i,'Transaction ID'],
+          [/amount\s*(sent|paid|due)[.:#]?\s*(.+)/i,'Amount'],
+          [/sender[.:#]?\s*(.+)/i,'Sender'],
+          [/recipient[.:#]?\s*(.+)/i,'Recipient'],
+          [/date[.:#]?\s*(.+)/i,'Date'],
+          [/time[.:#]?\s*(.+)/i,'Time'],
+          [/payment\s*method[.:#]?\s*(.+)/i,'Payment Method'],
+          [/phone[.:#]?\s*(.+)/i,'Phone'],
+          [/status[.:#]?\s*(.+)/i,'Status'],
+        ];
+        rawText.split('\n').forEach(line=>{
+          let matched=false;
+          kvPatterns.forEach(([re,label])=>{
+            const m=line.match(re);
+            if(m&&!matched){kvPairs.push([label,(m[2]||m[1]).trim()]);matched=true;}
+          });
+          if(!matched&&line.trim().length>1)misc.push(line.trim());
+        });
+        if(kvPairs.length){
+          pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'plain',
+            styles:{fontSize:9,cellPadding:2.5},
+            columnStyles:{0:{fontStyle:'bold',textColor:C.teal,cellWidth:45},1:{textColor:C.black}},
+            body:kvPairs});
+          y=pdf.lastAutoTable.finalY+5;
+        }
+        if(misc.length){
+          sectionBadge('Additional Information',C.teal);
+          misc.slice(0,20).forEach(l=>para(l,{size:8.5}));
+        }
+        rule();
+        emitRegionText('Layout Regions');
+        emitTables('Embedded Tables');
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── INVOICE / BILL ──────────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='invoice') {
+        sectionBadge('Invoice Details', C.amber);
+        const kvPairs=[];
+        const ivPatterns=[
+          [/invoice\s*(no|#|number)[.:#]?\s*(.+)/i,'Invoice No'],
+          [/date[.:#]?\s*(.+)/i,'Date'],
+          [/due\s*date[.:#]?\s*(.+)/i,'Due Date'],
+          [/bill\s*to[.:#]?\s*(.+)/i,'Bill To'],
+          [/ship\s*to[.:#]?\s*(.+)/i,'Ship To'],
+          [/total[.:#]?\s*(.+)/i,'Total'],
+          [/subtotal[.:#]?\s*(.+)/i,'Subtotal'],
+          [/tax[.:#]?\s*(.+)/i,'Tax'],
+          [/payment\s*terms[.:#]?\s*(.+)/i,'Payment Terms'],
+        ];
+        rawText.split('\n').forEach(line=>{
+          ivPatterns.forEach(([re,label])=>{
+            const m=line.match(re);
+            if(m)kvPairs.push([label,(m[2]||m[1]).trim()]);
+          });
+        });
+        if(kvPairs.length){
+          pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'plain',
+            styles:{fontSize:9,cellPadding:2.5},
+            columnStyles:{0:{fontStyle:'bold',textColor:C.amber,cellWidth:45},1:{textColor:C.black}},
+            body:kvPairs});
+          y=pdf.lastAutoTable.finalY+5;
+        }
+        rule();
+        emitTables('Line Items / Tables');
+        emitRegionText('Invoice Content');
+        if(rawText&&!kvPairs.length){sectionBadge('Full Text',C.gray);emitRawText();rule();}
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── RÉSUMÉ / CV ─────────────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='resume') {
+        const sections2=[
+          {re:/^(contact|phone|email|address|linkedin|github)/i,   label:'Contact Information'},
+          {re:/^(summary|objective|profile|about)/i,               label:'Professional Summary'},
+          {re:/^(experience|employment|work|position)/i,           label:'Work Experience'},
+          {re:/^(education|degree|university|college|school)/i,    label:'Education'},
+          {re:/^(skills?|competenc|expertise|technologies)/i,      label:'Skills'},
+          {re:/^(projects?|portfolio|achievements?|awards?)/i,     label:'Projects & Achievements'},
+          {re:/^(certif|license|qualif)/i,                         label:'Certifications'},
+          {re:/^(languages?)/i,                                    label:'Languages'},
+          {re:/^(references?|referees?)/i,                         label:'References'},
+        ];
+        const lines=rawText.split('\n').map(l=>l.trim()).filter(Boolean);
+        const buckets={};
+        let curBucket='General';
+        buckets[curBucket]=[];
+        lines.forEach(line=>{
+          const match=sections2.find(s=>s.re.test(line));
+          if(match){curBucket=match.label;if(!buckets[curBucket])buckets[curBucket]=[];}
+          else{if(!buckets[curBucket])buckets[curBucket]=[];buckets[curBucket].push(line);}
+        });
+        Object.entries(buckets).forEach(([sec,lns])=>{
+          if(!lns.length)return;
+          sectionBadge(sec, C.blue);
+          lns.slice(0,30).forEach(l=>{
+            checkPage(6);
+            // Bullet sub-items
+            const isBullet=/^[-•·▪▸→]/.test(l)||/^\d+[.)]\s/.test(l);
+            para(isBullet?l:'  '+l,{size:8.5,indent:isBullet?4:0});
+          });
           y+=2;
         });
-      } else {
-        bodyText('No text content available.', {color:GRAY, size:9});
+        rule();
+        emitTables('Embedded Tables');
       }
-      rule();
 
-      // ── TABLES ───────────────────────────────────────────────────────────
-      // Priority 1: real OCR table data from window.lastTableResults
-      const tr = window.lastTableResults;
-      if (tr && tr.cellsData && tr.cellsData.length > 0) {
-        sectionHeader('Detected Tables', AMBER);
-
-        const maxRow = Math.max(...tr.cellsData.map(c=>c.row));
-        const tHead  = [tr.headers];
-        const tBody  = [];
-        for (let row=0; row<=maxRow; row++) {
-          tBody.push(
-            tr.cellsData.filter(c=>c.row===row).sort((a,b)=>a.col-b.col).map(c=>c.text||'')
-          );
-        }
-        pdf.autoTable({
-          startY:y, margin:{left:margin,right:margin}, theme:'striped',
-          headStyles:{fillColor:AMBER,textColor:[255,255,255],fontStyle:'bold',fontSize:9},
-          bodyStyles:{fontSize:9},
-          alternateRowStyles:{fillColor:BGAMBER},
-          head:tHead, body:tBody,
+      // ════════════════════════════════════════════════════════════════════
+      // ── CONTRACT / AGREEMENT ────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='contract') {
+        // Try to find parties and key terms
+        const parties=[], terms=[];
+        rawText.split('\n').forEach(line=>{
+          if(/party|parties|between|agreement between/i.test(line)) parties.push(line.trim());
+          if(/section|article|clause|\d+\.\s/i.test(line)) terms.push(line.trim());
         });
-        y = pdf.lastAutoTable.finalY + 8; rule();
-
-      // Priority 2: table regions from analysis data
-      } else {
-        const tableRegions = regions.filter(r=>r.type==='table');
-        if (tableRegions.length) {
-          sectionHeader('Detected Tables', AMBER);
-          tableRegions.forEach((tbl,ti) => {
-            checkPage(12);
-            const c = tbl.conf?(tbl.conf*100).toFixed(0):'0';
-            bodyText(`Table ${ti+1}  (confidence: ${c}%)`, {bold:true, color:AMBER, size:9});
-
-            if (tbl.rows && tbl.cols) {
-              // Render structural placeholder grid
-              const headRow = Array.from({length:tbl.cols},(_,i)=>`Column ${i+1}`);
-              const bodyRows= Array.from({length:tbl.rows},()=>Array.from({length:tbl.cols},()=>'—'));
-              pdf.autoTable({
-                startY:y, margin:{left:margin,right:margin}, theme:'grid',
-                headStyles:{fillColor:AMBER,textColor:[255,255,255],fontSize:8},
-                bodyStyles:{fontSize:8,textColor:GRAY},
-                head:[headRow], body:bodyRows,
-              });
-              y = pdf.lastAutoTable.finalY + 6;
-            } else if (tbl.text) {
-              bodyText(tbl.text, {size:9});
-            } else {
-              bodyText('[Table region detected — no cell data available]', {color:GRAY, size:9});
-              y+=3;
-            }
+        if(parties.length){
+          sectionBadge('Parties & Context', C.purple);
+          parties.slice(0,8).forEach(p=>para(p,{size:8.5}));
+          y+=3;rule();
+        }
+        if(terms.length){
+          sectionBadge('Clauses & Sections', C.purple);
+          terms.slice(0,25).forEach((t,i)=>{
+            checkPage(7);
+            pdf.setFillColor(...C.purpleLt);pdf.rect(M,y-3,CW,5.5,'F');
+            pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(...C.purple);
+            pdf.text(`${i+1}`,M+2,y+1);
+            pdf.setFont('helvetica','normal');pdf.setTextColor(...C.black);
+            const lns=pdf.splitTextToSize(t,CW-8);
+            pdf.text(lns[0],M+8,y+1);
+            y+=6;
           });
+          y+=2;rule();
+        }
+        emitRegionText('Full Contract Text');
+        if(rawText&&!terms.length){sectionBadge('Contract Text',C.gray);emitRawText();rule();}
+        emitTables();
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── REPORT / RESEARCH ───────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='report') {
+        const reportSections=[
+          {re:/^(abstract|summary|overview|executive\s*summary)/i,label:'Abstract / Summary'},
+          {re:/^(introduction|background|purpose)/i,             label:'Introduction'},
+          {re:/^(methodology|method|approach|procedure)/i,       label:'Methodology'},
+          {re:/^(results?|findings?|data\s*analysis)/i,          label:'Results'},
+          {re:/^(discussion|analysis|interpretation)/i,          label:'Discussion'},
+          {re:/^(conclusion|recommendation|next\s*steps?)/i,     label:'Conclusion'},
+          {re:/^(references?|bibliography|citations?)/i,         label:'References'},
+          {re:/^(appendix|appendices)/i,                         label:'Appendix'},
+        ];
+        const lines=rawText.split('\n').map(l=>l.trim()).filter(Boolean);
+        const buckets2={};let cur='Content';buckets2[cur]=[];
+        lines.forEach(line=>{
+          const m=reportSections.find(s=>s.re.test(line));
+          if(m){cur=m.label;if(!buckets2[cur])buckets2[cur]=[];}
+          else{if(!buckets2[cur])buckets2[cur]=[];buckets2[cur].push(line);}
+        });
+        // Header regions first
+        if(headerRegions.length){
+          sectionBadge('Document Headers', C.green);
+          headerRegions.forEach(r=>{
+            if(r.text){para(r.text,{bold:true,size:10,color:C.green});y+=1;}
+          });
+          y+=3;rule();
+        }
+        Object.entries(buckets2).forEach(([sec,lns])=>{
+          if(!lns.length)return;
+          sectionBadge(sec,C.green);
+          lns.slice(0,40).forEach(l=>para(l,{size:8.5}));
+          y+=2;
+        });
+        rule();
+        emitTables('Tables & Data');
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── LETTER / CORRESPONDENCE ─────────────────────────────────════════
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='letter') {
+        const lines=rawText.split('\n').map(l=>l.trim()).filter(Boolean);
+        // Greeting, body, closing heuristic split
+        let greeting='',closing='',bodyLines=[];
+        lines.forEach((l,i)=>{
+          if(i===0||(i<3&&/dear |to whom/i.test(l))){greeting=l;}
+          else if(/sincerely|regards|yours truly|respectfully/i.test(l)){closing=lines.slice(i).join('\n');}
+          else{bodyLines.push(l);}
+        });
+        if(greeting){
+          sectionBadge('Greeting',C.slate);
+          para(greeting,{size:10,bold:true});y+=3;rule();
+        }
+        if(bodyLines.length){
+          sectionBadge('Body',C.slate);
+          bodyLines.slice(0,60).forEach(l=>para(l,{size:9}));
+          y+=3;rule();
+        }
+        if(closing){
+          sectionBadge('Closing',C.slate);
+          para(closing,{size:9});rule();
+        }
+        if(!greeting&&!bodyLines.length){emitRawText('Full Letter Text');}
+        emitRegionText('Layout Regions');
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── FORM / APPLICATION ──────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else if (detectedType==='form') {
+        sectionBadge('Form Fields', C.red);
+        // Parse lines as field labels and values
+        const formLines=rawText.split('\n').map(l=>l.trim()).filter(Boolean);
+        const fields=[];
+        formLines.forEach(line=>{
+          // Detect "Label: value" pattern
+          const colonIdx=line.indexOf(':');
+          if(colonIdx>0&&colonIdx<40){
+            fields.push([line.slice(0,colonIdx).trim(), line.slice(colonIdx+1).trim()||'___________']);
+          } else if(/\[\s*\]|☐|☑|\(\s*\)|_{3,}/.test(line)){
+            // Checkboxes or blanks
+            fields.push(['Option', line]);
+          } else {
+            fields.push(['-', line]);
+          }
+        });
+        if(fields.length){
+          pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'grid',
+            headStyles:{fillColor:C.red,textColor:C.white,fontStyle:'bold',fontSize:8},
+            bodyStyles:{fontSize:8.5},alternateRowStyles:{fillColor:C.redLt},
+            head:[['Field','Value']],
+            body:fields.slice(0,40)});
+          y=pdf.lastAutoTable.finalY+5;
+        } else {
+          emitRawText();
+        }
+        rule();
+        emitTables('Embedded Tables');
+        emitRegionText('Layout Regions');
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ── GENERIC DOCUMENT ────────────────────────────────────────────────
+      // ════════════════════════════════════════════════════════════════════
+      else {
+        // Header regions
+        if(headerRegions.length){
+          sectionBadge('Document Headers');
+          headerRegions.forEach(r=>{if(r.text)para(r.text,{bold:true,size:10,color:ACCENT});});
+          y+=3;rule();
+        }
+        // Paragraph regions
+        if(paraRegions.length){
+          sectionBadge('Content Regions');
+          paraRegions.forEach((r,i)=>{
+            checkPage(10);
+            const c=((r.conf||0)*100).toFixed(0);
+            pdf.setFillColor(...ACCENT_LT);pdf.roundedRect(M,y,CW,6.5,1,1,'F');
+            pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(...ACCENT);
+            pdf.text(`REGION ${i+1}  ·  ${r.type.toUpperCase()}  ·  ${c}%`,M+2,y+4.5);
+            y+=7.5;
+            if(r.text)para(r.text,{size:8.5,indent:2});
+            y+=2;
+          });
+          rule();
+        }
+        // Tables
+        if(tableRegions.length||window.lastTableResults?.cellsData?.length)emitTables();
+        // Figures
+        const figRegions=regions.filter(r=>r.type==='figure');
+        if(figRegions.length){
+          sectionBadge('Figures / Images');
+          figRegions.forEach((r,i)=>{
+            checkPage(8);
+            para(`Figure ${i+1}  ·  ${((r.conf||0)*100).toFixed(0)}% confidence`,{bold:true,size:8.5});
+            if(r.text)para(r.text,{size:8,indent:3});
+            y+=2;
+          });
+          rule();
+        }
+        // Raw OCR text fallback
+        if(rawText){
+          const lbl=zeroRegions
+            ?'Raw OCR Text — 0 regions detected (Tesseract full-page extraction)'
+            :'Full Extracted Text';
+          sectionBadge(lbl,zeroRegions?C.purple:C.gray);
+          if(zeroRegions){
+            pdf.setFont('helvetica','italic');pdf.setFontSize(7.5);pdf.setTextColor(...C.purple);
+            para('0 layout regions were detected. The raw Tesseract output is shown below. This is common with hand-drawn documents, diagrams, or very low-contrast images.',{size:7.5,color:C.purple});
+            y+=3;
+          }
+          emitRawText();
           rule();
         }
       }
 
-      // ── METADATA ─────────────────────────────────────────────────────────
-      if (data.metadata) {
-        sectionHeader('Analysis Metadata');
-        const md=data.metadata;
-        pdf.autoTable({
-          startY:y, margin:{left:margin,right:margin}, theme:'plain',
-          styles:{fontSize:9,cellPadding:2},
-          columnStyles:{0:{fontStyle:'bold',textColor:GREEN,cellWidth:52},1:{textColor:BLACK}},
+      // ════════════════════════════════════════════════════════════════════
+      // REGION BREAKDOWN (all types)
+      // ════════════════════════════════════════════════════════════════════
+      if (regions.length) {
+        sectionBadge('Region Breakdown');
+        const hi=regions.filter(r=>r.conf>0.85).length;
+        const med=regions.filter(r=>r.conf>=0.7&&r.conf<=0.85).length;
+        const lo=regions.filter(r=>r.conf<0.7).length;
+        pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'grid',
+          headStyles:{fillColor:ACCENT,textColor:C.white,fontStyle:'bold',fontSize:8},
+          bodyStyles:{fontSize:8},alternateRowStyles:{fillColor:ACCENT_LT},
+          head:[['Type','Count','Confidence Band','Count']],
           body:[
-            ['Method',       md.analysisMethod    ||'Smart OCR Recognition'],
-            ['Language',     md.language          ||'English'],
-            ['Segmentation', md.segmentationLevel ||'Basic'],
-            ['Preprocessing',md.preprocessingApplied?'Applied':'Not Applied'],
-            ['Flowchart',    md.detectedFlowchart ?'Detected':'None'],
-            ['Table',        md.detectedTable     ?'Detected':'None'],
-            ['Layout',       md.layoutType        ||'Single'],
-          ],
-        });
-        y = pdf.lastAutoTable.finalY + 6;
+            ['Headers',    headerRegions.length,     'High (>85%)',     hi],
+            ['Paragraphs', paraRegions.length,        'Medium (70–85%)', med],
+            ['Tables',     tableRegions.length,       'Low (<70%)',      lo],
+            ['Figures',    regions.filter(r=>r.type==='figure').length,'',''],
+            ['Shapes',     shapeRegions.length,       '',''],
+          ]});
+        y=pdf.lastAutoTable.finalY+5;rule();
       }
 
-      // ── PAGE FOOTERS ─────────────────────────────────────────────────────
-      const total = pdf.internal.getNumberOfPages();
-      for (let i=1; i<=total; i++) {
+      // ════════════════════════════════════════════════════════════════════
+      // ANALYSIS METADATA
+      // ════════════════════════════════════════════════════════════════════
+      if (data.metadata) {
+        sectionBadge('Analysis Metadata', C.gray);
+        const md=data.metadata;
+        pdf.autoTable({startY:y,margin:{left:M,right:M},theme:'plain',
+          styles:{fontSize:8,cellPadding:2},
+          columnStyles:{0:{fontStyle:'bold',textColor:C.gray,cellWidth:48},1:{textColor:C.black}},
+          body:[
+            ['Detected Type',   TYPE_LABEL[detectedType]],
+            ['Method',          md.analysisMethod    ||'Smart OCR Recognition'],
+            ['Language',        md.language          ||'English'],
+            ['Segmentation',    md.segmentationLevel ||'Basic'],
+            ['Preprocessing',   md.preprocessingApplied?'Applied':'Not Applied'],
+            ['Flowchart',       md.detectedFlowchart?'Detected':'None'],
+            ['Table',           md.detectedTable?'Detected':'None'],
+            ['Layout',          md.layoutType        ||'Single'],
+          ]});
+        y=pdf.lastAutoTable.finalY+5;
+      }
+
+      // ── Page footers ─────────────────────────────────────────────────────
+      const totalPg=pdf.internal.getNumberOfPages();
+      for(let i=1;i<=totalPg;i++){
         pdf.setPage(i);
-        pdf.setFontSize(8); pdf.setTextColor(...GRAY);
-        pdf.text(`DOCUGRAPH  ·  Page ${i} of ${total}`, pageW/2, pageH-8, {align:'center'});
-        pdf.text(`Generated ${new Date().toLocaleDateString()}`, pageW-margin, pageH-8, {align:'right'});
+        pdf.setFontSize(7); pdf.setTextColor(...C.gray);
+        pdf.text(`DOCUGRAPH  ·  ${TYPE_LABEL[detectedType]}  ·  Page ${i} of ${totalPg}`,
+          pageW/2, pageH-5, {align:'center'});
+        pdf.text(new Date().toLocaleDateString(), pageW-M, pageH-5, {align:'right'});
       }
 
-      // ── SAVE ─────────────────────────────────────────────────────────────
-      const outname = (data.filename||'document').replace(/\.[^/.]+$/,'') + '-analysis.pdf';
+      // ── Save ─────────────────────────────────────────────────────────────
+      const outname=(data.filename||'document').replace(/\.[^/.]+$/,'')+'-analysis.pdf';
       pdf.save(outname);
       btn.innerHTML=orig; btn.disabled=false;
-      window.Toast?.success('PDF downloaded successfully');
+      window.Toast?.success('PDF downloaded — '+TYPE_LABEL[detectedType]);
 
     } catch(err) {
       console.error('PDF generation error:', err);
