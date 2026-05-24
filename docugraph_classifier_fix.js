@@ -212,6 +212,10 @@
         /\+63\s*9\d{2}/,          // PH mobile number
         /₱\s*[\d,]+\.\d{2}/,      // Philippine peso amount
         /paymaya|maya|grabpay|shopeepay|coins\.ph/i,
+        /\bgcash\s*(transaction|payment|transfer|sent)/i,  // GCash-specific
+        /\b(you\s*sent|received|pending|successful)\b.*gcash/i,  // GCash context
+        /\bsent\s*(₱|php)/i,  // Amount sent with peso symbol
+        /\bto\s*[a-z0-9._%+-]+@[a-z0-9.-]+|mobile.*gcash/i,  // GCash recipient
       ],
       // Strong anchors — each individually meaningful
       strong: [
@@ -575,61 +579,68 @@
 
     // ── FLOWCHART ────────────────────────────────────────────────────────
     {
-      // Layer 1: Shape-based detection (if GNN typed correctly)
-      const realShapes = shapeRegions.filter(r => {
-        if (!r.bbox || r.bbox.length < 4) return false;
-        const w = r.bbox[2] - r.bbox[0];
-        const h = r.bbox[3] - r.bbox[1];
-        const ar = w / Math.max(h, 1);
-        // Decorative: aspect ratio 0.3-5 AND both dims small
-        if (ar > 0.3 && ar < 5 && w < 8 && h < 8) return false;  // Tiny square icon
-        // Otherwise keep it
-        return true;
-      });
-
-      const strongHits = SIGNALS.flowchart.strong.filter(p => p.test(text)).length;
-
-      // Primary: score from actual shapes + keywords
-      if (realShapes.length >= 2) {
-        scores.flowchart = 20 + (realShapes.length * 8) + (strongHits * 12);
-      } else if (strongHits > 0) {
-        scores.flowchart = strongHits * 10;
-      }
-
-      // Layer 2: Visual pixel analysis (coloured boxes + high whitespace)
-      if (scores.flowchart === 0) {
-        const visualResult = detectFlowchartFromCanvas();
-        if (visualResult) {
-          scores.flowchart = visualResult.score;
-          debug.flowchart = debug.flowchart || {};
-          debug.flowchart.visualDetected = true;
-        }
-      }
-
-      // Layer 3: Layout sparsity analysis (narrow/short/spread boxes)
-      if (scores.flowchart === 0) {
-        const layoutResult = detectFlowchartFromLayout(regions);
-        if (layoutResult) {
-          scores.flowchart = layoutResult.score;
-          debug.flowchart = debug.flowchart || {};
-          debug.flowchart.layoutDetected = true;
-        }
-      }
-
-      // Block flowchart if receipt/invoice signals are strong
+      // DEFENSIVE: Block flowchart immediately if receipt/invoice are clearly present
+      // This prevents GCash receipts with decorative shapes from being misclassified as flowcharts
       if (scores.receipt > 15 || scores.invoice > 20) {
         scores.flowchart = 0;
-      }
+        debug.flowchart = { blocked: 'receipt_or_invoice_detected' };
+      } else {
+        // Layer 1: Shape-based detection (if GNN typed correctly)
+        const realShapes = shapeRegions.filter(r => {
+          if (!r.bbox || r.bbox.length < 4) return false;
+          const w = r.bbox[2] - r.bbox[0];
+          const h = r.bbox[3] - r.bbox[1];
+          const ar = w / Math.max(h, 1);
+          // Decorative: aspect ratio 0.3-5 AND both dims small
+          if (ar > 0.3 && ar < 5 && w < 8 && h < 8) return false;  // Tiny square icon
+          // Otherwise keep it
+          return true;
+        });
 
-      // Block flowchart if it's just tables + paragraphs (invoice/report pattern)
-      if (realShapes.length === 0 && tableCount > 0 && paraCount > 0) {
-        const layoutResult = detectFlowchartFromLayout(regions);
-        if (!layoutResult) {
-          scores.flowchart = 0;
+        const strongHits = SIGNALS.flowchart.strong.filter(p => p.test(text)).length;
+
+        // Primary: score from actual shapes + keywords
+        if (realShapes.length >= 2) {
+          scores.flowchart = 20 + (realShapes.length * 8) + (strongHits * 12);
+        } else if (strongHits > 0) {
+          scores.flowchart = strongHits * 10;
         }
+
+        // Layer 2: Visual pixel analysis (coloured boxes + high whitespace)
+        if (scores.flowchart === 0) {
+          const visualResult = detectFlowchartFromCanvas();
+          if (visualResult) {
+            scores.flowchart = visualResult.score;
+            debug.flowchart = debug.flowchart || {};
+            debug.flowchart.visualDetected = true;
+          }
+        }
+
+        // Layer 3: Layout sparsity analysis (narrow/short/spread boxes)
+        if (scores.flowchart === 0) {
+          const layoutResult = detectFlowchartFromLayout(regions);
+          if (layoutResult) {
+            scores.flowchart = layoutResult.score;
+            debug.flowchart = debug.flowchart || {};
+            debug.flowchart.layoutDetected = true;
+          }
+        }
+
+        // Block flowchart if it's just tables + paragraphs (invoice/report pattern)
+        if (scores.flowchart > 0 && realShapes.length === 0 && tableCount > 0 && paraCount > 0) {
+          const layoutResult = detectFlowchartFromLayout(regions);
+          if (!layoutResult) {
+            scores.flowchart = 0;
+          }
+        }
+
+        debug.flowchart = debug.flowchart || { realShapes: realShapes.length, strongHits };
       }
 
-      debug.flowchart = debug.flowchart || { realShapes: realShapes.length, strongHits };
+      // Final safety: Block flowchart if receipt hard-override was triggered
+      if (scores.receipt > 50) {
+        scores.flowchart = 0;
+      }
     }
 
     // ── FILENAME BONUSES ─────────────────────────────────────────────────
