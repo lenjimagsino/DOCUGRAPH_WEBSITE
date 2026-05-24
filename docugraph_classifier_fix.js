@@ -198,7 +198,7 @@
 
     // ── RECEIPT ────────────────────────────────────────────────────────────
     receipt: {
-      // Any 2+ of these = definitely a receipt, block all other types
+      // Any 1+ of these = receipt (extremely aggressive for GCash protection)
       blocking: [
         /gcash/i,
         /express\s*send/i,
@@ -215,7 +215,8 @@
         /\bgcash\s*(transaction|payment|transfer|sent)/i,  // GCash-specific
         /\b(you\s*sent|received|pending|successful)\b.*gcash/i,  // GCash context
         /\bsent\s*(₱|php)/i,  // Amount sent with peso symbol
-        /\bto\s*[a-z0-9._%+-]+@[a-z0-9.-]+|mobile.*gcash/i,  // GCash recipient
+        /express\s*send\b/i,  // Explicit Express Send
+        /\d{13,}/,  // Long reference number (transaction ID style)
       ],
       // Strong anchors — each individually meaningful
       strong: [
@@ -485,11 +486,12 @@
       scores.receipt = (blockHits * 25) + (strongHits * 12) + (weakHits * 3);
       debug.receipt = { blockHits, strongHits, weakHits };
 
-      // Hard override: 2+ blocking signals → Receipt wins unconditionally
-      if (blockHits >= 2) {
+      // Hard override: ANY 1+ blocking signal OR 2+ strong signals → Receipt wins unconditionally
+      // This ensures GCash receipts (which have explicit markers) never become flowcharts
+      if (blockHits >= 1 || strongHits >= 2) {
         return {
           type: 'Receipt',
-          confidence: 0.96,
+          confidence: Math.min(0.98, 0.85 + (blockHits * 0.08) + (strongHits * 0.05)),
           scores,
           topMatches: [{ type: 'Receipt', score: scores.receipt }],
           debug,
@@ -579,11 +581,11 @@
 
     // ── FLOWCHART ────────────────────────────────────────────────────────
     {
-      // DEFENSIVE: Block flowchart immediately if receipt/invoice are clearly present
-      // This prevents GCash receipts with decorative shapes from being misclassified as flowcharts
-      if (scores.receipt > 15 || scores.invoice > 20) {
+      // CRITICAL DEFENSE: Block flowchart if ANY receipt/invoice signals present
+      // GCash receipts with decorative shapes must NEVER be classified as flowcharts
+      if (scores.receipt > 10 || scores.invoice > 15) {
         scores.flowchart = 0;
-        debug.flowchart = { blocked: 'receipt_or_invoice_detected' };
+        debug.flowchart = { blocked: 'receipt_or_invoice_detected', receiptScore: scores.receipt, invoiceScore: scores.invoice };
       } else {
         // Layer 1: Shape-based detection (if GNN typed correctly)
         const realShapes = shapeRegions.filter(r => {
@@ -637,8 +639,8 @@
         debug.flowchart = debug.flowchart || { realShapes: realShapes.length, strongHits };
       }
 
-      // Final safety: Block flowchart if receipt hard-override was triggered
-      if (scores.receipt > 50) {
+      // Final safety: Block flowchart if receipt is very strong
+      if (scores.receipt > 40) {
         scores.flowchart = 0;
       }
     }
@@ -719,6 +721,11 @@
       if (filename.includes(t)) return t.charAt(0).toUpperCase() + t.slice(1);
     }
 
+    // CRITICAL: Receipts and payment documents have priority over flowchart classification
+    // GCash receipts can have decorative shapes that shouldn't trigger flowchart detection
+    if (figures.length > 0 && paras.length > 3) return 'Receipt';  // Typical receipt layout
+    if (paras.length > 5 && figures.length > 0) return 'Receipt';   // Text + logo = receipt
+
     // Flowchart: multiple real diagram shapes, sparse text
     if (realShapes.length >= 3 && paras.length <= 2) return 'Flowchart';
     if (realShapes.length >= 2 && paras.length === 0) return 'Flowchart';
@@ -727,7 +734,7 @@
     if (realShapes.length === 0) {
       const layoutResult = detectFlowchartFromLayout(regions);
       const visualResult = detectFlowchartFromCanvas();
-      if (layoutResult || visualResult) {
+      if ((layoutResult || visualResult) && !(figures.length > 2)) {  // Don't trigger if has figures (logos, etc.)
         return 'Flowchart';
       }
     }
