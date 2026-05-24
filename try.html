@@ -4871,7 +4871,7 @@
         let lineStart = -1;
         let lineLength = 0;
         for (let x = 0; x < width; x++) {
-          if (edges[y * width * 4 + x * 4] > 128) {
+          if (edges[y * width + x] > 128) {
             if (lineStart === -1) lineStart = x;
             lineLength++;
           } else if (lineStart !== -1 && lineLength > width * 0.1) {
@@ -4893,7 +4893,7 @@
         let lineStart = -1;
         let lineLength = 0;
         for (let y = 0; y < height; y++) {
-          if (edges[y * width * 4 + x * 4] > 128) {
+          if (edges[y * width + x] > 128) {
             if (lineStart === -1) lineStart = y;
             lineLength++;
           } else if (lineStart !== -1 && lineLength > height * 0.1) {
@@ -9587,8 +9587,54 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
           }
         }
 
-        // 5. Hide tables section (no table parser in this lean path)
-        if (tablesContainer) tablesContainer.style.display = 'none';
+        // 5. Extract and display tables from layout data
+        if (tablesContainer && currentLayoutData) {
+          const tableRegions = (currentLayoutData.regions || []).filter(r => r.type === 'table');
+          if (tableRegions.length > 0 && result.data.words && result.data.words.length > 0) {
+            try {
+              const parser = new TableParser();
+              const canvasW = canvas.width, canvasH = canvas.height;
+              const grids = tableRegions.map(r => ({ bbox: r.bbox, rows: 3, cols: 3, confidence: r.conf || 0.8 }));
+              const tesWords = result.data.words
+                .filter(w => w.text && w.text.trim())
+                .map(w => ({
+                  text: w.text,
+                  confidence: w.confidence / 100,
+                  bbox: { x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 }
+                }));
+              const parsed = parser.parseTablesFromOCR(tesWords, grids, canvasW, canvasH);
+              if (parsed.hasTables && parsed.tables.length > 0) {
+                const tbl = parsed.tables[0];
+                window.lastTableResults = {
+                  html: tbl.html,
+                  csv: tbl.csv,
+                  markdown: tbl.markdown,
+                  json: parser.toJSON(tbl),
+                  cellsData: tbl.cells,
+                  headers: parser.getColumnHeaders(tbl.cells, tbl.cols, tbl.headerRow)
+                };
+                const detectedTables = document.getElementById('detected-tables');
+                if (detectedTables) {
+                  tablesContainer.style.display = 'block';
+                  detectedTables.innerHTML = '';
+                  parsed.tables.forEach((t, idx) => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'margin-bottom:16px;overflow-x:auto;border:2px solid #1976D2;border-radius:8px;padding:12px;background:#e3f2fd;';
+                    div.innerHTML = `<h5 style="margin:0 0 8px;color:#1565c0;">Table ${idx + 1}</h5>` + t.html;
+                    detectedTables.appendChild(div);
+                  });
+                }
+              } else {
+                tablesContainer.style.display = 'none';
+              }
+            } catch (tableErr) {
+              console.warn('Table extraction skipped:', tableErr.message);
+              tablesContainer.style.display = 'none';
+            }
+          } else {
+            tablesContainer.style.display = 'none';
+          }
+        }
 
         // 6. Store a minimal result object so the copy/download buttons still work
         window.lastProcessedDocument = {
