@@ -9508,96 +9508,139 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
       processDocument('uploaded');
     });
 
-    // OCR button - extracts text from already-analyzed layout
-    // Initialize the advanced processor globally
-    const advancedProcessor = new AdvancedDocumentProcessor();
-
-    // OCR button - Full Document Processing Pipeline
+    // OCR button - Direct Tesseract OCR with single worker and timeout protection
     elements.ocr.addEventListener('click', async () => {
-      // Check if libraries are ready
-      if (!window.libsReady) {
-        alert('⚠️ Libraries still loading. Please wait a moment and try again.');
-        return;
-      }
-      
-      if (!currentLayoutData) {
+      if (!currentLayoutData || !currentFile) {
         alert('Please analyze layout first.');
         return;
       }
-      
-      if (!currentFile) {
-        alert('Please upload a document first.');
+
+      // Check Tesseract is actually available right now
+      if (typeof Tesseract === 'undefined' || typeof Tesseract.createWorker !== 'function') {
+        alert('OCR library (Tesseract.js) is not loaded yet. Please wait a few seconds and try again.');
         return;
       }
-      console.log('🟦 Starting DOCUMENT PROCESSING with timeout protection');
-      
-      // Show processing state
+
       showState('processing');
-      
+      analysisStage = 'ocr-complete';
+
       const textContainer = document.getElementById('scanned-text-container');
+      const tablesContainer = document.getElementById('tables-container');
       if (textContainer) {
-        textContainer.innerHTML = '<div style="padding:40px;text-align:center;"><div style="font-size:48px;margin:20px;color:#666;">◌</div><p style="font-size:16px;color:#333;"><strong>Processing Document</strong></p><p style="color:#999;font-size:12px;">Analyzing and extracting content (3-10 seconds)</p></div>';
+        textContainer.innerHTML = '<p style="color:var(--ink-500);text-align:center;padding:20px;">Running OCR — please wait…</p>';
       }
-      
+
+      let worker = null;
+
       try {
-        // Setup timeouts
-        const fileTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('File reading timeout')), 5000)
-        );
-        
-        const processingTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Processing took too long')), 12000)
-        );
-        
-        // Read file
-        const fileReady = new Promise((resolve, reject) => {
+        // 1. Load the image onto a canvas
+        const canvas = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.onload = (event) => {
-            try {
-              const img = new Image();
-              img.onerror = () => reject(new Error('Failed to load image'));
-              img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                resolve(canvas);
-              };
-              img.src = event.target.result;
-            } catch (e) {
-              reject(e);
-            }
+          reader.onerror = () => reject(new Error('Could not read file.'));
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('Could not decode image.'));
+            img.onload = () => {
+              const c = document.createElement('canvas');
+              c.width = img.naturalWidth;
+              c.height = img.naturalHeight;
+              c.getContext('2d').drawImage(img, 0, 0);
+              resolve(c);
+            };
+            img.src = e.target.result;
           };
           reader.readAsDataURL(currentFile);
         });
-        
-        const canvas = await Promise.race([fileReady, fileTimeout]);
-        console.log('📄 Canvas ready:', canvas.width, 'x', canvas.height);
-        
-        // Process document
-        console.log('🚀 Starting processing...');
-        const fullyProcessedDocument = await Promise.race([
-          advancedProcessor.processDocumentFull(canvas, currentFile, { useAdvancedCorrection: true }),
-          processingTimeout
-        ]);
 
-        console.log('✅ PIPELINE COMPLETE');
-        analysisStage = 'ocr-complete';
-        
-        displayComprehensiveResults(fullyProcessedDocument);
+        // 2. Create ONE worker with a hard 25-second total timeout
+        const TIMEOUT_MS = 25000;
+        const deadline = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('OCR timed out after 25 seconds. Try a smaller or clearer image.')), TIMEOUT_MS)
+        );
+
+        worker = await Promise.race([Tesseract.createWorker(), deadline]);
+        await Promise.race([worker.loadLanguage('eng'), deadline]);
+        await Promise.race([worker.initialize('eng'), deadline]);
+
+        const result = await Promise.race([worker.recognize(canvas), deadline]);
+
+        await worker.terminate();
+        worker = null;
+
+        // 3. Pull out text and word data
+        const rawText = (result.data.text || '').trim();
+        const avgConf = result.data.confidence != null
+          ? (result.data.confidence / 100).toFixed(2)
+          : '0.85';
+
+        // 4. Display extracted text
+        if (textContainer) {
+          if (rawText) {
+            textContainer.innerHTML =
+              '<p style="white-space:pre-wrap;font-family:var(--font-mono);font-size:13px;line-height:1.6;color:var(--ink-700);">' +
+              rawText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
+              '</p>';
+          } else {
+            textContainer.innerHTML =
+              '<p style="color:var(--ink-500);text-align:center;padding:20px;">No text found in this document. ' +
+              'The image may be too low-resolution or contain only graphics.</p>';
+          }
+        }
+
+        // 5. Hide tables section (no table parser in this lean path)
+        if (tablesContainer) tablesContainer.style.display = 'none';
+
+        // 6. Store a minimal result object so the copy/download buttons still work
+        window.lastProcessedDocument = {
+          filename: currentFile.name,
+          timestamp: new Date().toISOString(),
+          ocr: {
+            text: rawText,
+            confidence: parseFloat(avgConf),
+            language: 'eng',
+            words: (result.data.words || []).map(w => ({
+              text: w.text,
+              confidence: w.confidence / 100,
+              bbox: w.bbox
+            })),
+            extractionMethod: 'Direct Tesseract OCR'
+          },
+          semantics: { errorFlags: [] },
+          tables: [],
+          segments: [],
+          workflow: ['Load image', 'Tesseract OCR'],
+          structure: currentLayoutData?.structure || {},
+          metadata: { imageSize: { width: canvas.width, height: canvas.height } }
+        };
+
+        // 7. Update confidence badge if visible
+        const confBadge = document.getElementById('confidence-score');
+        if (confBadge) confBadge.textContent = (parseFloat(avgConf) * 100).toFixed(1) + '%';
+
+        showState('ocr');
         updateUIForStage();
-        window.lastProcessedDocument = fullyProcessedDocument;
 
       } catch (err) {
-        console.error('❌ Error:', err.message);
-        
-        if (textContainer) {
-          textContainer.innerHTML = '<div style="padding:15px;background:#f5f5f5;border-left:4px solid #d32f2f;border-radius:4px;"><p style="margin:0 0 8px 0;color:#d32f2f;"><strong>Processing Error</strong></p><p style="margin:0;color:#666;font-size:13px;">'+err.message+'</p></div>';
+        console.error('OCR failed:', err);
+
+        // Always clean up the worker on failure
+        if (worker) {
+          try { await worker.terminate(); } catch (_) {}
+          worker = null;
         }
-        
+
+        if (textContainer) {
+          textContainer.innerHTML =
+            '<div style="padding:16px;background:var(--red-50,#fff5f5);border:1px solid var(--red-200,#fecaca);border-radius:8px;">' +
+            '<strong style="color:var(--red-700,#b91c1c);">OCR failed</strong>' +
+            '<p style="margin:8px 0 0;font-size:13px;color:var(--ink-600);">' +
+            err.message +
+            '</p></div>';
+        }
+
+        // Go back to results (layout) state so the user can try again
         analysisStage = 'layout-detected';
+        showState('results');
         updateUIForStage();
       }
     });
