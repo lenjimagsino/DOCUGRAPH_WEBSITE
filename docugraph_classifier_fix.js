@@ -198,16 +198,16 @@
 
     // ── RECEIPT ────────────────────────────────────────────────────────────
     receipt: {
-      // Any 2+ of these = definitely a receipt, block all other types
+      // Any 3+ of these = definitely a receipt, block all other types
       // Patterns are flexible to handle OCR spacing variations
       blocking: [
         /gcash/i,
         /express\s*send/i,
         /sent\s*via/i,
-        /ref\s*no/i,                    // More flexible than /ref\.?\s*no[\.:]/
+        /ref\s*no/i,                    // Reference number is very receipt-specific
         /transaction\s*(id|no|#|ref)/i,
         /amount\s*sent/i,
-        /total\s*amount/i,
+        /total\s*amount\s*sent/i,
         /carbon\s*footprint/i,
         /by\s*going\s*digital/i,
         /\+63\s*9\d{2}/,                // PH mobile number
@@ -215,23 +215,23 @@
         /paymaya|maya|grabpay|shopeepay|coins\.ph/i,
         /payment\s*(received|sent|complete|successful)/i,
         /transaction\s*complete/i,
-        /\d{10,}/,                      // Long transaction ID (10+ digits)
       ],
-      // Strong anchors — each individually meaningful
+      // Strong anchors — each individually meaningful for receipts
       strong: [
         /receipt/i,
         /order\s*confirmation/i,
-        /payment\s*(received|confirmed|successful)/i,
+        /payment\s*received/i,
         /transaction\s*complete/i,
         /ref\s*no/i,
         /reference\s*number/i,
         /amount\s*paid/i,
+        /payment\s*confirmed/i,
       ],
       // Contextual — only add score if strong/blocking already hit
       weak: [
         /thank\s*you\s*(for\s*(your\s*)?(payment|purchase|order))?/i,
-        /\d{10,}/,                 // Long numeric ref/transaction codes
-        /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2}/,  // datetime stamp
+        /datetime\s*stamp/i,
+        /may\s+\d{1,2},?\s+\d{4}\s+\d{1,2}:\d{2}\s*(am|pm)?/i,  // Date/time pattern
       ],
     },
 
@@ -485,9 +485,10 @@
       scores.receipt = (blockHits * 25) + (strongHits * 12) + (weakHits * 3);
       debug.receipt = { blockHits, strongHits, weakHits };
 
-      // Hard override: 2+ blocking signals → Receipt wins unconditionally
-      // GCash receipts have multiple blocking signals (gcash, express send, sent via, ref no, amount sent, etc.)
-      if (blockHits >= 2) {
+      // Hard override: 3+ blocking signals → Receipt wins unconditionally
+      // This prevents flowcharts/diagrams with random numbers from triggering receipt detection
+      // GCash receipts typically have 5+ distinct blocking signals (gcash, express send, sent via, ref no, amount sent, etc.)
+      if (blockHits >= 3) {
         return {
           type: 'Receipt',
           confidence: 0.96,
@@ -611,21 +612,17 @@
         if (scores.flowchart === 0) {
           const visualResult = detectFlowchartFromCanvas();
           if (visualResult) {
-            scores.flowchart = visualResult.score;
-            debug.flowchart = debug.flowchart || {};
-            debug.flowchart.visualDetected = true;
-          }
+          scores.flowchart = Math.max(40, visualResult.score + 5);  // Boost visual detection
+          debug.flowchart = debug.flowchart || {};
+          debug.flowchart.visualDetected = true;
         }
+      }
 
-        // Layer 3: Layout sparsity analysis (narrow/short/spread boxes)
-        if (scores.flowchart === 0) {
-          const layoutResult = detectFlowchartFromLayout(regions);
-          if (layoutResult) {
-            scores.flowchart = layoutResult.score;
-            debug.flowchart = debug.flowchart || {};
-            debug.flowchart.layoutDetected = true;
-          }
-        }
+      // Layer 3: Layout sparsity analysis (narrow/short/spread boxes)
+      if (scores.flowchart === 0) {
+        const layoutResult = detectFlowchartFromLayout(regions);
+        if (layoutResult) {
+          scores.flowchart = Math.max(35, layoutResult.score + 5);  // Boost layout detection
 
         // Block flowchart if it's just tables + paragraphs (invoice/report pattern)
         if (scores.flowchart > 0 && realShapes.length === 0 && tableCount > 0 && paraCount > 0) {
@@ -664,6 +661,23 @@
         topMatches: [{ type: 'Document', score: 0 }],
         debug,
       };
+    }
+
+    // SPECIAL CASE: If flowchart has visual/layout detection (score 35+) and receipt is weak,
+    // flowchart wins because it's based on concrete diagram structure
+    if (debug.flowchart?.visualDetected || debug.flowchart?.layoutDetected) {
+      if (scores.flowchart >= 35 && scores.receipt < 50) {
+        return {
+          type: 'Flowchart',
+          confidence: Math.min(0.95, 0.80 + (scores.flowchart / 100)),
+          scores,
+          topMatches: sorted.slice(0, 3).map(([t, s]) => ({
+            type: t.charAt(0).toUpperCase() + t.slice(1),
+            score: s,
+          })),
+          debug,
+        };
+      }
     }
 
     const [bestType, bestScore] = sorted[0];
