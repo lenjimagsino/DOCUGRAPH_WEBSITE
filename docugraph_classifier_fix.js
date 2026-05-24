@@ -429,18 +429,25 @@
         const w = r.bbox[2] - r.bbox[0];
         const h = r.bbox[3] - r.bbox[1];
         const ar = w / Math.max(h, 1);
-        // Decorative: normal rectangles (ar 0.3-5)
-        return !(ar > 0.3 && ar < 5);
+        // Decorative: aspect ratio 0.3-5 AND both dims small
+        if (ar > 0.3 && ar < 5 && w < 8 && h < 8) return false;  // Tiny square icon
+        // Otherwise keep it
+        return true;
       });
 
       const strongHits = SIGNALS.flowchart.strong.filter(p => p.test(text)).length;
 
+      // Primary: score from actual shapes + keywords
       if (realShapes.length >= 2) {
         scores.flowchart = 20 + (realShapes.length * 8) + (strongHits * 12);
       } else if (strongHits > 0) {
         scores.flowchart = strongHits * 10;
       }
-      // else: no shapes, no strong vocab → 0
+
+      // Fallback: layout-based detection (when shapes not typed correctly by GNN)
+      if (scores.flowchart === 0 && detectFlowchartLayout(regions)) {
+        scores.flowchart = 25;  // Moderate confidence from layout alone
+      }
 
       // Block flowchart if receipt/invoice signals are strong
       if (scores.receipt > 15 || scores.invoice > 20) {
@@ -448,11 +455,11 @@
       }
 
       // Block flowchart if it's just tables + paragraphs (invoice/report pattern)
-      if (realShapes.length === 0 && tableCount > 0 && paraCount > 0) {
+      if (realShapes.length === 0 && tableCount > 0 && paraCount > 0 && !detectFlowchartLayout(regions)) {
         scores.flowchart = 0;
       }
 
-      debug.flowchart = { realShapes: realShapes.length, strongHits };
+      debug.flowchart = { realShapes: realShapes.length, strongHits, layoutDetected: scores.flowchart > 0 && realShapes.length === 0 };
     }
 
     // ── FILENAME BONUSES ─────────────────────────────────────────────────
@@ -494,6 +501,50 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // FLOWCHART LAYOUT DETECTION (fallback when shape typing fails)
+  // Detects flowcharts based on region distribution patterns, not just shapes.
+  // Flowchart boxes: narrow (<70% wide), short (<20% tall), many (3+), vertical spread
+  // ─────────────────────────────────────────────────────────────────────────
+
+  function detectFlowchartLayout(regions) {
+    if (!regions || regions.length < 3) return false;
+
+    // Filter to non-trivial regions (significant boxes, not tiny noise)
+    const boxes = regions.filter(r => {
+      if (!r.bbox || r.bbox.length < 4) return false;
+      const w = r.bbox[2] - r.bbox[0];
+      const h = r.bbox[3] - r.bbox[1];
+      return w > 4 && h > 3;  // Exclude tiny noise
+    });
+
+    if (boxes.length < 3) return false;
+
+    // Calculate region dimensions
+    const widths  = boxes.map(r => r.bbox[2] - r.bbox[0]);
+    const heights = boxes.map(r => r.bbox[3] - r.bbox[1]);
+    const avgW = widths.reduce((a, b) => a + b, 0) / widths.length;
+    const avgH = heights.reduce((a, b) => a + b, 0) / heights.length;
+
+    // Count regions with flowchart-like dimensions
+    const narrowBoxes = boxes.filter(r => (r.bbox[2] - r.bbox[0]) < 70).length;
+    const shortBoxes  = boxes.filter(r => (r.bbox[3] - r.bbox[1]) < 20).length;
+    const fullWidthBoxes = boxes.filter(r => (r.bbox[2] - r.bbox[0]) > 75).length;
+
+    // Score based on layout characteristics
+    let score = 0;
+    if (avgW < 60) score += 2;      // avg region is not full-width
+    if (avgW < 45) score += 2;      // avg region is narrow
+    if (avgH < 15) score += 2;      // avg region is short
+    if (narrowBoxes / boxes.length > 0.7) score += 3; // most boxes are narrow
+    if (shortBoxes / boxes.length > 0.7) score += 2; // most boxes are short
+    if (fullWidthBoxes / boxes.length < 0.2) score += 2; // few full-width regions
+    if (boxes.length >= 4) score += 1;  // enough boxes to be a diagram
+    if (boxes.length >= 6) score += 1;  // many boxes = likely flowchart
+
+    return score >= 8;  // Need strong evidence
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // STRUCTURAL CLASSIFIER (for analyzeLayoutOnly — text not yet available)
   // Called when OCR hasn't run yet, so we classify purely from region layout.
   // ─────────────────────────────────────────────────────────────────────────
@@ -513,7 +564,16 @@
       const w = r.bbox[2] - r.bbox[0];
       const h = r.bbox[3] - r.bbox[1];
       const ar = w / Math.max(h, 1);
-      return !(ar > 0.3 && ar < 5);  // Keep non-normal rectangles
+      // Keep non-normal rectangles (diamonds, tall/narrow boxes, etc.)
+      // Decorative: aspect ratio 0.3-5 AND both dims small
+      if (ar > 0.3 && ar < 5) {
+        // This is a normal rectangle aspect; check if it's tiny
+        if (w < 8 && h < 8) return false;  // Tiny square = icon
+        // Otherwise it's a real box, keep it
+        return true;
+      }
+      // Non-normal aspect = real shape (diamond, tall oval, etc.)
+      return true;
     });
 
     // Filename hint wins
@@ -525,6 +585,11 @@
     // Flowchart: multiple real diagram shapes, sparse text
     if (realShapes.length >= 3 && paras.length <= 2) return 'Flowchart';
     if (realShapes.length >= 2 && paras.length === 0) return 'Flowchart';
+
+    // Flowchart fallback: detect via layout heuristics (GNN may type boxes as 'para' not 'shape')
+    if (realShapes.length === 0 && detectFlowchartLayout(regions)) {
+      return 'Flowchart';
+    }
 
     // Forms: explicit form-layout (many figures + very few paras, no tables)
     // Only if figures clearly dominate text AND no receipt signals
