@@ -3165,37 +3165,64 @@
 
     adaptiveContrast(grayscale, width, height) {
       const enhanced = new Uint8ClampedArray(grayscale.length);
-      const radius = Math.min(width, height) / 20;
-      
+
+      // ✅ Use integral image for O(1) per-pixel local mean — total O(w×h)
+      // Step 1: Build integral image and integral of squares
+      const N = width * height;
+      const integral    = new Float64Array(N);
+      const integralSq  = new Float64Array(N);
+
       for (let y = 0; y < height; y++) {
+        let rowSum = 0, rowSumSq = 0;
         for (let x = 0; x < width; x++) {
           const idx = y * width + x;
-          
-          // Calculate local mean and std
-          let sum = 0, sumSq = 0, count = 0;
-          for (let dy = -radius; dy <= radius; dy++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-              const ny = Math.max(0, Math.min(height - 1, y + dy));
-              const nx = Math.max(0, Math.min(width - 1, x + dx));
-              const val = grayscale[ny * width + nx];
-              sum += val;
-              sumSq += val * val;
-              count++;
-            }
+          const val = grayscale[idx];
+          rowSum   += val;
+          rowSumSq += val * val;
+          integral[idx]   = rowSum   + (y > 0 ? integral[(y-1) * width + x]   : 0);
+          integralSq[idx] = rowSumSq + (y > 0 ? integralSq[(y-1) * width + x] : 0);
+        }
+      }
+
+      // Step 2: For each pixel, compute local mean/std using the integral image
+      const r = Math.max(1, Math.round(Math.min(width, height) / 20));
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const x0 = Math.max(0, x - r);
+          const y0 = Math.max(0, y - r);
+          const x1 = Math.min(width  - 1, x + r);
+          const y1 = Math.min(height - 1, y + r);
+
+          const count = (x1 - x0 + 1) * (y1 - y0 + 1);
+
+          // Sum in rectangle via inclusion-exclusion
+          let sum   = integral[y1 * width + x1];
+          let sumSq = integralSq[y1 * width + x1];
+          if (x0 > 0) {
+            sum   -= integral[y1 * width + (x0 - 1)];
+            sumSq -= integralSq[y1 * width + (x0 - 1)];
           }
-          
-          const mean = sum / count;
+          if (y0 > 0) {
+            sum   -= integral[(y0 - 1) * width + x1];
+            sumSq -= integralSq[(y0 - 1) * width + x1];
+          }
+          if (x0 > 0 && y0 > 0) {
+            sum   += integral[(y0 - 1) * width + (x0 - 1)];
+            sumSq += integralSq[(y0 - 1) * width + (x0 - 1)];
+          }
+
+          const mean   = sum / count;
           const variance = (sumSq / count) - (mean * mean);
           const stddev = Math.sqrt(Math.max(0, variance));
-          
-          // Contrast stretching
-          const val = grayscale[idx];
-          enhanced[idx] = stddev > 0 
-            ? Math.round(((val - mean) / stddev + 2) * 64) 
+
+          const val = grayscale[y * width + x];
+          enhanced[y * width + x] = stddev > 0
+            ? Math.max(0, Math.min(255, Math.round(((val - mean) / stddev + 2) * 64)))
             : val;
         }
       }
-      
+
       return enhanced;
     }
 
@@ -3737,7 +3764,8 @@
 
     detectTextureAnalysis(grayscale, width, height) {
       // Analyze texture patterns (entropy, homogeneity, contrast)
-      const blockSize = Math.min(width, height) / 10;
+      // ✅ Ensure blockSize is integer with minimum 10 to avoid fractional iteration
+      const blockSize = Math.max(10, Math.round(Math.min(width, height) / 10));
       const textures = [];
       
       for (let y = 0; y < height - blockSize; y += blockSize) {
@@ -3783,24 +3811,36 @@
 
     detectHoughLines(edges, width, height) {
       // Simplified Hough transform for line detection
-      const rhoMax = Math.sqrt(width * width + height * height);
       const accumulator = {};
       const threshold = Math.max(width, height) * 0.1;
-      
+
+      // ✅ Sample at most 5000 edge pixels — sufficient for line detection
+      const edgePixels = [];
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           if (edges[y * width + x] > 100) {
-            // Generate all (rho, theta) pairs for this edge point
-            for (let theta = 0; theta < 180; theta += 5) {
-              const rad = (theta * Math.PI) / 180;
-              const rho = Math.round(x * Math.cos(rad) + y * Math.sin(rad));
-              const key = `${rho},${theta}`;
-              accumulator[key] = (accumulator[key] || 0) + 1;
-            }
+            edgePixels.push([x, y]);
           }
         }
       }
-      
+
+      // Subsample if too many edge pixels
+      const maxSamples = 5000;
+      let sampled = edgePixels;
+      if (edgePixels.length > maxSamples) {
+        const step = Math.ceil(edgePixels.length / maxSamples);
+        sampled = edgePixels.filter((_, i) => i % step === 0);
+      }
+
+      for (const [x, y] of sampled) {
+        for (let theta = 0; theta < 180; theta += 5) {
+          const rad = (theta * Math.PI) / 180;
+          const rho = Math.round(x * Math.cos(rad) + y * Math.sin(rad));
+          const key = `${rho},${theta}`;
+          accumulator[key] = (accumulator[key] || 0) + 1;
+        }
+      }
+
       // Extract significant lines
       const lines = [];
       for (const [key, count] of Object.entries(accumulator)) {
@@ -3809,7 +3849,7 @@
           lines.push({ rho, theta, strength: count });
         }
       }
-      
+
       return lines.sort((a, b) => b.strength - a.strength).slice(0, 20);
     }
 
