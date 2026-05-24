@@ -297,8 +297,8 @@
               pdf.setFillColor(...fillRGB);pdf.setDrawColor(...strokeRGB);pdf.setLineWidth(0.7);
               if(isDecision){
                 const cx=bx+BOX_W/2,cy=y+BOX_H/2,hw=BOX_W/2,hh=BOX_H/2;
-                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,[1,1],'F',true);
-                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,[1,1],'D',false);
+                
+                const _pts=[{x:cx,y:cy-hh},{x:cx+hw,y:cy},{x:cx,y:cy+hh},{x:cx-hw,y:cy}];pdf.setFillColor(...fillRGB);pdf.setDrawColor(...strokeRGB);if(typeof pdf.polygon==="function"){pdf.polygon(_pts,"FD");}else{pdf.moveTo(_pts[0].x,_pts[0].y);_pts.slice(1).forEach(p=>pdf.lineTo(p.x,p.y));pdf.lineTo(_pts[0].x,_pts[0].y);pdf.fillStroke();}
               } else if(isFirst||isLast){
                 pdf.roundedRect(bx,y,BOX_W,BOX_H,BOX_H/2,BOX_H/2,'FD');
               } else {
@@ -319,7 +319,7 @@
                 pdf.setDrawColor(...C.gray);pdf.setLineWidth(0.5);
                 pdf.line(ax,y,ax,y+ARR-3);
                 pdf.setFillColor(...C.gray);
-                pdf.lines([[2,-ARR+3],[-2,-ARR+3]],ax-2,y+ARR-3,[1,1],'F',true);
+                const _ax=ax,_ay=y+ARR-3;pdf.setFillColor(...C.gray);if(typeof pdf.polygon==="function"){pdf.polygon([{x:_ax,y:_ay},{x:_ax-2,y:_ay+3},{x:_ax+2,y:_ay+3}],"F");}else{pdf.moveTo(_ax,_ay);pdf.lineTo(_ax-2,_ay+3);pdf.lineTo(_ax+2,_ay+3);pdf.lineTo(_ax,_ay);pdf.fill();}
                 y+=ARR;
               }
             });
