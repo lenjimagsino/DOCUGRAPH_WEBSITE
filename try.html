@@ -912,6 +912,7 @@
         workflowLog.push('Table Extraction');
         let tableResults = [];
         try {
+          // Strategy 1: Use detected table grids from ShapeDetector
           if (shapeAnalysis.tables && shapeAnalysis.tables.length > 0) {
             const tables = this.tableParser.parseTablesFromOCR(ocrData.words || [], shapeAnalysis.tables, canvas.width, canvas.height);
             tableResults = (tables.tables || []).map(t => ({
@@ -920,7 +921,70 @@
               markdown: t.markdown || '| Column |\n|--------|\n| Data   |'
             }));
           }
-          console.log('✅ Phase 10 complete');
+          
+          // Strategy 2: Fallback - Extract tables from layout analysis table regions
+          if (tableResults.length === 0 && window.currentLayoutData?.regions) {
+            const tableRegions = window.currentLayoutData.regions.filter(r => r.type === 'table');
+            if (tableRegions.length > 0) {
+              console.log('📋 Using layout analysis for table extraction - found', tableRegions.length, 'table regions');
+              
+              for (const tableRegion of tableRegions) {
+                // Create a fake grid structure based on the region bounds
+                const grid = {
+                  rows: 3,  // Default to 3x3 grid for rough estimation
+                  cols: 3,
+                  bbox: tableRegion.bbox
+                };
+                
+                // Try to extract from this region
+                const regionTables = this.tableParser.parseTablesFromOCR(ocrData.words || [], [grid], canvas.width, canvas.height);
+                if (regionTables.tables && regionTables.tables.length > 0) {
+                  tableResults.push(...regionTables.tables.map(t => ({
+                    html: t.html || '<table><tr><td>Table data</td></tr></table>',
+                    csv: t.csv || 'table,data',
+                    markdown: t.markdown || '| Column |\n|--------|\n| Data   |'
+                  })));
+                }
+              }
+            }
+          }
+          
+          // Strategy 3: Alternative fallback - Extract dense word regions as tables
+          if (tableResults.length === 0 && (ocrData.words || []).length > 10) {
+            console.log('📋 Attempting alternative table detection from dense word clusters...');
+            
+            // Group words by proximity to find table-like structures
+            const wordClusters = this.tableParser.clusterWordsByProximity(ocrData.words || [], canvas.width, canvas.height);
+            
+            // Analyze clusters for table-like patterns
+            for (const cluster of wordClusters) {
+              if (cluster.words && cluster.words.length >= 6) { // Minimum cells for table-like pattern
+                // Check if words form a grid-like pattern
+                const xPositions = [...new Set(cluster.words.map(w => Math.round(w.bbox?.x0 || 0)))].sort((a,b) => a-b);
+                const yPositions = [...new Set(cluster.words.map(w => Math.round(w.bbox?.y0 || 0)))].sort((a,b) => a-b);
+                
+                if (xPositions.length >= 2 && yPositions.length >= 2) {
+                  // Found potential table structure
+                  const fakeGrid = {
+                    rows: yPositions.length,
+                    cols: xPositions.length,
+                    bbox: [cluster.minX, cluster.minY, cluster.maxX, cluster.maxY]
+                  };
+                  
+                  const clusterTables = this.tableParser.parseTablesFromOCR([...cluster.words], [fakeGrid], canvas.width, canvas.height);
+                  if (clusterTables.tables && clusterTables.tables.length > 0) {
+                    tableResults.push(...clusterTables.tables.map(t => ({
+                      html: t.html || '<table><tr><td>Table data</td></tr></table>',
+                      csv: t.csv || 'table,data',
+                      markdown: t.markdown || '| Column |\n|--------|\n| Data   |'
+                    })));
+                  }
+                }
+              }
+            }
+          }
+          
+          console.log('✅ Phase 10 complete -', tableResults.length, 'tables extracted');
         } catch (e) {
           console.warn('⚠️ Table extraction skipped:', e.message);
         }
@@ -4488,7 +4552,10 @@
         headerRow: headerRowIdx,
         bbox: [tableX1, tableY1, tableX2, tableY2],
         confidence: grid.confidence || 0.92,
-        tableFormat: this.formatAsMarkdown(cells, grid.rows, grid.cols, headerRowIdx)
+        html: this.formatAsHTML(cells, grid.rows, grid.cols, headerRowIdx),
+        markdown: this.formatAsMarkdown(cells, grid.rows, grid.cols, headerRowIdx),
+        csv: this.formatAsCSV(cells, grid.rows, grid.cols),
+        json: JSON.stringify({ rows: grid.rows, cols: grid.cols, cells: cells })
       };
     }
 
@@ -4624,6 +4691,77 @@
         confidence: table.confidence,
         bbox: table.bbox
       };
+    }
+
+    /**
+     * Cluster words by spatial proximity to detect table-like structures
+     */
+    clusterWordsByProximity(words, imageWidth, imageHeight) {
+      if (!words || words.length === 0) return [];
+      
+      const clusters = [];
+      const visited = new Set();
+      const threshold = Math.min(imageWidth, imageHeight) * 0.05; // 5% of min dimension
+      
+      for (let i = 0; i < words.length; i++) {
+        if (visited.has(i)) continue;
+        
+        const cluster = {
+          words: [],
+          minX: Infinity,
+          maxX: 0,
+          minY: Infinity,
+          maxY: 0
+        };
+        
+        const stack = [i];
+        
+        while (stack.length > 0) {
+          const idx = stack.pop();
+          if (visited.has(idx)) continue;
+          
+          const word = words[idx];
+          if (!word || !word.bbox) continue;
+          
+          visited.add(idx);
+          cluster.words.push(word);
+          
+          // Update bounds
+          cluster.minX = Math.min(cluster.minX, word.bbox.x0);
+          cluster.maxX = Math.max(cluster.maxX, word.bbox.x1);
+          cluster.minY = Math.min(cluster.minY, word.bbox.y0);
+          cluster.maxY = Math.max(cluster.maxY, word.bbox.y1);
+          
+          // Find nearby words
+          for (let j = 0; j < words.length; j++) {
+            if (visited.has(j)) continue;
+            
+            const other = words[j];
+            if (!other || !other.bbox) continue;
+            
+            const dx = Math.min(
+              Math.abs(word.bbox.x1 - other.bbox.x0),
+              Math.abs(other.bbox.x1 - word.bbox.x0),
+              Math.abs((word.bbox.x0 + word.bbox.x1) / 2 - (other.bbox.x0 + other.bbox.x1) / 2)
+            );
+            const dy = Math.min(
+              Math.abs(word.bbox.y1 - other.bbox.y0),
+              Math.abs(other.bbox.y1 - word.bbox.y0),
+              Math.abs((word.bbox.y0 + word.bbox.y1) / 2 - (other.bbox.y0 + other.bbox.y1) / 2)
+            );
+            
+            if (Math.sqrt(dx * dx + dy * dy) < threshold) {
+              stack.push(j);
+            }
+          }
+        }
+        
+        if (cluster.words.length > 0) {
+          clusters.push(cluster);
+        }
+      }
+      
+      return clusters.sort((a, b) => b.words.length - a.words.length); // Sort by size
     }
   }
 
@@ -7121,9 +7259,9 @@
             );
             
             const gnnPromise = Promise.resolve().then(() => {
-              console.time('Grid-Based Layout Analysis');
-              const result = gnnAnalyzer.analyzeLayoutWithGridSegmentation(imageData, canvas.width, canvas.height);
-              console.timeEnd('Grid-Based Layout Analysis');
+              console.time('Advanced Layout Analysis');
+              const result = gnnAnalyzer.analyzeLayout(imageData, canvas.width, canvas.height);
+              console.timeEnd('Advanced Layout Analysis');
               return result;
             });
             
@@ -7135,18 +7273,19 @@
                   type: r.type || 'para',
                   bbox: r.bbox,
                   conf: r.confidence || 0.75,
-                  text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : 'Text Block',
+                  text: r.type === 'header' ? 'Header Region' : r.type === 'table' ? 'Table Region' : r.type === 'figure' ? 'Figure/Image' : 'Text Block',
                   size: {
                     area: ((r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1])) / 10000,
                     width: r.bbox[2] - r.bbox[0],
                     height: r.bbox[3] - r.bbox[1]
                   },
-                  density: 0.5,
-                  confidence: r.confidence || 0.75
+                  density: r.density || 0.5,
+                  confidence: r.confidence || 0.75,
+                  featureScores: r.featureScores
                 }));
-                analysisMethod = 'Grid-Based Layout Segmentation';
+                analysisMethod = 'Advanced Multi-Algorithm Layout Analysis (v2)';
                 confidence = gnnResult.confidence || 0.75;
-                console.log('✅ Grid-based layout analysis complete:', regions.length, 'regions detected');
+                console.log('✅ Advanced layout analysis complete:', regions.length, 'regions detected');
               } else {
                 throw new Error('No regions detected');
               }
@@ -7611,6 +7750,22 @@
 
     container.innerHTML = ''; // Clear
     
+    // Check if D3 is available
+    if (typeof d3 === 'undefined') {
+      console.warn('⚠️ D3.js not available, using simplified visualization');
+      container.innerHTML = '<div style="padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;"><strong>Graph Visualization</strong><p style="font-size: 12px; margin-top: 8px;">D3.js library not loaded. Showing region structure instead.</p></div>';
+      // Show simplified region structure
+      const summary = `<div style="padding: 12px; background: white; border-radius: 4px; margin-top: 8px;">
+        <strong>Detected Regions:</strong> ${regions ? regions.length : 0}
+        ${regions ? '<ul style="margin: 8px 0; padding-left: 20px; font-size: 12px;">' + 
+          regions.slice(0, 5).map((r, i) => `<li>${r.type || 'unknown'} #${i+1} (Confidence: ${((r.confidence || 0) * 100).toFixed(0)}%)</li>`).join('') + 
+          (regions.length > 5 ? `<li>... and ${regions.length - 5} more</li>` : '') + 
+          '</ul>' : ''}
+      </div>`;
+      container.innerHTML += summary;
+      return;
+    }
+
     const width = container.clientWidth;
     const height = 400;
 
