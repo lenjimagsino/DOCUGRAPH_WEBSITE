@@ -297,8 +297,8 @@
               pdf.setFillColor(...fillRGB);pdf.setDrawColor(...strokeRGB);pdf.setLineWidth(0.7);
               if(isDecision){
                 const cx=bx+BOX_W/2,cy=y+BOX_H/2,hw=BOX_W/2,hh=BOX_H/2;
-                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,'F');
-                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,'D');
+                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,[1,1],'F',true);
+                pdf.lines([[hw,hh],[-hw,hh],[-hw,-hh],[hw,-hh]],cx-hw,cy,[1,1],'D',false);
               } else if(isFirst||isLast){
                 pdf.roundedRect(bx,y,BOX_W,BOX_H,BOX_H/2,BOX_H/2,'FD');
               } else {
@@ -319,7 +319,7 @@
                 pdf.setDrawColor(...C.gray);pdf.setLineWidth(0.5);
                 pdf.line(ax,y,ax,y+ARR-3);
                 pdf.setFillColor(...C.gray);
-                pdf.triangle(ax-2,y+ARR-3,ax+2,y+ARR-3,ax,y+ARR,'F');
+                pdf.lines([[2,-ARR+3],[-2,-ARR+3]],ax-2,y+ARR-3,[1,1],'F',true);
                 y+=ARR;
               }
             });
@@ -333,7 +333,7 @@
               pdf.setFillColor(...(isDecision?C.amberLt:C.slateLt));
               pdf.setDrawColor(...(isDecision?C.amber:C.slate));
               pdf.setLineWidth(0.5);pdf.roundedRect(nx,ny,nW,nH,1.5,1.5,'FD');
-              pdf.setFillColor(...(isDecision?C.amber:C.slate));pdf.circle(nx+5,ny+5,3,'F');
+              pdf.setFillColor(...(isDecision?C.amber:C.slate));pdf.ellipse(nx+5,ny+5,3,3,'F');
               pdf.setFontSize(5.5);pdf.setTextColor(255,255,255);pdf.text(`${idx+1}`,nx+5,ny+5+1.8,{align:'center'});
               const lns=pdf.splitTextToSize(nd.label,nW-12).slice(0,2);
               pdf.setFontSize(7);pdf.setTextColor(...(isDecision?C.amber:C.slate));
