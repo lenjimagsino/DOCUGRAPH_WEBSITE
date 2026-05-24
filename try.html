@@ -893,7 +893,24 @@
         // ========== PHASE 8: HIERARCHICAL ANALYSIS ==========
         workflowLog.push('Hierarchical Analysis');
         try {
-          const hierarchyAnalysis = this.ocrEngine.hierarchicalGAT.buildHierarchy(segments || [], canvas.width, canvas.height);
+          // ✅ use the layout regions from currentLayoutData if available, else ocrData words
+          const hierarchyRegions = (window.currentLayoutData?.regions || []).length > 0
+            ? window.currentLayoutData.regions.map(r => ({
+                id: r.type + '_' + Math.random(),
+                text: r.text || '',
+                type: r.type || 'para',
+                bbox: r.bbox || [0, 0, 100, 100],
+                confidence: r.confidence ?? r.conf ?? 0.75
+              }))
+            : (ocrData.words || []).slice(0, 50).map((w, i) => ({   // cap at 50 to avoid O(n²) slowness
+                id: 'word_' + i,
+                text: w.text || '',
+                type: 'para',
+                bbox: Array.isArray(w.bbox) ? w.bbox : [w.bbox.x0, w.bbox.y0, w.bbox.x1, w.bbox.y1],
+                confidence: w.confidence || 0.75
+              }));
+
+          const hierarchyAnalysis = this.ocrEngine.hierarchicalGAT.buildHierarchy(hierarchyRegions, canvas.width, canvas.height);
           console.log('✅ Phase 8 complete');
         } catch (e) {
           console.warn('⚠️ Hierarchical analysis skipped:', e.message);
@@ -2910,12 +2927,15 @@
         return { type: 'single', columns: 1, regions: regions };
       }
 
+      // ✅ normalise bbox access — supports both array and object format
+      const getBbox = (r) => Array.isArray(r.bbox) ? r.bbox : [r.bbox.x0, r.bbox.y0, r.bbox.x1, r.bbox.y1];
+
       // Analyze horizontal gaps
-      const sortedByX = [...regions].sort((a, b) => a.bbox[0] - b.bbox[0]);
+      const sortedByX = [...regions].sort((a, b) => getBbox(a)[0] - getBbox(b)[0]);
       const gaps = [];
 
       for (let i = 1; i < sortedByX.length; i++) {
-        const gap = sortedByX[i].bbox[0] - sortedByX[i - 1].bbox[2];
+        const gap = getBbox(sortedByX[i])[0] - getBbox(sortedByX[i - 1])[2];
         if (gap > imageWidth * this.columnThreshold) {
           gaps.push({ index: i, gap: gap });
         }
@@ -4339,26 +4359,26 @@
       const lineHeight = imageHeight * 0.04;
 
       words.forEach((word, idx) => {
-        const isLargeText = (word.bbox.y1 - word.bbox.y0) > lineHeight * 1.5;
-        const isTopPosition = word.bbox.y0 < imageHeight * 0.15;
-        
-        // Classify by position and size
+        // ✅ normalise bbox to object form
+        const b = Array.isArray(word.bbox)
+          ? { x0: word.bbox[0], y0: word.bbox[1], x1: word.bbox[2], y1: word.bbox[3] }
+          : (word.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 });
+
+        const isLargeText = (b.y1 - b.y0) > lineHeight * 1.5;
+        const isTopPosition = b.y0 < imageHeight * 0.15;
+
         let segmentType = 'body';
         if (isTopPosition && isLargeText) segmentType = 'title';
-        else if (word.bbox.x1 - word.bbox.x0 > 400) segmentType = 'title';
-        else if (word.text.match(/^[\d\s\.\,\$€£]*$/)) segmentType = 'table';
+        else if (b.x1 - b.x0 > 400) segmentType = 'title';
+        else if (word.text && word.text.match(/^[\d\s\.\,\$€£]*$/)) segmentType = 'table';
 
         if (!currentSegment || currentSegment.type !== segmentType) {
           if (currentSegment) segments.push(currentSegment);
-          currentSegment = {
-            type: segmentType,
-            words: [word],
-            bbox: { ...word.bbox }
-          };
+          currentSegment = { type: segmentType, words: [word], bbox: { ...b } };
         } else {
           currentSegment.words.push(word);
-          currentSegment.bbox.x0 = Math.min(currentSegment.bbox.x0, word.bbox.x0);
-          currentSegment.bbox.y1 = Math.max(currentSegment.bbox.y1, word.bbox.y1);
+          currentSegment.bbox.x0 = Math.min(currentSegment.bbox.x0, b.x0);
+          currentSegment.bbox.y1 = Math.max(currentSegment.bbox.y1, b.y1);
         }
       });
 
@@ -6765,14 +6785,18 @@
     elements.bboxContainer.innerHTML = '';
     regions.forEach((region, idx) => {
       const bbox = document.createElement('div');
-      bbox.className = `bbox ${region.type}`;
+      // ✅ normalise type — filler regions have no type class, default to 'para'
+      const regionType = region.type || 'para';
+      bbox.className = `bbox ${regionType}`;
       bbox.style.left = region.bbox[0] + '%';
       bbox.style.top = region.bbox[1] + '%';
       bbox.style.width = (region.bbox[2] - region.bbox[0]) + '%';
       bbox.style.height = (region.bbox[3] - region.bbox[1]) + '%';
-      const confidence = region.conf ? (region.conf * 100).toFixed(0) : '0';
-      bbox.innerHTML = `<strong>${region.type.toUpperCase()}</strong> · ${confidence}%`;
-      bbox.title = `${region.type.toUpperCase()} · ${confidence}%`;
+      // ✅ resolve from either property name
+      const rawConf = region.conf ?? region.confidence ?? 0;
+      const confidence = (rawConf * 100).toFixed(0);
+      bbox.innerHTML = `<strong>${regionType.toUpperCase()}</strong> · ${confidence}%`;
+      bbox.title = `${regionType.toUpperCase()} · ${confidence}%`;
       elements.bboxContainer.appendChild(bbox);
     });
   }
@@ -6985,6 +7009,7 @@
         const placeholder = document.getElementById('preview-placeholder');
         if (placeholder) placeholder.style.display = 'none';
         currentLayoutData = data;
+        window.currentLayoutData = data;    // ✅ OCR pipeline reads window.currentLayoutData
         analysisStage = 'layout-detected';
         displayLayoutAnalysisResults(data, true);
       }).catch(err => {
@@ -7534,7 +7559,21 @@
             });
           } catch (e) {
             console.error('Layout analysis error:', e);
-            resolve(generateFallbackRegions());
+            const fallback = generateFallbackRegions();
+            resolve({
+              ...fallback,
+              filename: file.name,
+              imageBase64: event.target.result,   // ✅ needed by displayLayoutAnalysisResults
+              stats: { headers: 1, paragraphs: 3, tables: 0, figures: 0, shapes: 0, total: 4 },
+              structure: { documentType: 'Document', confidence: 0.5, layout: 'Single-Column', columns: 1 },
+              metadata: {
+                language: 'eng',
+                analysisMethod: 'Fallback (error)',
+                ocrPending: true,
+                imageWidth: img.width,
+                imageHeight: img.height
+              }
+            });
           }
         };
 
@@ -7640,7 +7679,7 @@
         setTimeout(() => {
           elements.bboxContainer.innerHTML = '';
           renderBoundingBoxes(data.regions);
-        }, 50);
+        }, 150);
       };
       
       img.src = data.imageBase64;
@@ -7918,7 +7957,7 @@
             &nbsp;·&nbsp;
             Size: ${Math.round((r.bbox[2] - r.bbox[0]) * 100) / 100}% × ${Math.round((r.bbox[3] - r.bbox[1]) * 100) / 100}%
             <br>
-            <strong>Metrics:</strong> Density: ${(r.density * 100).toFixed(0)}% · Intensity: ${Math.round(r.intensity)}
+            <strong>Metrics:</strong> Density: ${r.density != null ? (r.density * 100).toFixed(0) : 'N/A'}% · Intensity: ${r.intensity != null ? Math.round(r.intensity) : 'N/A'}
           </div>
           ${confidenceBreakdown}
         </div>
@@ -8051,11 +8090,50 @@
       hierarchicalAnalysis: data.hierarchicalAnalysis || null
     };
     
-    sessionStorage.setItem('analysisData', JSON.stringify(analysisData));
-    
-    // Store hierarchy data for results.html visualization
-    if (data.hierarchicalAnalysis) {
-      window.lastHierarchyData = data.hierarchicalAnalysis;
+    // ✅ strip non-serialisable fields before storing
+    function safeStringify(obj) {
+      const seen = new WeakSet();
+      return JSON.stringify(obj, (key, value) => {
+        // Drop keys known to cause circular refs or that are too large to store
+        if (key === 'hierarchicalGAT' || key === 'hierarchy' || key === 'context' || key === 'crossLevelContext') return undefined;
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) return '[Circular]';
+          seen.add(value);
+        }
+        return value;
+      });
+    }
+
+    try {
+      sessionStorage.setItem('analysisData', safeStringify(analysisData));
+    } catch (e) {
+      console.warn('sessionStorage write failed:', e.message);
+      // Store minimal version if full data is too large
+      const minimal = {
+        timestamp: analysisData.timestamp,
+        source: currentFile ? 'upload' : 'demo',
+        filename: analysisData.filename,
+        confidence: analysisData.confidence,
+        stats: analysisData.stats,
+        regions: analysisData.regions,
+        metadata: analysisData.metadata,
+        imageBase64: analysisData.imageBase64,
+        text: (analysisData.text || '').substring(0, 50000)  // cap at 50KB
+      };
+      try {
+        sessionStorage.setItem('analysisData', JSON.stringify(minimal));
+      } catch (e2) {
+        console.error('sessionStorage write failed even for minimal data:', e2.message);
+      }
+    }
+
+    // Also persist hierarchy separately for results.html (Fix from results.html review)
+    if (analysisData.hierarchicalAnalysis) {
+      try {
+        sessionStorage.setItem('hierarchyData', safeStringify(analysisData.hierarchicalAnalysis));
+      } catch (e) {
+        console.warn('Could not persist hierarchy data:', e.message);
+      }
     }
   }
 

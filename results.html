@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
+<title>Analysis Results — DOCUGRAPH</title>
 <link rel="icon" type="image/png" href="assets/logo.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="assets/style.css">
@@ -96,6 +97,7 @@
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-md);
+    position: relative;
   }
   
   .result-doc h3 {
@@ -430,6 +432,7 @@
     }
   }
 </style>
+</head>
 <body>
 
 <!-- Backend Configuration -->
@@ -693,6 +696,7 @@ improvement across all region categories.</pre>
 <script src="assets/main.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 
@@ -724,9 +728,15 @@ improvement across all region categories.</pre>
         const expBar = document.getElementById('export-bar');
         if (expBar) expBar.style.display = 'inline-flex';
         
-        // Display hierarchy visualization if available
-        if (window.lastHierarchyData) {
-          displayHierarchyVisualization(window.lastHierarchyData);
+        // Display hierarchy visualization if available (read from sessionStorage, not window ref)
+        const hierarchyStr = sessionStorage.getItem('hierarchyData');
+        if (hierarchyStr) {
+          try {
+            const hierarchyData = JSON.parse(hierarchyStr);
+            displayHierarchyVisualization(hierarchyData);
+          } catch (he) {
+            console.warn('Could not parse hierarchy data:', he);
+          }
         }
       } catch (e) {
         console.error('Error parsing analysis data:', e);
@@ -879,49 +889,55 @@ improvement across all region categories.</pre>
       
       // Calculate image dimensions for bbox positioning
       img.onload = () => {
-        const imgWidth = img.naturalWidth;
+        const imgWidth  = img.naturalWidth;
         const imgHeight = img.naturalHeight;
-        const containerWidth = docRender.offsetWidth;
-        const containerHeight = docRender.offsetHeight;
-        
-        // Calculate scale factors
-        const scaleX = containerWidth / imgWidth;
-        const scaleY = containerHeight / imgHeight;
-        const scale = Math.min(scaleX, scaleY);
-        
-        const displayWidth = imgWidth * scale;
-        const displayHeight = imgHeight * scale;
-        const offsetX = (containerWidth - displayWidth) / 2;
-        const offsetY = (containerHeight - displayHeight) / 2;
-        
-        // Render bounding boxes
-        data.regions.forEach((region, idx) => {
-          const bbox = document.createElement('div');
-          bbox.className = `bbox ${region.type}`;
-          
-          // Parse bbox coordinates (percentage format)
-          const [x1, y1, x2, y2] = region.bbox;
-          
-          // Convert from percentage to pixels on original image
-          const left = (x1 / 100) * imgWidth;
-          const top = (y1 / 100) * imgHeight;
-          const width = ((x2 - x1) / 100) * imgWidth;
-          const height = ((y2 - y1) / 100) * imgHeight;
-          
-          // Scale to display size
-          bbox.style.left = (offsetX + left * scale) + 'px';
-          bbox.style.top = (offsetY + top * scale) + 'px';
-          bbox.style.width = (width * scale) + 'px';
-          bbox.style.height = (height * scale) + 'px';
-          
-          // Add label
-          const confidence = region.conf ? (region.conf * 100).toFixed(0) : '0';
-          bbox.innerHTML = `<strong>${region.type.toUpperCase()}</strong> · ${confidence}%`;
-          
-          bboxContainer.appendChild(bbox);
+
+        // Override CSS aspect-ratio to match actual image proportions
+        docRender.style.aspectRatio = `${imgWidth} / ${imgHeight}`;
+
+        // Wait one frame for the reflow before measuring
+        requestAnimationFrame(() => {
+          const containerWidth  = docRender.offsetWidth;
+          const containerHeight = docRender.offsetHeight;
+
+          const scaleX = containerWidth / imgWidth;
+          const scaleY = containerHeight / imgHeight;
+          const scale = Math.min(scaleX, scaleY);
+
+          const displayWidth = imgWidth * scale;
+          const displayHeight = imgHeight * scale;
+          const offsetX = (containerWidth - displayWidth) / 2;
+          const offsetY = (containerHeight - displayHeight) / 2;
+
+          // Render bounding boxes
+          data.regions.forEach((region, idx) => {
+            const bbox = document.createElement('div');
+            bbox.className = `bbox ${region.type}`;
+
+            // Parse bbox coordinates (percentage format)
+            const [x1, y1, x2, y2] = region.bbox;
+
+            // Convert from percentage to pixels on original image
+            const left = (x1 / 100) * imgWidth;
+            const top = (y1 / 100) * imgHeight;
+            const width = ((x2 - x1) / 100) * imgWidth;
+            const height = ((y2 - y1) / 100) * imgHeight;
+
+            // Scale to display size
+            bbox.style.left = (offsetX + left * scale) + 'px';
+            bbox.style.top = (offsetY + top * scale) + 'px';
+            bbox.style.width = (width * scale) + 'px';
+            bbox.style.height = (height * scale) + 'px';
+
+            // Add label
+            const confidence = region.conf ? (region.conf * 100).toFixed(0) : '0';
+            bbox.innerHTML = `<strong>${region.type.toUpperCase()}</strong> · ${confidence}%`;
+
+            bboxContainer.appendChild(bbox);
+          });
+
+          docRender.appendChild(bboxContainer);
         });
-        
-        docRender.appendChild(bboxContainer);
       };
     } else {
       // Demo mode - show placeholder with regions
@@ -1501,6 +1517,14 @@ improvement across all region categories.</pre>
       alert('No analysis data available for download');
       return;
     }
+
+    // Resolve docx library from either source before using it
+    const docxLib = window.docx ?? (typeof docx !== 'undefined' ? docx : null);
+
+    if (!docxLib) {
+      alert('DOCX library is still loading. Please wait a moment and try again.');
+      return;
+    }
     
     const btn = e.currentTarget;
     const original = btn.innerHTML;
@@ -1513,7 +1537,7 @@ improvement across all region categories.</pre>
       
       // Title and metadata
       sections.push(
-        new docx.Paragraph({
+        new docxLib.Paragraph({
           text: currentAnalysisData.filename || 'Document Analysis',
           heading: docx.HeadingLevel.HEADING_1,
           bold: true,
