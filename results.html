@@ -1370,328 +1370,341 @@ improvement across all region categories.</pre>
     });
   });
 
-  // Download PDF
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Download PDF — programmatic build with jsPDF + autoTable
+  // Includes: text regions, real tables, metadata, confidence breakdown
+  // ─────────────────────────────────────────────────────────────────────────────
   document.getElementById('download-pdf-btn').addEventListener('click', async e => {
-    if (!currentAnalysisData) {
-      alert('No analysis data available for download');
-      return;
-    }
-    
-    const btn = e.currentTarget;
-    const original = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
-    
+    if (!currentAnalysisData) { alert('No analysis data available for download'); return; }
+
+    const btn=e.currentTarget, orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
+
     try {
       const { jsPDF } = window.jspdf;
-      
-      // Load logo as image data
-      let logoImg = null;
-      try {
-        const response = await fetch('assets/logo.png');
-        if (response.ok) {
-          const blob = await response.blob();
-          logoImg = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(blob);
-          });
-        }
-      } catch (err) {
-        console.warn('Logo loading failed:', err);
+      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      const data = currentAnalysisData;
+      const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
+      const margin=20, contentW=pageW-margin*2;
+      let y = margin;
+
+      // ── colour palette ──────────────────────────────────────────────────
+      const GREEN   = [28, 122, 57];
+      const AMBER   = [217, 119, 6];
+      const GRAY    = [102, 102, 102];
+      const BLACK   = [26, 26, 26];
+      const LGRAY   = [229, 231, 235];
+      const BGGREEN = [240, 253, 244];
+      const BGAMBER = [255, 251, 235];
+
+      // ── helpers ─────────────────────────────────────────────────────────
+      function checkPage(needed=10) {
+        if (y+needed > pageH-margin) { pdf.addPage(); y=margin; }
       }
-      
-      // Create PDF with header
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      function sectionHeader(title, color=GREEN) {
+        checkPage(14);
+        pdf.setFillColor(...BGGREEN);
+        pdf.roundedRect(margin, y, contentW, 10, 2, 2, 'F');
+        pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(...color);
+        pdf.text(title, margin+4, y+7);
+        y += 14;
+      }
+      function bodyText(text, opts={}) {
+        pdf.setFontSize(opts.size||10);
+        pdf.setFont('helvetica', opts.bold?'bold':'normal');
+        pdf.setTextColor(...(opts.color||BLACK));
+        const lines = pdf.splitTextToSize(text, contentW);
+        lines.forEach(line => { checkPage(6); pdf.text(line, margin, y); y+=5.5; });
+      }
+      function rule() {
+        checkPage(4); pdf.setDrawColor(...LGRAY); pdf.line(margin, y, pageW-margin, y); y+=4;
+      }
+
+      // ── PAGE HEADER BAR ─────────────────────────────────────────────────
+      pdf.setFillColor(...GREEN); pdf.rect(0, 0, pageW, 22, 'F');
+      pdf.setFontSize(16); pdf.setFont('helvetica','bold'); pdf.setTextColor(255,255,255);
+      pdf.text('DOCUGRAPH', margin, 14);
+      pdf.setFontSize(10); pdf.setFont('helvetica','normal');
+      pdf.text('Document Analysis Report', margin, 20);
+      const fname=(data.filename||'document').replace(/\.[^/.]+$/,'');
+      pdf.setFontSize(9); pdf.setTextColor(200,255,220);
+      pdf.text(fname, pageW-margin, 14, {align:'right'});
+      y=32;
+
+      // ── SUMMARY TABLE ────────────────────────────────────────────────────
+      const regions = data.regions||[];
+      const conf    = (data.confidence*100).toFixed(1);
+      const date    = new Date(data.timestamp).toLocaleString();
+      const avgConf = regions.length
+        ? (regions.reduce((a,r)=>a+(r.conf||0),0)/regions.length*100).toFixed(1) : '—';
+
+      pdf.autoTable({
+        startY: y, margin:{left:margin,right:margin}, theme:'plain',
+        styles:{fontSize:9,cellPadding:3},
+        columnStyles:{0:{fontStyle:'bold',textColor:GREEN,cellWidth:52},1:{textColor:BLACK}},
+        body:[
+          ['Analysis Date', date],
+          ['Overall Confidence', `${conf}%`],
+          ['Average Region Confidence', `${avgConf}%`],
+          ['Total Regions', regions.length.toString()],
+        ],
       });
-      
-      let yPosition = 10;
-      
-      // Add logo if available
-      if (logoImg) {
-        try {
-          pdf.addImage(logoImg, 'PNG', 80, yPosition, 40, 20);
-          yPosition += 25;
-        } catch (err) {
-          console.warn('Logo insertion failed:', err);
-        }
-      }
-      
-      // Add title
-      pdf.setFontSize(28);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(26, 26, 26);
-      pdf.text('DOCUGRAPH', 105, yPosition, { align: 'center' });
-      yPosition += 12;
-      
-      // Add subtitle
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(102, 102, 102);
-      pdf.text('Document Analysis Report', 105, yPosition, { align: 'center' });
-      yPosition += 10;
-      
-      // Add divider line
-      pdf.setDrawColor(229, 231, 235);
-      pdf.line(20, yPosition, 190, yPosition);
-      yPosition += 5;
-      
-      // Get content
-      const element = document.getElementById('tab-text');
-      
-      // Use html2canvas to capture the content
-      html2canvas(element, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-        useCORS: true
-      }).then(canvas => {
-        const contentImage = canvas.toDataURL('image/jpeg', 0.95);
-        
-        // Calculate image dimensions to fit on page
-        const imgWidth = 170;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        
-        let contentY = yPosition;
-        let remainingHeight = imgHeight;
-        let sourceY = 0;
-        
-        // Handle content that spans multiple pages
-        while (remainingHeight > 0) {
-          const availableHeight = pageHeight - contentY - 10;
-          
-          if (availableHeight <= 0) {
-            // Add new page
-            pdf.addPage();
-            contentY = 10;
-          } else {
-            // Calculate how much of the image to fit on this page
-            const heightToAdd = Math.min(availableHeight, remainingHeight);
-            const sourceHeight = (heightToAdd / imgWidth) * canvas.width;
-            
-            // Create a canvas for this portion
-            const portionCanvas = document.createElement('canvas');
-            portionCanvas.width = canvas.width;
-            portionCanvas.height = sourceHeight;
-            const ctx = portionCanvas.getContext('2d');
-            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
-            
-            const portionImage = portionCanvas.toDataURL('image/jpeg', 0.95);
-            pdf.addImage(portionImage, 'JPEG', 20, contentY, imgWidth, heightToAdd);
-            
-            contentY += heightToAdd;
-            sourceY += sourceHeight;
-            remainingHeight -= heightToAdd;
-          }
-        }
-        
-        // Save the PDF
-        const filename = currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-analysis.pdf';
-        pdf.save(filename);
-        
-        btn.innerHTML = original;
-        btn.disabled = false;
-        window.Toast?.success('PDF downloaded successfully');
-      }).catch(err => {
-        console.error('Canvas rendering error:', err);
-        alert('Error generating PDF content. Please try again.');
-        btn.innerHTML = original;
-        btn.disabled = false;
-      });
-    } catch (err) {
-      console.error('PDF generation error:', err);
-      alert('Error generating PDF. Please try again.');
-      btn.innerHTML = original;
-      btn.disabled = false;
-    }
-  });
+      y = pdf.lastAutoTable.finalY + 8; rule();
 
-  // Download DOCX - Creates editable Word document with real tables, shapes, and formatting
-  document.getElementById('download-docx-btn').addEventListener('click', async e => {
-    if (!currentAnalysisData) {
-      alert('No analysis data available for download');
-      return;
-    }
+      // ── REGION BREAKDOWN ─────────────────────────────────────────────────
+      if (regions.length) {
+        const cnt = {
+          Headers:    regions.filter(r=>r.type==='header').length,
+          Paragraphs: regions.filter(r=>r.type==='para').length,
+          Tables:     regions.filter(r=>r.type==='table').length,
+          Figures:    regions.filter(r=>r.type==='figure').length,
+          Shapes:     regions.filter(r=>r.type==='shape').length,
+        };
+        const hi  = regions.filter(r=>r.conf>0.85).length;
+        const med = regions.filter(r=>r.conf>=0.70&&r.conf<=0.85).length;
+        const lo  = regions.filter(r=>r.conf<0.70).length;
 
-    // Resolve docx library from either source before using it
-    const docxLib = window.docx ?? (typeof docx !== 'undefined' ? docx : null);
-
-    if (!docxLib) {
-      alert('DOCX library is still loading. Please wait a moment and try again.');
-      return;
-    }
-    
-    const btn = e.currentTarget;
-    const original = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
-    
-    try {
-      // Build document sections
-      const sections = [];
-      
-      // Title and metadata
-      sections.push(
-        new docxLib.Paragraph({
-          text: currentAnalysisData.filename || 'Document Analysis',
-          heading: docx.HeadingLevel.HEADING_1,
-          bold: true,
-          spacing: { after: 200 }
-        }),
-        new docx.Paragraph({
-          text: `Analysis Date: ${new Date(currentAnalysisData.timestamp).toLocaleString()}`,
-          color: '666666',
-          spacing: { after: 100 }
-        }),
-        new docx.Paragraph({
-          text: `Confidence: ${(currentAnalysisData.confidence * 100).toFixed(1)}%`,
-          color: '00AA00',
-          bold: true,
-          spacing: { after: 300 }
-        })
-      );
-      
-      // Analysis Overview
-      if (currentAnalysisData.stats) {
-        sections.push(
-          new docx.Paragraph({
-            text: 'Analysis Overview',
-            heading: docx.HeadingLevel.HEADING_2,
-            bold: true,
-            spacing: { after: 150 }
-          })
-        );
-        
-        // Create statistics table
-        const statsRows = [
-          new docx.TableRow({
-            cells: [
-              new docx.TableCell({ children: [new docx.Paragraph({ text: 'Metric', bold: true })] }),
-              new docx.TableCell({ children: [new docx.Paragraph({ text: 'Count', bold: true })] })
-            ]
-          })
-        ];
-        
-        const stats = currentAnalysisData.stats;
-        if (stats.total) statsRows.push(new docx.TableRow({
-          cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Total Regions')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(stats.total.toString())] })
-          ]
-        }));
-        if (stats.headers) statsRows.push(new docx.TableRow({
-          cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Headers')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(stats.headers.toString())] })
-          ]
-        }));
-        if (stats.paragraphs) statsRows.push(new docx.TableRow({
-          cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Paragraphs')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(stats.paragraphs.toString())] })
-          ]
-        }));
-        if (stats.tables) statsRows.push(new docx.TableRow({
-          cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Tables')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(stats.tables.toString())] })
-          ]
-        }));
-        if (stats.figures) statsRows.push(new docx.TableRow({
-          cells: [
-            new docx.TableCell({ children: [new docx.Paragraph('Figures')] }),
-            new docx.TableCell({ children: [new docx.Paragraph(stats.figures.toString())] })
-          ]
-        }));
-        
-        sections.push(
-          new docx.Table({
-            rows: statsRows,
-            width: { size: 100, type: docx.WidthType.PERCENTAGE }
-          }),
-          new docx.Paragraph({ text: '', spacing: { after: 300 } })
-        );
-      }
-      
-      // Extracted Text
-      if (currentAnalysisData.text) {
-        sections.push(
-          new docx.Paragraph({
-            text: 'Extracted Text',
-            heading: docx.HeadingLevel.HEADING_2,
-            bold: true,
-            spacing: { after: 150 }
-          })
-        );
-        
-        // Add text content with proper formatting
-        const textLines = currentAnalysisData.text.split('\n').slice(0, 100); // Limit to 100 lines for doc size
-        textLines.forEach((line, idx) => {
-          if (line.trim()) {
-            sections.push(new docx.Paragraph({
-              text: line,
-              spacing: { after: 100 }
-            }));
-          }
+        sectionHeader('Region Breakdown');
+        pdf.autoTable({
+          startY:y, margin:{left:margin,right:margin}, theme:'grid',
+          headStyles:{fillColor:GREEN,textColor:[255,255,255],fontStyle:'bold',fontSize:9},
+          bodyStyles:{fontSize:9},
+          alternateRowStyles:{fillColor:BGGREEN},
+          head:[['Type','Count','Confidence Band','Count']],
+          body:[
+            ['Headers',    cnt.Headers,    'High (>85%)',     hi],
+            ['Paragraphs', cnt.Paragraphs, 'Medium (70-85%)', med],
+            ['Tables',     cnt.Tables,     'Low (<70%)',      lo],
+            ['Figures',    cnt.Figures,    '', ''],
+            ['Shapes',     cnt.Shapes,     '', ''],
+          ],
         });
-        
-        sections.push(new docx.Paragraph({ text: '', spacing: { after: 300 } }));
+        y = pdf.lastAutoTable.finalY + 8; rule();
       }
-      
-      // Document Structure (if hierarchy available)
-      if (window.lastHierarchyData) {
-        sections.push(
-          new docx.Paragraph({
-            text: 'Document Structure',
-            heading: docx.HeadingLevel.HEADING_2,
-            bold: true,
-            spacing: { after: 150 }
-          }),
-          new docx.Paragraph({
-            text: 'The document contains a hierarchical structure with multiple sections and regions. See the visual tree in the analysis results page.',
-            italics: true,
-            spacing: { after: 300 }
-          })
-        );
+
+      // ── EXTRACTED TEXT REGIONS ───────────────────────────────────────────
+      sectionHeader('Extracted Text Content');
+      const textRegions = regions.filter(r=>r.text);
+      if (textRegions.length) {
+        textRegions.forEach((r,i) => {
+          checkPage(10);
+          const c   = r.conf?(r.conf*100).toFixed(0):'0';
+          const lbl = `[${i+1}] ${r.type.toUpperCase()}  ·  ${c}%`;
+          bodyText(lbl, {bold:true, color:GREEN, size:9});
+          bodyText(r.text, {size:9, color:BLACK});
+          y+=2;
+        });
+      } else {
+        bodyText('No text content available.', {color:GRAY, size:9});
       }
-      
-      // Create and save document
-      const doc = new docx.Document({
-        sections: [{
-          properties: {},
-          children: sections
-        }]
-      });
-      
-      const filename = currentAnalysisData.filename.replace(/\.[^/.]+$/, '') + '-analysis.docx';
-      await docx.Packer.toBlob(doc).then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        btn.innerHTML = original;
-        btn.disabled = false;
-        window.Toast?.success(`Downloaded ${filename}`);
-      });
-    } catch (err) {
-      console.error('Error generating DOCX:', err);
-      alert('Error generating DOCX. Please try again.');
-      btn.innerHTML = original;
-      btn.disabled = false;
+      rule();
+
+      // ── TABLES ───────────────────────────────────────────────────────────
+      // Priority 1: real OCR table data from window.lastTableResults
+      const tr = window.lastTableResults;
+      if (tr && tr.cellsData && tr.cellsData.length > 0) {
+        sectionHeader('Detected Tables', AMBER);
+
+        const maxRow = Math.max(...tr.cellsData.map(c=>c.row));
+        const tHead  = [tr.headers];
+        const tBody  = [];
+        for (let row=0; row<=maxRow; row++) {
+          tBody.push(
+            tr.cellsData.filter(c=>c.row===row).sort((a,b)=>a.col-b.col).map(c=>c.text||'')
+          );
+        }
+        pdf.autoTable({
+          startY:y, margin:{left:margin,right:margin}, theme:'striped',
+          headStyles:{fillColor:AMBER,textColor:[255,255,255],fontStyle:'bold',fontSize:9},
+          bodyStyles:{fontSize:9},
+          alternateRowStyles:{fillColor:BGAMBER},
+          head:tHead, body:tBody,
+        });
+        y = pdf.lastAutoTable.finalY + 8; rule();
+
+      // Priority 2: table regions from analysis data
+      } else {
+        const tableRegions = regions.filter(r=>r.type==='table');
+        if (tableRegions.length) {
+          sectionHeader('Detected Tables', AMBER);
+          tableRegions.forEach((tbl,ti) => {
+            checkPage(12);
+            const c = tbl.conf?(tbl.conf*100).toFixed(0):'0';
+            bodyText(`Table ${ti+1}  (confidence: ${c}%)`, {bold:true, color:AMBER, size:9});
+
+            if (tbl.rows && tbl.cols) {
+              // Render structural placeholder grid
+              const headRow = Array.from({length:tbl.cols},(_,i)=>`Column ${i+1}`);
+              const bodyRows= Array.from({length:tbl.rows},()=>Array.from({length:tbl.cols},()=>'—'));
+              pdf.autoTable({
+                startY:y, margin:{left:margin,right:margin}, theme:'grid',
+                headStyles:{fillColor:AMBER,textColor:[255,255,255],fontSize:8},
+                bodyStyles:{fontSize:8,textColor:GRAY},
+                head:[headRow], body:bodyRows,
+              });
+              y = pdf.lastAutoTable.finalY + 6;
+            } else if (tbl.text) {
+              bodyText(tbl.text, {size:9});
+            } else {
+              bodyText('[Table region detected — no cell data available]', {color:GRAY, size:9});
+              y+=3;
+            }
+          });
+          rule();
+        }
+      }
+
+      // ── METADATA ─────────────────────────────────────────────────────────
+      if (data.metadata) {
+        sectionHeader('Analysis Metadata');
+        const md=data.metadata;
+        pdf.autoTable({
+          startY:y, margin:{left:margin,right:margin}, theme:'plain',
+          styles:{fontSize:9,cellPadding:2},
+          columnStyles:{0:{fontStyle:'bold',textColor:GREEN,cellWidth:52},1:{textColor:BLACK}},
+          body:[
+            ['Method',       md.analysisMethod    ||'Smart OCR Recognition'],
+            ['Language',     md.language          ||'English'],
+            ['Segmentation', md.segmentationLevel ||'Basic'],
+            ['Preprocessing',md.preprocessingApplied?'Applied':'Not Applied'],
+            ['Flowchart',    md.detectedFlowchart ?'Detected':'None'],
+            ['Table',        md.detectedTable     ?'Detected':'None'],
+            ['Layout',       md.layoutType        ||'Single'],
+          ],
+        });
+        y = pdf.lastAutoTable.finalY + 6;
+      }
+
+      // ── PAGE FOOTERS ─────────────────────────────────────────────────────
+      const total = pdf.internal.getNumberOfPages();
+      for (let i=1; i<=total; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8); pdf.setTextColor(...GRAY);
+        pdf.text(`DOCUGRAPH  ·  Page ${i} of ${total}`, pageW/2, pageH-8, {align:'center'});
+        pdf.text(`Generated ${new Date().toLocaleDateString()}`, pageW-margin, pageH-8, {align:'right'});
+      }
+
+      // ── SAVE ─────────────────────────────────────────────────────────────
+      const outname = (data.filename||'document').replace(/\.[^/.]+$/,'') + '-analysis.pdf';
+      pdf.save(outname);
+      btn.innerHTML=orig; btn.disabled=false;
+      window.Toast?.success('PDF downloaded successfully');
+
+    } catch(err) {
+      console.error('PDF generation error:', err);
+      alert('Error generating PDF.\n'+err.message);
+      btn.innerHTML=orig; btn.disabled=false;
     }
   });
 
-  // End of document ready scripts
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Download DOCX — fixed: use docxLib throughout (no bare `docx.` refs)
+  // ─────────────────────────────────────────────────────────────────────────────
+  document.getElementById('download-docx-btn').addEventListener('click', async e => {
+    if (!currentAnalysisData) { alert('No analysis data available for download'); return; }
+
+    const docxLib = window.docx ?? (typeof docx !== 'undefined' ? docx : null);
+    if (!docxLib) { alert('DOCX library is still loading. Please wait a moment and try again.'); return; }
+
+    const btn=e.currentTarget, orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> Generating...';
+
+    try {
+      const data = currentAnalysisData;
+      const sections = [];
+
+      // Title
+      sections.push(
+        new docxLib.Paragraph({ text: data.filename||'Document Analysis', heading: docxLib.HeadingLevel.HEADING_1, bold:true, spacing:{after:200} }),
+        new docxLib.Paragraph({ text:`Analysis Date: ${new Date(data.timestamp).toLocaleString()}`, color:'666666', spacing:{after:100} }),
+        new docxLib.Paragraph({ text:`Confidence: ${(data.confidence*100).toFixed(1)}%`, color:'00AA00', bold:true, spacing:{after:300} })
+      );
+
+      // Stats table
+      if (data.stats) {
+        sections.push(new docxLib.Paragraph({ text:'Analysis Overview', heading:docxLib.HeadingLevel.HEADING_2, bold:true, spacing:{after:150} }));
+        const rows = [new docxLib.TableRow({
+          cells:[
+            new docxLib.TableCell({children:[new docxLib.Paragraph({text:'Metric',bold:true})]}),
+            new docxLib.TableCell({children:[new docxLib.Paragraph({text:'Count', bold:true})]})
+          ]
+        })];
+        const s = data.stats;
+        [['Total Regions',s.total],['Headers',s.headers],['Paragraphs',s.paragraphs],
+         ['Tables',s.tables],['Figures',s.figures]].forEach(([label,val])=>{
+          if (val!==undefined && val!==null) rows.push(new docxLib.TableRow({
+            cells:[
+              new docxLib.TableCell({children:[new docxLib.Paragraph(label)]}),
+              new docxLib.TableCell({children:[new docxLib.Paragraph(String(val))]})
+            ]
+          }));
+        });
+        sections.push(
+          new docxLib.Table({ rows, width:{size:100,type:docxLib.WidthType.PERCENTAGE} }),
+          new docxLib.Paragraph({text:'',spacing:{after:300}})
+        );
+      }
+
+      // Extracted text
+      if (data.regions && data.regions.length) {
+        sections.push(new docxLib.Paragraph({ text:'Extracted Content', heading:docxLib.HeadingLevel.HEADING_2, bold:true, spacing:{after:150} }));
+        data.regions.forEach((r,i)=>{
+          if (!r.text) return;
+          const c=(r.conf?(r.conf*100).toFixed(0):'0');
+          sections.push(
+            new docxLib.Paragraph({ text:`[${i+1}] ${r.type.toUpperCase()} — ${c}% confidence`, bold:true, spacing:{after:60} }),
+            new docxLib.Paragraph({ text:r.text, spacing:{after:120} })
+          );
+        });
+        sections.push(new docxLib.Paragraph({text:'',spacing:{after:300}}));
+      }
+
+      // Real table data
+      const tr = window.lastTableResults;
+      if (tr && tr.cellsData && tr.cellsData.length > 0) {
+        sections.push(new docxLib.Paragraph({ text:'Detected Tables', heading:docxLib.HeadingLevel.HEADING_2, bold:true, spacing:{after:150} }));
+        const maxRow = Math.max(...tr.cellsData.map(c=>c.row));
+        const docxRows = [];
+        // Header row
+        docxRows.push(new docxLib.TableRow({
+          tableHeader: true,
+          cells: tr.headers.map(h => new docxLib.TableCell({
+            shading:{fill:'1c7a39'},
+            children:[new docxLib.Paragraph({text:h,color:'FFFFFF',bold:true})]
+          }))
+        }));
+        // Data rows
+        for (let row=0; row<=maxRow; row++) {
+          const cells = tr.cellsData.filter(c=>c.row===row).sort((a,b)=>a.col-b.col);
+          docxRows.push(new docxLib.TableRow({
+            cells: cells.map(c => new docxLib.TableCell({children:[new docxLib.Paragraph(c.text||'')]}))
+          }));
+        }
+        sections.push(
+          new docxLib.Table({ rows:docxRows, width:{size:100,type:docxLib.WidthType.PERCENTAGE} }),
+          new docxLib.Paragraph({text:'',spacing:{after:300}})
+        );
+      }
+
+      const doc = new docxLib.Document({ sections:[{ properties:{}, children:sections }] });
+      const outname = (data.filename||'document').replace(/\.[^/.]+$/,'') + '-analysis.docx';
+      await docxLib.Packer.toBlob(doc).then(blob => {
+        const url=window.URL.createObjectURL(blob), a=document.createElement('a');
+        a.href=url; a.download=outname; document.body.appendChild(a); a.click();
+        document.body.removeChild(a); window.URL.revokeObjectURL(url);
+        btn.innerHTML=orig; btn.disabled=false;
+        window.Toast?.success(`Downloaded ${outname}`);
+      });
+
+    } catch(err) {
+      console.error('DOCX error:', err);
+      alert('Error generating DOCX.\n'+err.message);
+      btn.innerHTML=orig; btn.disabled=false;
+    }
+  });
+
 </script>
 <script src="assets/enhancements.js" defer></script>
 </body>
