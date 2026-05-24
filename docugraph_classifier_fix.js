@@ -1,27 +1,179 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DOCUGRAPH CLASSIFIER FIX v2 — Complete Document Type Detection Rewrite ║
+ * ║  DOCUGRAPH CLASSIFIER FIX v3 — Advanced Visual + Layout Flowchart Fix   ║
  * ║                                                                          ║
- * ║  Fixes ALL known misclassification bugs across every document type:      ║
+ * ║  Adds THREE detection layers for flowcharts:                            ║
+ * ║  1. Visual pixel analysis — detects coloured box fills + whitespace     ║
+ * ║  2. Layout sparsity analysis — narrow, short, spread boxes              ║
+ * ║  3. Canvas capture hook — keeps reference to image for analysis         ║
  * ║                                                                          ║
- * ║  ✅ Receipt  — GCash/payment screenshots no longer become Flowcharts     ║
- * ║  ✅ Invoice  — "total/terms/fee" no longer fires on non-invoices         ║
- * ║  ✅ Flowchart — tables+paragraphs alone no longer triggers this          ║
- * ║  ✅ Form     — logos/background images no longer trigger form detection  ║
- * ║  ✅ Contract — common words like "payment/fee" no longer score           ║
- * ║  ✅ Report   — "introduction/results/data" no longer fires generically   ║
- * ║  ✅ Letter   — "thank you" in receipts no longer scores as letter        ║
- * ║  ✅ Resume   — generic job words need a CV/resume anchor to score        ║
+ * ║  Fixes flowcharts being misclassified as "Document" when GNN            ║
+ * ║  misses shape detection and classifies box labels as 'para' regions.    ║
  * ║                                                                          ║
- * ║  Drop-in replacement for the old docugraph_classifier_fix.js            ║
- * ║  Add before </body> in try.html:                                         ║
- * ║    <script src="docugraph_classifier_fix.js"></script>                   ║
- * ║    <script src="docugraph_receipt_fix.js"></script>   ← keep this too   ║
+ * ║  Drop-in replacement for docugraph_classifier_fix.js (v2).             ║
+ * ║  Keep docugraph_receipt_fix.js — v3 handles receipts internally.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 
 (function () {
   'use strict';
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // GLOBAL STATE — Canvas reference and cached analysis results
+  // ─────────────────────────────────────────────────────────────────────────
+  let capturedCanvasContext = null;
+  let canvasImageData = null;
+
+  // Install hook to capture canvas context on first use
+  function installCanvasHook() {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(contextType) {
+      const ctx = originalGetContext.call(this, contextType);
+      if (contextType === '2d' && !capturedCanvasContext) {
+        capturedCanvasContext = ctx;
+        try {
+          // Try to capture image data from canvas
+          canvasImageData = ctx.getImageData(0, 0, this.width, this.height);
+        } catch (e) {
+          // CORS or security restrictions; will fall back to layout analysis
+        }
+      }
+      return ctx;
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // VISUAL ANALYSIS — Detect flowchart from canvas pixels
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Analyze canvas pixels for flowchart visual characteristics:
+   * - High whitespace (>60% near-white pixels)
+   * - Coloured filled areas (not white, not dark text)
+   * - Low text density relative to colour
+   */
+  function detectFlowchartFromCanvas() {
+    if (!canvasImageData || !canvasImageData.data) {
+      return null;  // Canvas not captured or inaccessible
+    }
+
+    const data = canvasImageData.data;
+    const width = canvasImageData.width;
+    const height = canvasImageData.height;
+
+    let whitePixels = 0;      // Near-white (R,G,B > 200, A=255)
+    let darkPixels = 0;       // Dark text (R,G,B < 100)
+    let colouredPixels = 0;   // Coloured boxes (not white, not dark)
+    let totalPixels = data.length / 4;
+
+    // Sample pixels (every 4th pixel to be fast)
+    for (let i = 0; i < data.length; i += 16) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+
+      if (a < 200) continue;  // Skip transparent/semi-transparent
+
+      // Classify pixel
+      if (r > 200 && g > 200 && b > 200) {
+        whitePixels++;
+      } else if (r < 100 && g < 100 && b < 100) {
+        darkPixels++;
+      } else if (!(r > 180 && g > 180 && b > 180)) {
+        // Not near-white; if has any colour, count it
+        const avg = (r + g + b) / 3;
+        if (Math.max(r, g, b) - Math.min(r, g, b) > 20 || avg < 180) {
+          colouredPixels++;
+        }
+      }
+    }
+
+    const whitespaceRatio = whitePixels / (totalPixels / 4);
+    const colourRatio = colouredPixels / (totalPixels / 4);
+
+    // Flowchart signature: mostly whitespace (>50%) with some coloured fills (5-40%)
+    const hasHighWhitespace = whitespaceRatio > 0.5;
+    const hasColouredBoxes = colourRatio > 0.03 && colourRatio < 0.4;
+
+    if (hasHighWhitespace && hasColouredBoxes) {
+      return { score: 35, reason: 'visual_flowchart' };
+    }
+
+    return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LAYOUT SPARSITY ANALYSIS — Detect flowchart from region patterns
+  // Even when GNN misclassifies boxes as 'para', sparse layout is detectable.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  function detectFlowchartFromLayout(regions) {
+    if (!regions || regions.length < 3) return null;
+
+    // Filter to non-trivial regions (exclude tiny noise)
+    const boxes = regions.filter(r => {
+      if (!r.bbox || r.bbox.length < 4) return false;
+      const w = r.bbox[2] - r.bbox[0];
+      const h = r.bbox[3] - r.bbox[1];
+      return w > 4 && h > 3;
+    });
+
+    if (boxes.length < 3) return null;
+
+    // Calculate region statistics
+    const widths = boxes.map(r => r.bbox[2] - r.bbox[0]);
+    const heights = boxes.map(r => r.bbox[3] - r.bbox[1]);
+    const xs = boxes.map(r => r.bbox[0]);
+    const ys = boxes.map(r => r.bbox[1]);
+
+    const avgW = widths.reduce((a, b) => a + b, 0) / widths.length;
+    const avgH = heights.reduce((a, b) => a + b, 0) / heights.length;
+    const xRange = Math.max(...xs) - Math.min(...xs);
+    const yRange = Math.max(...ys) - Math.min(...ys);
+
+    // Flowchart characteristics:
+    // - Narrow boxes (<55% page width)
+    // - Short boxes (<15% page height)
+    // - Spread horizontally (boxes not all in one column)
+    // - Short text labels (detect via region count vs text density)
+
+    let score = 0;
+
+    // Width analysis
+    if (avgW < 55) score += 3;   // Not full-width paragraphs
+    if (avgW < 40) score += 2;   // Narrow diagrams
+    const narrowBoxes = widths.filter(w => w < 70).length;
+    if (narrowBoxes / boxes.length > 0.7) score += 2;
+
+    // Height analysis
+    if (avgH < 15) score += 3;   // Short boxes, not paragraph blocks
+    if (avgH < 12) score += 1;
+    const shortBoxes = heights.filter(h => h < 20).length;
+    if (shortBoxes / boxes.length > 0.7) score += 2;
+
+    // Horizontal spread (boxes not stacked in one column)
+    if (xRange > 40) score += 2;  // Boxes spread horizontally
+    if (xRange > 60) score += 1;
+
+    // Vertical spread
+    if (yRange > 60) score += 1;
+
+    // Many small regions = diagram, not dense text doc
+    if (boxes.length >= 4) score += 1;
+    if (boxes.length >= 6) score += 2;
+    if (boxes.length >= 8) score += 1;
+
+    // Penalty: full-width regions reduce flowchart likelihood
+    const fullWidthBoxes = widths.filter(w => w > 75).length;
+    if (fullWidthBoxes / boxes.length > 0.3) score -= 3;
+
+    if (score >= 10) {
+      return { score: 20 + score, reason: 'layout_sparse' };
+    }
+
+    return null;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // HELPERS
@@ -423,7 +575,7 @@
 
     // ── FLOWCHART ────────────────────────────────────────────────────────
     {
-      // Flowcharts REQUIRE actual shape regions — text alone is insufficient
+      // Layer 1: Shape-based detection (if GNN typed correctly)
       const realShapes = shapeRegions.filter(r => {
         if (!r.bbox || r.bbox.length < 4) return false;
         const w = r.bbox[2] - r.bbox[0];
@@ -444,9 +596,24 @@
         scores.flowchart = strongHits * 10;
       }
 
-      // Fallback: layout-based detection (when shapes not typed correctly by GNN)
-      if (scores.flowchart === 0 && detectFlowchartLayout(regions)) {
-        scores.flowchart = 25;  // Moderate confidence from layout alone
+      // Layer 2: Visual pixel analysis (coloured boxes + high whitespace)
+      if (scores.flowchart === 0) {
+        const visualResult = detectFlowchartFromCanvas();
+        if (visualResult) {
+          scores.flowchart = visualResult.score;
+          debug.flowchart = debug.flowchart || {};
+          debug.flowchart.visualDetected = true;
+        }
+      }
+
+      // Layer 3: Layout sparsity analysis (narrow/short/spread boxes)
+      if (scores.flowchart === 0) {
+        const layoutResult = detectFlowchartFromLayout(regions);
+        if (layoutResult) {
+          scores.flowchart = layoutResult.score;
+          debug.flowchart = debug.flowchart || {};
+          debug.flowchart.layoutDetected = true;
+        }
       }
 
       // Block flowchart if receipt/invoice signals are strong
@@ -455,11 +622,14 @@
       }
 
       // Block flowchart if it's just tables + paragraphs (invoice/report pattern)
-      if (realShapes.length === 0 && tableCount > 0 && paraCount > 0 && !detectFlowchartLayout(regions)) {
-        scores.flowchart = 0;
+      if (realShapes.length === 0 && tableCount > 0 && paraCount > 0) {
+        const layoutResult = detectFlowchartFromLayout(regions);
+        if (!layoutResult) {
+          scores.flowchart = 0;
+        }
       }
 
-      debug.flowchart = { realShapes: realShapes.length, strongHits, layoutDetected: scores.flowchart > 0 && realShapes.length === 0 };
+      debug.flowchart = debug.flowchart || { realShapes: realShapes.length, strongHits };
     }
 
     // ── FILENAME BONUSES ─────────────────────────────────────────────────
@@ -498,50 +668,6 @@
       })),
       debug,
     };
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // FLOWCHART LAYOUT DETECTION (fallback when shape typing fails)
-  // Detects flowcharts based on region distribution patterns, not just shapes.
-  // Flowchart boxes: narrow (<70% wide), short (<20% tall), many (3+), vertical spread
-  // ─────────────────────────────────────────────────────────────────────────
-
-  function detectFlowchartLayout(regions) {
-    if (!regions || regions.length < 3) return false;
-
-    // Filter to non-trivial regions (significant boxes, not tiny noise)
-    const boxes = regions.filter(r => {
-      if (!r.bbox || r.bbox.length < 4) return false;
-      const w = r.bbox[2] - r.bbox[0];
-      const h = r.bbox[3] - r.bbox[1];
-      return w > 4 && h > 3;  // Exclude tiny noise
-    });
-
-    if (boxes.length < 3) return false;
-
-    // Calculate region dimensions
-    const widths  = boxes.map(r => r.bbox[2] - r.bbox[0]);
-    const heights = boxes.map(r => r.bbox[3] - r.bbox[1]);
-    const avgW = widths.reduce((a, b) => a + b, 0) / widths.length;
-    const avgH = heights.reduce((a, b) => a + b, 0) / heights.length;
-
-    // Count regions with flowchart-like dimensions
-    const narrowBoxes = boxes.filter(r => (r.bbox[2] - r.bbox[0]) < 70).length;
-    const shortBoxes  = boxes.filter(r => (r.bbox[3] - r.bbox[1]) < 20).length;
-    const fullWidthBoxes = boxes.filter(r => (r.bbox[2] - r.bbox[0]) > 75).length;
-
-    // Score based on layout characteristics
-    let score = 0;
-    if (avgW < 60) score += 2;      // avg region is not full-width
-    if (avgW < 45) score += 2;      // avg region is narrow
-    if (avgH < 15) score += 2;      // avg region is short
-    if (narrowBoxes / boxes.length > 0.7) score += 3; // most boxes are narrow
-    if (shortBoxes / boxes.length > 0.7) score += 2; // most boxes are short
-    if (fullWidthBoxes / boxes.length < 0.2) score += 2; // few full-width regions
-    if (boxes.length >= 4) score += 1;  // enough boxes to be a diagram
-    if (boxes.length >= 6) score += 1;  // many boxes = likely flowchart
-
-    return score >= 8;  // Need strong evidence
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -587,8 +713,12 @@
     if (realShapes.length >= 2 && paras.length === 0) return 'Flowchart';
 
     // Flowchart fallback: detect via layout heuristics (GNN may type boxes as 'para' not 'shape')
-    if (realShapes.length === 0 && detectFlowchartLayout(regions)) {
-      return 'Flowchart';
+    if (realShapes.length === 0) {
+      const layoutResult = detectFlowchartFromLayout(regions);
+      const visualResult = detectFlowchartFromCanvas();
+      if (layoutResult || visualResult) {
+        return 'Flowchart';
+      }
     }
 
     // Forms: explicit form-layout (many figures + very few paras, no tables)
@@ -732,10 +862,13 @@
     // Run structural interceptor patch once (it doesn't need a class)
     patchAnalyzeLayoutOnly();
 
+    // Install canvas hook for visual flowchart analysis
+    installCanvasHook();
+
     console.log(
-      '%c✅ DOCUGRAPH classifier_fix v2 fully applied',
+      '%c✅ DOCUGRAPH classifier_fix v3 fully applied',
       'color:#16a34a;font-weight:bold',
-      '— all document types corrected'
+      '— visual + layout + shape flowchart detection enabled'
     );
   }
 
