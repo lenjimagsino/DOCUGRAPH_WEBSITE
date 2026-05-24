@@ -111,11 +111,28 @@
   function detectFlowchartFromLayout(regions) {
     if (!regions || regions.length < 3) return null;
 
+    // CRITICAL: Receipts have TEXT + SEPARATOR + TABLE regions (structured layout)
+    // Flowcharts have SHAPE regions or sparse TEXT only
+    const regionTypes = regions.map(r => r.type || 'unknown');
+    const hasTable = regionTypes.includes('table');
+    const hasSeparator = regionTypes.includes('separator');
+    const hasText = regionTypes.includes('para') || regionTypes.includes('text');
+    const hasShape = regionTypes.includes('shape');
+
+    // If it has TABLE + SEPARATOR + TEXT, it's a structured receipt/invoice, NOT a flowchart
+    if ((hasTable || hasSeparator) && hasText && !hasShape) {
+      return null;  // Block flowchart detection
+    }
+
     // Filter to non-trivial regions (exclude tiny noise)
+    // Only count actual SHAPE regions or TEXT regions (not separators/tables)
     const boxes = regions.filter(r => {
       if (!r.bbox || r.bbox.length < 4) return false;
       const w = r.bbox[2] - r.bbox[0];
       const h = r.bbox[3] - r.bbox[1];
+      // Only count shape/figure/text regions, NOT table/separator
+      const rtype = r.type || '';
+      if (rtype === 'table' || rtype === 'separator') return false;
       return w > 4 && h > 3;
     });
 
