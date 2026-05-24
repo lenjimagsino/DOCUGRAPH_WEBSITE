@@ -571,7 +571,8 @@
           pdf.setFont('helvetica','normal');pdf.setTextColor(...C.black);
           pdf.text(pdf.splitTextToSize(stage,stageW-8)[0],sx+8,y+4);
           if(i<doc.workflow.length-1&&i<5){
-            pdf.setDrawColor(...ACCENT);pdf.arrow(sx+stageW-1,y+5,sx+stageW+1,y+5,1);
+            pdf.setDrawColor(...ACCENT);pdf.setLineWidth(0.3);
+            pdf.line(sx+stageW-2,y+5,sx+stageW,y+5);
           }
         });
         y+=14;rule();
