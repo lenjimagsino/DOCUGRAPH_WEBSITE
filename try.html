@@ -9913,5 +9913,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
 </script>
 <!-- Type-aware PDF export patch — overrides exportAsProfessionalPDF() -->
 <script src="docugraph_pdf_patch.js"></script>
+<!-- Document type classifier fix — corrects Receipt/Invoice/Contract/Report/Letter/Resume/Form detection -->
+<script src="docugraph_classifier_fix.js"></script>
 </body>
 </html>
