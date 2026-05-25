@@ -46,84 +46,115 @@
   // ═══════════════════════════════════════════════════════════════════
   // RECEIPT LAYOUT DETECTOR
   // Detects receipt geometry WITHOUT relying on complete GNN text extraction.
-  // GNN's pre-OCR phase may not fully capture thin text regions.
+  // GNN's pre-OCR phase may classify many visual elements as 'shape'.
   //
-  // A receipt typically has:
-  //   - Horizontal separator lines (STRONGEST signal: flowcharts never have these)
-  //   - Stacked vertical layout (single column, xRange < 15)
-  //   - Few squarish boxes (receipts have 0-2, flowcharts have 3+)
-  //   - Dense overall arrangement
+  // STRONGEST GCash Receipt Signature:
+  //   - Wide separator lines (~60% of page width)
+  //   - Horizontal dividers are 50-70% of page width (very specific to receipts)
+  //   - Flowcharts NEVER have such wide horizontal lines
   //
-  // Key insight: Don't require 2+ text regions (GNN may undercount).
-  // Instead: separators + single-column layout = receipt (very reliable).
+  // Other receipt signals:
+  //   - Horizontal separator lines (any size)
+  //   - Stacked vertical layout (single column, xRange < 20)
+  //   - Tables with structured data (1-2 tables common)
+  //   - Dense region count with mixed types
   // ═══════════════════════════════════════════════════════════════════
   function detectReceiptLayout(regions) {
     if (!regions || regions.length < 2) return false;
 
     const types = regions.map(r => r.type || '');
-    const separatorCount = types.filter(t => t === 'separator').length;
+    const separators = regions.filter(r => r.type === 'separator');
+    const separatorCount = separators.length;
     const tableCount = types.filter(t => t === 'table').length;
     const shapeCount = types.filter(t => t === 'shape').length;
     const textCount = types.filter(t => t === 'para' || t === 'text').length;
+    const figureCount = types.filter(t => t === 'figure').length;
 
-    // STRONGEST RECEIPT SIGNAL: Has separator lines
-    // Flowcharts almost never have horizontal divider lines
-    // Receipts almost always have them (between line items)
-    if (separatorCount >= 1) {
-      // If we have separators + single column + few shapes → Receipt
-      const xPositions = regions
+    // Calculate horizontal spread
+    const xPositions = regions
+      .filter(r => r.bbox && r.bbox.length >= 4)
+      .map(r => (r.bbox[0] + r.bbox[2]) / 2);
+    
+    if (xPositions.length === 0) return false;
+
+    const xMin = Math.min(...xPositions);
+    const xMax = Math.max(...xPositions);
+    const xRange = xMax - xMin;
+    const isSingleColumn = xRange < 20;
+
+    // Get page width estimate from the rightmost coordinate of any region
+    let pageWidth = 100;
+    try {
+      const allX2 = regions
         .filter(r => r.bbox && r.bbox.length >= 4)
-        .map(r => (r.bbox[0] + r.bbox[2]) / 2);
-      
-      if (xPositions.length > 0) {
-        const xMin = Math.min(...xPositions);
-        const xMax = Math.max(...xPositions);
-        const xRange = xMax - xMin;
+        .map(r => r.bbox[2]);
+      if (allX2.length > 0) {
+        pageWidth = Math.max(...allX2);
+      }
+    } catch (e) {
+      pageWidth = 100;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // SIGNAL 0 (STRONGEST): Wide separator lines (~60% of page width)
+    // This is the GCash receipt signature: horizontal divider spanning 50-70% width
+    // Flowcharts NEVER have such proportional dividers
+    // ─────────────────────────────────────────────────────────────────
+    for (let sep of separators) {
+      if (sep.bbox && sep.bbox.length >= 4) {
+        const sepWidth = sep.bbox[2] - sep.bbox[0];
+        const widthPercent = (sepWidth / pageWidth) * 100;
         
-        // Single-column layout (all content vertically stacked)
-        if (xRange < 20 && shapeCount <= 2) {
-          console.log('[clf-v6-geo] Receipt (separators=' + separatorCount + ', xRange=' + xRange.toFixed(1) + ', shapes=' + shapeCount + ')');
+        // GCash signature: separator is 50-70% of page width
+        if (widthPercent >= 50 && widthPercent <= 70) {
+          console.log('[clf-v6-geo] Receipt SIGNAL-0 (STRONGEST: wide separator ' + widthPercent.toFixed(1) + '% page width)');
           return true;
         }
       }
     }
 
-    // SECONDARY SIGNAL: Table + single column + few shapes
-    // (some receipts are rendered as single-cell tables)
-    if (tableCount >= 1 && shapeCount <= 2) {
-      const xPositions = regions
-        .filter(r => r.bbox && r.bbox.length >= 4)
-        .map(r => (r.bbox[0] + r.bbox[2]) / 2);
-      
-      if (xPositions.length > 0) {
-        const xMin = Math.min(...xPositions);
-        const xMax = Math.max(...xPositions);
-        const xRange = xMax - xMin;
-        
-        if (xRange < 20) {
-          console.log('[clf-v6-geo] Receipt (table + single-column, xRange=' + xRange.toFixed(1) + ')');
-          return true;
-        }
-      }
+    // ─────────────────────────────────────────────────────────────────
+    // SIGNAL 1: Any separator lines present + single column
+    // Receipt signature: horizontal dividers (never in flowcharts)
+    // ─────────────────────────────────────────────────────────────────
+    if (separatorCount >= 1 && isSingleColumn) {
+      console.log('[clf-v6-geo] Receipt SIGNAL-1 (separators=' + separatorCount + ', single-col, shapes=' + shapeCount + ')');
+      return true;
     }
 
-    // TERTIARY SIGNAL: Many text regions (3+) + no flowchart boxes + compact
-    // (only if GNN did extract good text coverage)
-    if (textCount >= 3 && shapeCount <= 1) {
-      const xPositions = regions
-        .filter(r => r.bbox && r.bbox.length >= 4)
-        .map(r => (r.bbox[0] + r.bbox[2]) / 2);
-      
-      if (xPositions.length > 0) {
-        const xMin = Math.min(...xPositions);
-        const xMax = Math.max(...xPositions);
-        const xRange = xMax - xMin;
-        
-        if (xRange < 20) {
-          console.log('[clf-v6-geo] Receipt (text-heavy + single-column, text=' + textCount + ')');
-          return true;
-        }
-      }
+    // ─────────────────────────────────────────────────────────────────
+    // SIGNAL 2: Table + single-column layout
+    // Receipts are often structured as tables or have table-like regions
+    // ─────────────────────────────────────────────────────────────────
+    if (tableCount >= 1 && isSingleColumn) {
+      // Receipt tables are usually compact, not flowchart-like
+      // Flowcharts rarely have tables at all, and never single-column
+      console.log('[clf-v6-geo] Receipt SIGNAL-2 (table=' + tableCount + ', single-col, total=' + regions.length + ')');
+      return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // SIGNAL 3: Dense single-column layout with many paragraphs
+    // Receipts have many small text regions stacked vertically
+    // Flowcharts have fewer, larger, well-spaced regions
+    // ─────────────────────────────────────────────────────────────────
+    if (isSingleColumn && textCount >= 4 && shapeCount <= 3) {
+      // Many text regions in single column = receipt-like (invoice, receipt, etc.)
+      console.log('[clf-v6-geo] Receipt SIGNAL-3 (text=' + textCount + ', single-col, shapes=' + shapeCount + ')');
+      return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // SIGNAL 4: Mixed regions (text + table/sep) in single column
+    // Receipts have mixed structure: text + separators/tables
+    // Flowcharts are more uniform: mostly shapes/text, not mixed
+    // ─────────────────────────────────────────────────────────────────
+    const hasMixedStructure = (separatorCount >= 1 || tableCount >= 1) && 
+                              (textCount >= 2 || figureCount >= 1) &&
+                              isSingleColumn;
+    if (hasMixedStructure) {
+      console.log('[clf-v6-geo] Receipt SIGNAL-4 (mixed: sep=' + separatorCount + ', tab=' + tableCount + ', text=' + textCount + ', fig=' + figureCount + ')');
+      return true;
     }
 
     return false;
@@ -136,7 +167,9 @@
   //   - Multiple small-to-medium squarish regions (boxes)
   //   - Regions distributed vertically with consistent spacing
   //   - Low density (lots of whitespace between boxes)
-  //   - NO separator regions
+  //   - NO separator regions (receipts have these)
+  //   - NO tables (receipts have these)
+  //   - Boxes spread across multiple columns (decision branches)
   // ═══════════════════════════════════════════════════════════════════
   function detectFlowchartLayout(regions) {
     if (!regions || regions.length < 3) return false;
@@ -145,9 +178,15 @@
     const separatorCount = types.filter(t => t === 'separator').length;
     const tableCount = types.filter(t => t === 'table').length;
 
-    // Receipts/invoices have separators or tables; flowcharts don't
-    if (separatorCount >= 2) return false;
-    if (tableCount >= 1) return false;
+    // HARD REJECTS: Receipt-like structures
+    if (separatorCount >= 1) {
+      console.log('[clf-v6-fc-reject] Has separators (receipt-like)');
+      return false;
+    }
+    if (tableCount >= 1) {
+      console.log('[clf-v6-fc-reject] Has tables (receipt-like)');
+      return false;
+    }
 
     // Count squarish regions (potential flowchart boxes)
     // These may be typed as 'shape', 'para', 'text', or 'figure' by the GNN
@@ -162,27 +201,31 @@
       return ar >= 0.25 && ar <= 4.0 && area >= 50 && area <= 3000;
     });
 
-    if (candidateBoxes.length < 3) return false;
+    if (candidateBoxes.length < 3) {
+      console.log('[clf-v6-fc-reject] Only ' + candidateBoxes.length + ' candidate boxes (need 3+)');
+      return false;
+    }
 
     // Check for vertical distribution (boxes spread across the page vertically)
     const yPositions = candidateBoxes.map(r => (r.bbox[1] + r.bbox[3]) / 2).sort((a, b) => a - b);
     const yRange = yPositions[yPositions.length - 1] - yPositions[0];
-    if (yRange < 20) return false; // All boxes on same row = not a flowchart
+    if (yRange < 20) {
+      console.log('[clf-v6-fc-reject] yRange=' + yRange.toFixed(1) + ' (boxes not vertically distributed)');
+      return false; // All boxes on same row = not a flowchart
+    }
 
-    // Check for horizontal spread (some boxes at different X positions = branching)
+    // Check for horizontal spread (boxes at different X positions = branching)
     const xPositions = candidateBoxes.map(r => (r.bbox[0] + r.bbox[2]) / 2);
     const xMin = Math.min(...xPositions);
     const xMax = Math.max(...xPositions);
     const xRange = xMax - xMin;
 
-    // Flowchart: boxes spread across both X and Y axes
-    // (pure receipt: all boxes stacked in single column)
-    const hasSingleColumn = xRange < 15; // All boxes in one vertical column
-    const hasMultipleColumns = xRange >= 15;
-
-    // Single-column flowcharts are valid (top-to-bottom flow)
-    // Multi-column flowcharts have branching
-    // Either is fine as long as vertical spread is good
+    // Flowcharts typically have boxes spread across columns (branching decisions)
+    // Single-column layouts are receipts, not flowcharts
+    if (xRange < 20) {
+      console.log('[clf-v6-fc-reject] xRange=' + xRange.toFixed(1) + ' (single-column, likely receipt)');
+      return false;
+    }
 
     // Check consistent vertical spacing (flowchart signature)
     if (yPositions.length >= 2) {
@@ -193,12 +236,19 @@
       const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
       // If average gap is reasonable (boxes aren't crammed together)
       if (avgGap >= 3 && avgGap <= 40) {
+        console.log('[clf-v6-fc] Flowchart detected: boxes=' + candidateBoxes.length + ', yRange=' + yRange.toFixed(1) + ', xRange=' + xRange.toFixed(1) + ', avgGap=' + avgGap.toFixed(1));
         return true;
       }
     }
 
     // Fallback: if many candidate boxes with good spread, likely flowchart
-    return candidateBoxes.length >= 4 && yRange >= 30;
+    if (candidateBoxes.length >= 4 && yRange >= 30 && xRange >= 20) {
+      console.log('[clf-v6-fc] Flowchart (fallback): boxes=' + candidateBoxes.length + ', yRange=' + yRange.toFixed(1) + ', xRange=' + xRange.toFixed(1));
+      return true;
+    }
+
+    console.log('[clf-v6-fc-reject] Geometry does not match flowchart (boxes=' + candidateBoxes.length + ', yRange=' + yRange.toFixed(1) + ', xRange=' + xRange.toFixed(1) + ')');
+    return false;
   }
 
   // ═══════════════════════════════════════════════════════════════════
