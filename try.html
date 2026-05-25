@@ -9339,7 +9339,13 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
     
     // Add event listeners with null checks
     if (elements.browse && elements.fileInput) {
-      elements.browse.addEventListener('click', () => elements.fileInput.click());
+      elements.browse.addEventListener('click', (e) => {
+        console.log('✅ Browse button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        elements.fileInput.click();
+      });
+      console.log('✅ Browse button listener attached');
     } else {
       console.error('❌ Browse button or file input not found:', { browse: !!elements.browse, fileInput: !!elements.fileInput });
     }
@@ -9348,25 +9354,46 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
     const cameraModal = document.getElementById('camera-modal');
     const cameraBtn = document.getElementById('camera-btn');
     const camerClose = document.getElementById('camera-close');
+    
+    if (!cameraBtn) console.error('❌ Camera button not found');
+    if (!cameraModal) console.error('❌ Camera modal not found');
+    if (!camerClose) console.error('❌ Camera close button not found');
+    
     let cameraStream = null;
     let capturedImageData = null;
 
-    cameraBtn.addEventListener('click', () => {
-      cameraModal.classList.add('active');
-      initCamera();
-    });
+    if (cameraBtn && cameraModal) {
+      cameraBtn.addEventListener('click', (e) => {
+        console.log('✅ Camera button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        cameraModal.classList.add('active');
+        initCamera();
+      });
+      console.log('✅ Camera button listener attached');
+    }
 
-    camerClose.addEventListener('click', () => {
-      cameraModal.classList.remove('active');
-      stopCamera();
-    });
-
-    cameraModal.addEventListener('click', (e) => {
-      if (e.target === cameraModal) {
+    if (camerClose && cameraModal) {
+      camerClose.addEventListener('click', (e) => {
+        console.log('✅ Camera close clicked');
+        e.preventDefault();
+        e.stopPropagation();
         cameraModal.classList.remove('active');
         stopCamera();
-      }
-    });
+      });
+      console.log('✅ Camera close listener attached');
+    }
+
+    if (cameraModal) {
+      cameraModal.addEventListener('click', (e) => {
+        if (e.target === cameraModal) {
+          console.log('✅ Camera modal background clicked');
+          cameraModal.classList.remove('active');
+          stopCamera();
+        }
+      });
+      console.log('✅ Camera modal listener attached');
+    }
 
     async function initCamera() {
     try {
@@ -9460,7 +9487,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
         const hasValidExtension = validExtensions.includes(fileExtension);
         
         if (!isValidImage || !hasValidExtension) {
-          window.Toast?.error('❌ Images only! Please upload JPG, PNG, WebP, or BMP.');}
+          alert('❌ Images only! Please upload JPG, PNG, WebP, or BMP.');
           console.warn('Invalid file type attempted:', file.type, file.name);
           elements.fileInput.value = '';
           return;
@@ -9469,7 +9496,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
         // Check file size (e.g., max 50MB for images)
         const maxFileSize = 50 * 1024 * 1024; // 50MB
         if (file.size > maxFileSize) {
-          window.Toast?.error('❌ File too large! Maximum size is 50MB.');
+          alert('❌ File too large! Maximum size is 50MB.');
           elements.fileInput.value = '';
           return;
         }
