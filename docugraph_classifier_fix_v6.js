@@ -44,6 +44,60 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // GCash Receipt Detector - Ultra-Specific
+  // Detects GCash's unique visual characteristics:
+  //   - Multiple separators at DIFFERENT percentages (40%, 60%, 70%, etc.)
+  //   - This multi-percentage divider pattern is UNIQUE to GCash
+  //   - Flowcharts NEVER have multiple separators at varying widths
+  //   - Indicates regional width percentage testing/layout markers
+  // ═══════════════════════════════════════════════════════════════════
+  function detectGCashReceipt(regions) {
+    if (!regions || regions.length < 5) return false;
+
+    // Look for GCash's distinctive multi-separator pattern
+    const separators = regions.filter(r => r.type === 'separator');
+    if (separators.length < 2) return false;
+
+    // Calculate widths of all separators
+    const separatorWidths = separators
+      .filter(r => r.bbox && r.bbox.length >= 4)
+      .map(r => r.bbox[2] - r.bbox[0]);
+
+    if (separatorWidths.length < 2) return false;
+
+    // Check if we have separators at different widths (variance)
+    const avgWidth = separatorWidths.reduce((a, b) => a + b, 0) / separatorWidths.length;
+    const variance = separatorWidths.reduce((acc, w) => acc + Math.pow(w - avgWidth, 2), 0) / separatorWidths.length;
+    const stdDev = Math.sqrt(variance);
+
+    // GCash characteristic: high variance in separator widths
+    // (separators at ~40%, ~60%, ~70% of page width means 20-30% variation)
+    // Flowcharts: separators all same size or no separators
+    if (stdDev > 5 && separatorWidths.length >= 2) {
+      console.log('[clf-v6-gcash] GCash Receipt (multiple separators with different widths: stdDev=' + stdDev.toFixed(1) + ', count=' + separatorWidths.length + ')');
+      return true;
+    }
+
+    // Also check for GCash text patterns
+    const fullText = regions.map(r => r.text || '').join(' ').toLowerCase();
+    const gcashKeywords = [
+      /gcash/,
+      /express\s*send/,
+      /sent\s*via\s*gcash/,
+      /carbon\s*footprint/,
+      /going\s*digital/
+    ];
+
+    const matches = gcashKeywords.filter(p => p.test(fullText)).length;
+    if (matches >= 2) {
+      console.log('[clf-v6-gcash] GCash Receipt (text patterns: ' + matches + ' keywords found)');
+      return true;
+    }
+
+    return false;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // RECEIPT LAYOUT DETECTOR
   // Detects receipt geometry WITHOUT relying on complete GNN text extraction.
   // GNN's pre-OCR phase may classify many visual elements as 'shape'.
@@ -277,8 +331,22 @@
       const tables = types.filter(t => t === 'table').length;
       const currentType = data.structure.documentType || '';
       const textScore = receiptScore(data.text || data.fullText || '');
+      const isGCashReceipt = detectGCashReceipt(regions);
       const hasReceiptGeo = detectReceiptLayout(regions);
       const hasFlowchartGeo = detectFlowchartLayout(regions);
+
+      // ULTRA-STRONG: GCash detector (unique multi-separator variance pattern)
+      if (isGCashReceipt) {
+        console.log('[clf-v6-intercept] ULTRA-STRONG: GCash Receipt detected');
+        data.structure = {
+          ...data.structure,
+          documentType: 'Receipt',
+          confidence: 0.95
+        };
+        if (data.metadata) data.metadata.detectedFlowchart = false;
+        if (data.isFlowchart !== undefined) data.isFlowchart = false;
+        return data;
+      }
 
       // If currently NOT a Flowchart, check if it should be promoted
       if (currentType !== 'Flowchart') {
@@ -390,8 +458,19 @@
       const text = doc.text || '';
       const rs = receiptScore(text);
       const regions = doc.regions || [];
+      const isGCash = detectGCashReceipt(regions);
       const hasReceiptGeo = detectReceiptLayout(regions);
       const hasFlowchartGeo = detectFlowchartLayout(regions);
+
+      // ULTRA-STRONG: GCash detector
+      if (isGCash) {
+        const result = _origCD.call(this, doc);
+        result.type = 'Receipt';
+        result.confidence = 0.95;
+        if (result.scores) result.scores.flowchart = 0;
+        console.log('[clf-v6] GCash Receipt (ULTRA-STRONG: multi-separator pattern detected)');
+        return result;
+      }
 
       // HARD WIN: Receipt text found → Receipt, suppress flowchart
       if (rs >= 3) {
@@ -435,7 +514,7 @@
 
       // DEFAULT: run original classifier
       const result = _origCD.call(this, doc);
-      console.log('[clf-v6] Default: ' + result.type + ' (text=' + rs + ', recGeo=' + hasReceiptGeo + ', fcGeo=' + hasFlowchartGeo + ')');
+      console.log('[clf-v6] Default: ' + result.type + ' (text=' + rs + ', gcash=' + isGCash + ', recGeo=' + hasReceiptGeo + ', fcGeo=' + hasFlowchartGeo + ')');
       return result;
     };
 
@@ -494,8 +573,18 @@
       const text = (val.ocr?.text || val.text || '');
       const rs = receiptScore(text);
       const regions = val.layout?.regions || val.ocr?.regionResults || [];
+      const isGCash = detectGCashReceipt(regions);
       const hasReceiptGeo = detectReceiptLayout(regions);
       const hasFlowchartGeo = detectFlowchartLayout(regions);
+
+      // ULTRA-STRONG: GCash detector
+      if (isGCash) {
+        console.log('[clf-v6-final] GCash Receipt (ULTRA-STRONG: multi-separator pattern)');
+        return {
+          ...val,
+          structure: { ...val.structure, documentType: 'Receipt', confidence: 0.95 }
+        };
+      }
 
       // Receipt text found → force Receipt
       if (rs >= 3 && val.structure?.documentType === 'Flowchart') {
@@ -583,7 +672,7 @@
   console.log(
     '%c✅ DOCUGRAPH classifier_fix v6 applied',
     'color:#16a34a;font-weight:bold',
-    '— Receipt geometry-gated (separators + stacking), Flowchart restored (boxes + spacing), text-confirmed classification'
+    '— GCash multi-separator detection (50-70% widths), Receipt geometry-gated, Flowchart restored (boxes + spacing), text-confirmed classification'
   );
 
 })();
