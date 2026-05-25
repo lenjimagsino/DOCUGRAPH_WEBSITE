@@ -190,11 +190,11 @@
               Use Camera
             </button>
           </div>
-          <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" hidden>
+          <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.webp,.bmp" hidden>
           <div class="formats">
-            <span>PDF</span>
             <span>JPG</span>
             <span>PNG</span>
+            <span>WebP</span>
           </div>
         </div>
 
@@ -9450,7 +9450,31 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
 
     elements.fileInput.addEventListener('change', (e) => {
       if (e.target.files[0]) {
-        currentFile = e.target.files[0];
+        const file = e.target.files[0];
+        const validImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
+        const isValidImage = validImageTypes.includes(file.type);
+        
+        // Check if file extension matches image types (additional validation)
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        const hasValidExtension = validExtensions.includes(fileExtension);
+        
+        if (!isValidImage || !hasValidExtension) {
+          window.Toast?.error('❌ Images only! Please upload JPG, PNG, WebP, or BMP.');}
+          console.warn('Invalid file type attempted:', file.type, file.name);
+          elements.fileInput.value = '';
+          return;
+        }
+        
+        // Check file size (e.g., max 50MB for images)
+        const maxFileSize = 50 * 1024 * 1024; // 50MB
+        if (file.size > maxFileSize) {
+          window.Toast?.error('❌ File too large! Maximum size is 50MB.');
+          elements.fileInput.value = '';
+          return;
+        }
+        
+        currentFile = file;
         elements.fileName.textContent = currentFile.name;
         elements.fileSize.textContent = fmt(currentFile.size);
         elements.fileInfo.style.display = 'block';
@@ -9915,5 +9939,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
 <script src="docugraph_pdf_patch.js"></script>
 <!-- Document type classifier fix — corrects Receipt/Invoice/Contract/Report/Letter/Resume/Form detection -->
 <script src="docugraph_classifier_fix.js"></script>
+<!-- Comprehensive fix v5 — table structure, multilingual OCR, PDF table body, region confidence -->
+<script src="docugraph_fixes_v5.js"></script>
 </body>
 </html>
