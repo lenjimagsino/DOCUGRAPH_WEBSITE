@@ -7560,8 +7560,8 @@
               console.log('📋 Form detected - Many figures with minimal text');
             }
             else if (hasLongContent && hasMultipleSections) {
-              basicDocType = 'Contract/Report';  // Long content with sections
-              console.log('📄 Contract/Report detected - Long structured content');
+              basicDocType = 'Contract/Form';  // Long content with sections
+              console.log('📄 Contract/Form detected - Long structured content');
             }
             else if (stats.tables > 0 && stats.paragraphs > 0) {
               basicDocType = 'Invoice/Report';
@@ -10001,5 +10001,7 @@ ${(doc.semantics?.errorFlags || []).slice(0, 20).map(w => `- "${w.text}" (${((w.
 <script src="docugraph_classifier_fix.js"></script>
 <!-- Comprehensive fix — table structure, multilingual OCR, PDF table body, region confidence -->
 <script src="docugraph_fixes_v5.js"></script>
+<!-- Enhanced classifier — CNN texture extraction, GNN layout graph, per-type neural-like scorers -->
+<script src="docugraph_enhanced_classifier.js"></script>
 </body>
 </html>
