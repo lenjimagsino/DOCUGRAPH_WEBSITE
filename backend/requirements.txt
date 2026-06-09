@@ -13,7 +13,9 @@ gunicorn>=21.2.0
 transformers>=4.33.0
 nltk>=3.8
 
-# OCR Engine (Optional - requires Rust compiler, disabled for now)
+# OCR Engines (Optional - one of these required for word-level OCR)
+easyocr>=1.7.0
+pytesseract>=0.3.10
 
 # PyTorch (Optional - uncomment for GPU acceleration)
 # torch>=2.0.0
@@ -24,3 +26,4 @@ layoutparser>=0.3.4
 
 # Google Translation (Optional - uncomment for backend translation)
 # google-cloud-translate>=3.12.0
+

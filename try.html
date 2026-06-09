@@ -3573,11 +3573,13 @@
         let confidence = 0.7;
         let featureScores = {};
         
-        // HEADER: Top of page, small height, consistent width
-        const isHeaderCandidate = bbox[1] < 10 && regionHeight < 8 && regionWidth > 30;
+        // HEADER: Top of page (relaxed from bbox[1] < 10 to bbox[1] < 20% of image height)
+        // This catches names, titles, contact info in resumes which are typically 12-24px tall
+        const topThreshold = Math.min(50, height * 0.15); // Up to 50px from top
+        const isHeaderCandidate = bbox[1] < topThreshold && regionHeight < 20 && regionWidth > 30;
         if (isHeaderCandidate) {
           featureScores.position = 0.95; // Strong signal from top positioning
-          featureScores.size = Math.min(1, 1 - (regionHeight / 10)); // Bonus for small height
+          featureScores.size = Math.min(1, 1 - (regionHeight / 20)); // Bonus for smaller height (relaxed to 20)
           featureScores.width = Math.min(1, regionWidth / 70); // Bonus for wider regions
           type = 'header';
           confidence = (featureScores.position * 0.5 + featureScores.size * 0.25 + featureScores.width * 0.25);
@@ -3658,13 +3660,41 @@
       const hasFigures = regions.some(r => r.type === 'figure');
       const hasTables = regions.some(r => r.type === 'table');
       const hasSeparators = regions.some(r => r.type === 'separator');
+      const headerCount = regions.filter(r => r.type === 'header').length;
+      const textCount = regions.filter(r => r.type === 'text').length;
+      const tableCount = regions.filter(r => r.type === 'table').length;
       
-      // Detect document type
+      // Improved document type detection with resume support
       let documentType = 'document';
-      if (hasHeader && hasTables) documentType = 'report';
-      else if (hasFigures && hasHeader) documentType = 'article';
-      else if (hasTables) documentType = 'table-heavy';
-      else if (columns > 2) documentType = 'newspaper';
+      
+      // RESUME: Multiple headers (section headers like EDUCATION, EXPERIENCE), clear vertical structure
+      if (headerCount >= 3 && textCount >= 5 && !hasTables) {
+        documentType = 'resume'; // Has multiple section headers (EDUCATION, EXPERIENCE, SKILLS, etc.)
+      }
+      // REPORT: Header + tables, structured data
+      else if (hasHeader && hasTables) {
+        documentType = 'report';
+      }
+      // INVOICE: Tables with separators (line items), structured like receipts
+      else if (tableCount >= 1 && hasSeparators) {
+        documentType = 'invoice';
+      }
+      // ARTICLE: Figures with header and text
+      else if (hasFigures && hasHeader) {
+        documentType = 'article';
+      }
+      // TABLE-HEAVY: Predominantly tables
+      else if (tableCount >= 2) {
+        documentType = 'table-heavy';
+      }
+      // NEWSPAPER: Multi-column layout
+      else if (columns > 2) {
+        documentType = 'newspaper';
+      }
+      // CONTRACT: Very text-heavy, many paragraphs (10+), minimal headers
+      else if (textCount > 10 && headerCount <= 2) {
+        documentType = 'contract';
+      }
       
       return {
         layout,
@@ -3673,6 +3703,9 @@
         hasFigures,
         hasTables,
         hasSeparators,
+        headerCount,
+        textCount,
+        tableCount,
         documentType,
         complexity: this.calculateComplexity(regions)
       };

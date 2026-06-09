@@ -6,6 +6,7 @@ Enterprise-grade document analysis with LayoutParser and Detectron2
 import os
 import json
 import base64
+import time
 from io import BytesIO
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -14,6 +15,15 @@ import cv2
 import numpy as np
 from PIL import Image
 from transformers import AutoTokenizer, AutoModel
+
+# Import advanced image processing
+from advanced_image_processing import (
+    AdvancedDocumentScanner,
+    AdaptiveBinarizer,
+    PixelScanner,
+    SmartShapeTracer,
+    ConnectorTracer
+)
 
 # Optional imports with graceful fallback
 try:
@@ -356,6 +366,26 @@ layout_analyzer = LayoutAnalyzer()
 embedding_engine = SemanticEmbeddingEngine()
 ocr_engine = OCREngine()
 
+# Initialize advanced document scanner
+print("🔧 Initializing Advanced Document Scanner...")
+try:
+    # Try Tesseract, fallback to EasyOCR
+    use_tesseract = True
+    try:
+        import pytesseract
+        # Test if Tesseract is available
+        pytesseract.get_tesseract_version()
+    except:
+        print("⚠ Tesseract not available, using EasyOCR fallback for word-level OCR")
+        use_tesseract = False
+    
+    document_scanner = AdvancedDocumentScanner(use_tesseract=use_tesseract)
+    print("✓ Advanced Document Scanner initialized")
+except Exception as e:
+    print(f"⚠ Failed to initialize Advanced Document Scanner: {e}")
+    document_scanner = None
+
+
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint - API welcome message"""
@@ -602,6 +632,304 @@ def batch_analyze():
         return jsonify({'error': str(e)}), 500
 
 
+# ===========================
+# Advanced Document Scanning Endpoints
+# ===========================
+
+@app.route('/api/v1/scan/advanced', methods=['POST'])
+def advanced_document_scan():
+    """
+    Advanced document scanning with:
+    - Sauvola adaptive binarization
+    - Pixel scanner (Union-Find)
+    - Smart shape detection
+    - Connector tracing
+    - Word-level OCR
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No image provided'
+            }), 400
+        
+        image_file = request.files['image']
+        extract_text = request.form.get('extract_text', 'true').lower() == 'true'
+        
+        print(f"📊 Advanced document scan: {image_file.filename}")
+        
+        # Read image
+        image_bytes = image_file.read()
+        image_array = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        
+        if image_array is None:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid image format'
+            }), 400
+        
+        print(f"✓ Image loaded: {image_array.shape}")
+        
+        if document_scanner is None:
+            return jsonify({
+                'success': False,
+                'error': 'Advanced document scanner not available'
+            }), 503
+        
+        # Process document
+        print("🔄 Running advanced document scan...")
+        result = document_scanner.process_document(image_array, extract_text=extract_text)
+        
+        if result.get('success'):
+            print(f"✓ Scan completed")
+            print(f"  - Components: {result['stages']['pixel_scanning']['component_count']}")
+            print(f"  - Shapes: {result['stages']['shape_tracing']['shape_count']}")
+            print(f"  - Connectors: {result['stages']['connector_tracing']['connection_count']}")
+            if extract_text:
+                print(f"  - Words: {result['stages']['word_ocr']['word_count']}")
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        print(f"❌ Advanced scan error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/v1/scan/binarize', methods=['POST'])
+def binarize_image():
+    """
+    Apply Sauvola adaptive binarization
+    Returns binary image as base64
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        image_file = request.files['image']
+        window_size = int(request.form.get('window_size', 25))
+        k = float(request.form.get('k', 0.34))
+        
+        # Read image
+        image_bytes = image_file.read()
+        image_array = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        
+        if image_array is None:
+            return jsonify({'error': 'Invalid image format'}), 400
+        
+        # Binarize
+        binarizer = AdaptiveBinarizer(window_size=window_size, k=k)
+        binary = binarizer.binarize(image_array)
+        
+        # Encode as PNG
+        _, buffer = cv2.imencode('.png', binary)
+        binary_b64 = base64.b64encode(buffer).decode()
+        
+        return jsonify({
+            'success': True,
+            'image': f'data:image/png;base64,{binary_b64}',
+            'shape': binary.shape,
+            'method': 'Sauvola',
+            'parameters': {
+                'window_size': window_size,
+                'k': k
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/v1/scan/components', methods=['POST'])
+def scan_components():
+    """
+    Extract connected components using Union-Find
+    Returns component information with classification
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        image_file = request.files['image']
+        
+        # Read image
+        image_bytes = image_file.read()
+        image_array = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        
+        if image_array is None:
+            return jsonify({'error': 'Invalid image format'}), 400
+        
+        # Binarize first
+        binarizer = AdaptiveBinarizer()
+        binary = binarizer.binarize(image_array)
+        
+        # Scan components
+        scanner = PixelScanner()
+        scan_results = scanner.scan_pixels(binary)
+        
+        # Convert pixel lists to summary
+        components_summary = []
+        for comp in scan_results['components'][:100]:  # Limit to first 100
+            comp_summary = {
+                'id': comp['id'],
+                'type': comp['type'],
+                'bbox': comp['bbox'],
+                'pixel_count': comp['pixel_count'],
+                'fill_density': float(comp['fill_density']),
+                'aspect_ratio': float(comp['aspect_ratio']),
+                'centroid': comp['centroid']
+            }
+            components_summary.append(comp_summary)
+        
+        return jsonify({
+            'success': True,
+            'component_count': scan_results['component_count'],
+            'pixel_count': scan_results['pixel_count'],
+            'dark_pixel_ratio': float(scan_results['dark_pixel_ratio']),
+            'components': components_summary,
+            'component_types': {
+                'text': sum(1 for c in scan_results['components'] if c['type'] == 'text'),
+                'shape': sum(1 for c in scan_results['components'] if c['type'] == 'shape'),
+                'hline': sum(1 for c in scan_results['components'] if c['type'] == 'hline'),
+                'vline': sum(1 for c in scan_results['components'] if c['type'] == 'vline'),
+                'connector': sum(1 for c in scan_results['components'] if c['type'] == 'connector'),
+                'separator': sum(1 for c in scan_results['components'] if c['type'] == 'separator')
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/v1/scan/shapes', methods=['POST'])
+def detect_shapes():
+    """
+    Detect and classify shapes
+    Returns shape information with types and properties
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        image_file = request.files['image']
+        
+        # Read image
+        image_bytes = image_file.read()
+        image_array = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        
+        if image_array is None:
+            return jsonify({'error': 'Invalid image format'}), 400
+        
+        # Binarize
+        binarizer = AdaptiveBinarizer()
+        binary = binarizer.binarize(image_array)
+        
+        # Trace shapes
+        tracer = SmartShapeTracer()
+        shapes = tracer.trace_shapes(binary)
+        
+        return jsonify({
+            'success': True,
+            'shape_count': len(shapes),
+            'shapes': [
+                {
+                    'type': s['type'],
+                    'bbox': s['bbox'],
+                    'area': float(s['area']),
+                    'aspect_ratio': float(s['aspect_ratio']),
+                    'circularity': float(s['circularity']),
+                    'fill_fraction': float(s['fill_fraction'])
+                }
+                for s in shapes
+            ],
+            'shape_types': {
+                'rectangle': sum(1 for s in shapes if s['type'] == 'rectangle'),
+                'rectangle_wide': sum(1 for s in shapes if s['type'] == 'rectangle_wide'),
+                'circle': sum(1 for s in shapes if s['type'] == 'circle'),
+                'diamond': sum(1 for s in shapes if s['type'] == 'diamond'),
+                'irregular': sum(1 for s in shapes if s['type'] == 'irregular')
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/v1/scan/connectors', methods=['POST'])
+def detect_connectors():
+    """
+    Detect connector lines and build adjacency graph
+    Useful for flowchart and diagram analysis
+    """
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        image_file = request.files['image']
+        
+        # Read image
+        image_bytes = image_file.read()
+        image_array = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        
+        if image_array is None:
+            return jsonify({'error': 'Invalid image format'}), 400
+        
+        # Binarize
+        binarizer = AdaptiveBinarizer()
+        binary = binarizer.binarize(image_array)
+        
+        # Detect shapes first
+        tracer = SmartShapeTracer()
+        shapes = tracer.trace_shapes(binary)
+        
+        # Trace connectors
+        connector_tracer = ConnectorTracer()
+        connector_results = connector_tracer.trace_connectors(binary, shapes)
+        
+        # Convert graph to JSON-serializable format
+        graph_json = {str(k): v for k, v in connector_results['graph'].items()}
+        
+        return jsonify({
+            'success': True,
+            'connector_count': len(connector_results['connectors']),
+            'connection_count': connector_results['connection_count'],
+            'shape_count': len(shapes),
+            'graph': graph_json,
+            'graph_nodes': len(shapes),
+            'graph_edges': connector_results['connection_count'],
+            'connectors': [
+                {
+                    'start': c['start'],
+                    'end': c['end'],
+                    'type': c['type']
+                }
+                for c in connector_results['connectors']
+            ]
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors"""
@@ -619,9 +947,9 @@ if __name__ == '__main__':
     debug = os.getenv('DEBUG', 'False') == 'True'
     
     # Print startup configuration
-    print("\n" + "="*60)
-    print("🚀 DOCUGRAPH Backend API Server - Startup")
-    print("="*60)
+    print("\n" + "="*80)
+    print("🚀 DOCUGRAPH Backend API Server - Startup (with Advanced Document Scanning)")
+    print("="*80)
     print(f"\n📡 CORS Configuration (Production Domains):")
     for origin in cors_origins:
         print(f"   ✓ {origin}")
@@ -633,12 +961,29 @@ if __name__ == '__main__':
     print(f"   Local: http://localhost:{port}")
     print(f"   Network: http://0.0.0.0:{port}")
     print(f"   Production: https://docugraph.site:{port}")
-    print(f"\n📋 API Endpoints:")
+    print(f"\n📋 Core API Endpoints:")
     print(f"   Health: http://localhost:{port}/health")
     print(f"   Diagnostics: http://localhost:{port}/diagnostics")
     print(f"   Layout Analysis: http://localhost:{port}/api/v1/layout/analyze")
     print(f"   OCR Extract: http://localhost:{port}/api/v1/ocr/extract")
+    print(f"\n🎯 Advanced Document Scanning Endpoints:")
+    print(f"   Full Scan: http://localhost:{port}/api/v1/scan/advanced")
+    print(f"     → Sauvola binarization + pixel scanner + shapes + connectors + OCR")
+    print(f"   Binarize: http://localhost:{port}/api/v1/scan/binarize")
+    print(f"     → Adaptive Sauvola binarization")
+    print(f"   Components: http://localhost:{port}/api/v1/scan/components")
+    print(f"     → Union-Find connected component analysis")
+    print(f"   Shapes: http://localhost:{port}/api/v1/scan/shapes")
+    print(f"     → Smart shape detection and classification")
+    print(f"   Connectors: http://localhost:{port}/api/v1/scan/connectors")
+    print(f"     → Connector tracing and adjacency graph")
+    print(f"\n✨ Features:")
+    print(f"   • Sauvola adaptive binarization for shadows and lighting")
+    print(f"   • Union-Find pixel scanner for precise component detection")
+    print(f"   • Word-level OCR with 3× scaling and parallel processing")
+    print(f"   • Smart shape tracer for flowcharts and diagrams")
+    print(f"   • Connector tracer for graph adjacency building")
     print(f"\n💡 Press CTRL+C to stop the server\n")
-    print("="*60 + "\n")
+    print("="*80 + "\n")
     
     app.run(host='0.0.0.0', port=port, debug=debug)
