@@ -7,6 +7,9 @@
   <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     body { background: var(--white); touch-action: manipulation; }
     .converter-head { background: rgba(42,168,74,0.08); border: 1px solid rgba(42,168,74,0.15); border-radius: 24px; padding: 30px 28px; margin-bottom: 28px; }
@@ -63,10 +66,12 @@
     .progress-bar { height: 8px; width: 0%; background: linear-gradient(90deg, var(--green-600), var(--green-500)); transition: width .25s ease; }
     .result-card { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--white); }
     .result-img-wrap { min-height: 180px; display: grid; place-items: center; background: var(--off); }
+    .result-img-wrap img { max-width: 100%; max-height: 180px; object-fit: contain; }
     .result-footer { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .dl-btn { background: var(--green-600); color: var(--white); border-radius: 12px; padding: 8px 12px; }
     #results { padding-bottom: 26px; }
     footer { padding: 22px 0; text-align: center; color: var(--ink-500); }
+    #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.82); color: #fff; padding: 12px 18px; border-radius: 999px; display: none; z-index: 999; font-size: 0.94rem; }
     @media (max-width: 820px) { .format-tabs { grid-template-columns: repeat(2, minmax(0,1fr)); } .action-right { justify-content: center; } }
     @media (max-width: 560px) { .format-tabs { grid-template-columns: 1fr; } .pp-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } .page-thumb { min-height: 160px; } }
   </style>
@@ -93,19 +98,19 @@
     <div class="wrap">
       <div class="converter-head">
         <h1>File to Image Converter</h1>
-        <p>Upload PDFs or images, choose pages, and export images ready for analysis with DOCUGRAPH.</p>
+        <p>Upload PDFs, Word documents, or images, choose pages, and export images ready for analysis with DOCUGRAPH.</p>
         <p style="margin-top: 14px; font-size: 0.95rem; color: var(--ink-700);">
-          Already converted? <a href="try.html" style="color: var(--green-700); text-decoration: underline;">Then start analyze!</a>
+          Already converted? <a href="try_cnn.html" style="color: var(--green-700); text-decoration: underline;">Then start analyze!</a>
         </p>
       </div>
 
       <div class="panel">
         <div id="dropzone">
-          <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.tiff" />
+          <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.bmp,.webp,.tiff" />
           <div class="dz-icon">📂</div>
           <h2>Drop files here</h2>
           <p>or click to browse your device</p>
-          <p class="accept-hint">PDF · PNG · JPG · WebP · GIF · BMP · TIFF · Max 100 MB per file</p>
+          <p class="accept-hint">PDF · DOCX · DOC · PNG · JPG · WebP · GIF · BMP · TIFF · Max 100 MB per file</p>
         </div>
 
         <div class="options-grid" id="options-panel">
@@ -175,47 +180,57 @@
   </main>
 
   <footer>100% client-side · PDF.js · Your files never leave your device</footer>
-
   <div id="toast"></div>
 
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     let files = [];
-    let outputFmt = 'png';
     let resultBlobs = [];
 
-    document.querySelectorAll('.fmt-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        outputFmt = btn.dataset.fmt;
-        const bgSelect = document.getElementById('opt-bg');
-        bgSelect.disabled = outputFmt !== 'png';
-        if (outputFmt !== 'png') bgSelect.value = 'white';
-      });
-    });
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const btnAdd = document.getElementById('btn-add');
+    const btnClear = document.getElementById('btn-clear');
+    const btnConvert = document.getElementById('btn-convert');
+    const btnDownloadAll = document.getElementById('btn-dl-all');
 
-    const dz = document.getElementById('dropzone');
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
-    document.getElementById('file-input').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
-    document.getElementById('btn-add').addEventListener('click', () => document.getElementById('file-input').click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
+    fileInput.addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+    btnAdd.addEventListener('click', () => fileInput.click());
+    btnClear.addEventListener('click', resetAll);
+    btnConvert.addEventListener('click', convertAll);
+    btnDownloadAll.addEventListener('click', downloadAllZip);
 
     function addFiles(newFiles) {
-      newFiles.forEach(f => {
-        if (files.some(x => x.file.name === f.name && x.file.size === f.size)) return;
-        const entry = { id: Date.now() + Math.random(), file: f, status: 'pending', pdfDoc: null, numPages: 0, selectedPages: new Set(), thumbsRendered: false };
+      newFiles.forEach(file => {
+        if (files.some(x => x.file.name === file.name && x.file.size === file.size)) return;
+        const entry = {
+          id: Date.now() + Math.random(),
+          file,
+          status: 'pending',
+          numPages: 0,
+          selectedPages: new Set(),
+          pdfDoc: null,
+          docContent: null,
+          thumbsRendered: false
+        };
         files.push(entry);
-        if (isPdf(f)) loadPdfMeta(entry);
+        if (isPdf(file)) loadPdfMeta(entry);
+        else if (isDoc(file)) loadDocMeta(entry);
         else { entry.numPages = 1; entry.selectedPages.add(1); entry.status = 'ready'; }
       });
       renderQueue();
       showPanels();
     }
 
-    function isPdf(f) { return f.name.toLowerCase().endsWith('.pdf'); }
+    function isPdf(file) { return file.name.toLowerCase().endsWith('.pdf'); }
+    function isDoc(file) {
+      const name = file.name.toLowerCase();
+      return name.endsWith('.docx') || name.endsWith('.doc');
+    }
 
     async function loadPdfMeta(entry) {
       setEntryStatus(entry, 'loading');
@@ -225,40 +240,120 @@
         entry.numPages = entry.pdfDoc.numPages;
         for (let i = 1; i <= entry.numPages; i++) entry.selectedPages.add(i);
         setEntryStatus(entry, 'ready');
-        updateBadge(entry);
-        updateSelInfo(entry);
-        renderQueue();
-        showPanels();
-      } catch (e) { setEntryStatus(entry, 'error'); }
+      } catch (err) {
+        console.error(err);
+        setEntryStatus(entry, 'error');
+      }
+      renderQueue();
+      showPanels();
+    }
+
+    async function loadDocMeta(entry) {
+      setEntryStatus(entry, 'loading');
+      try {
+        const ab = await entry.file.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer: ab });
+        entry.docContent = result.value;
+        const cleaned = document.createElement('div');
+        cleaned.innerHTML = entry.docContent;
+        cleaned.querySelectorAll('*').forEach(el => el.removeAttribute('style'));
+        entry.docContent = cleaned.innerHTML;
+        entry.numPages = await calculateDocPages(entry.docContent);
+        for (let i = 1; i <= entry.numPages; i++) entry.selectedPages.add(i);
+        setEntryStatus(entry, 'ready');
+      } catch (err) {
+        console.error(err);
+        setEntryStatus(entry, 'error');
+      }
+      renderQueue();
+      showPanels();
+    }
+
+    async function calculateDocPages(html) {
+      return new Promise(resolve => {
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        applyDocumentStyles(container);
+        container.style.position = 'absolute';
+        container.style.left = '-99999px';
+        container.style.top = '0';
+        container.style.width = '816px';
+        container.style.padding = '20px';
+        container.style.boxSizing = 'border-box';
+        document.body.appendChild(container);
+        requestAnimationFrame(() => {
+          const height = container.scrollHeight;
+          document.body.removeChild(container);
+          const pageHeight = 920;
+          resolve(Math.max(1, Math.ceil(height / pageHeight)));
+        });
+      });
+    }
+
+    function applyDocumentStyles(container) {
+      container.style.fontFamily = 'Calibri, Segoe UI, Arial, sans-serif';
+      container.style.fontSize = '11pt';
+      container.style.lineHeight = '1.2';
+      container.style.color = '#000';
+      container.style.backgroundColor = '#fff';
+      container.style.margin = '0';
+      container.style.padding = '0';
+      container.style.wordWrap = 'break-word';
+      container.querySelectorAll('*').forEach(el => {
+        el.style.margin = '0';
+        el.style.padding = '0';
+        el.style.border = '0';
+        el.style.lineHeight = '1.2';
+      });
+      container.querySelectorAll('p').forEach(p => {
+        p.style.margin = '0 0 8px 0';
+      });
+      container.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+        h.style.margin = '0 0 10px 0';
+        h.style.fontWeight = '700';
+      });
+      container.querySelectorAll('ul,ol').forEach(list => {
+        list.style.margin = '0 0 8px 20px';
+      });
+      container.querySelectorAll('li').forEach(li => {
+        li.style.margin = '0 0 4px 0';
+      });
+      container.querySelectorAll('table').forEach(table => {
+        table.style.borderCollapse = 'collapse';
+        table.style.width = '100%';
+      });
+      container.querySelectorAll('td,th').forEach(cell => {
+        cell.style.border = '1px solid #666';
+        cell.style.padding = '4px';
+      });
     }
 
     function showPanels() {
-      const has = files.length > 0;
-      document.getElementById('file-queue').classList.toggle('visible', has);
-      document.getElementById('action-bar').classList.toggle('visible', has);
-      document.getElementById('options-panel').classList.toggle('visible', has);
-      dz.style.display = has ? 'none' : '';
-      updateConvertVisibility();
+      const hasFiles = files.length > 0;
+      document.getElementById('file-queue').style.display = hasFiles ? 'block' : 'none';
+      document.getElementById('action-bar').style.display = hasFiles ? 'flex' : 'none';
+      document.getElementById('options-panel').style.display = hasFiles ? 'grid' : 'none';
+      dropzone.style.display = hasFiles ? 'none' : 'block';
+      updateConvertButton();
     }
 
-    function updateConvertVisibility() {
-      const convertBtn = document.getElementById('btn-convert');
-      if (!convertBtn) return;
-      const allSinglePage = files.length > 0 && files.every(entry => entry.numPages === 1);
-      convertBtn.style.display = allSinglePage ? 'none' : '';
+    function updateConvertButton() {
+      btnConvert.disabled = files.length === 0 || files.every(entry => entry.status !== 'ready');
     }
 
     function renderQueue() {
-      const c = document.getElementById('fq-items');
-      c.innerHTML = '';
-      let total = 0;
+      const container = document.getElementById('fq-items');
+      container.innerHTML = '';
+      let totalSize = 0;
       files.forEach(entry => {
-        total += entry.file.size;
+        totalSize += entry.file.size;
         const card = document.createElement('div');
         card.className = 'file-card';
         card.dataset.id = entry.id;
-        const pickerClasses = isPdf(entry.file) && entry.numPages === 1 ? 'page-picker open' : 'page-picker';
-        const singlePageButton = entry.numPages === 1 ? `<div class="single-file-actions"><button class="btn btn-ghost" type="button" onclick="downloadPageOnly(event,'${entry.id}',1)">Download page</button></div>` : '';
+
+        const pickerClasses = (isPdf(entry.file) || isDoc(entry.file)) ? 'page-picker' : 'page-picker';
+        const singleButton = entry.numPages === 1 ? `<div class="single-file-actions"><button class="btn btn-ghost" type="button" onclick="downloadPageOnly(event,'${entry.id}',1)">Download ${isDoc(entry.file) ? 'document' : 'file'}</button></div>` : '';
+
         card.innerHTML = `
           <div class="file-card-header" onclick="togglePicker('${entry.id}')">
             <div class="fc-thumb" id="fcthumb-${entry.id}">${getIcon(entry.file.name)}</div>
@@ -270,60 +365,62 @@
             <span class="fc-chevron" id="fcchev-${entry.id}">▾</span>
             <button class="fc-remove" onclick="removeEntry(event,'${entry.id}')" title="Remove">×</button>
           </div>
-          ${singlePageButton}
-          <div class="${pickerClasses}" id="picker-${entry.id}">${isPdf(entry.file) ? buildPickerInner(entry) : buildImagePickerInner(entry)}</div>
+          ${singleButton}
+          <div class="${pickerClasses}" id="picker-${entry.id}">${buildPickerContent(entry)}</div>
         `;
-        c.appendChild(card);
+        container.appendChild(card);
       });
-      document.getElementById('fq-count').textContent = files.length + ' file' + (files.length !== 1 ? 's' : '');
-      document.getElementById('fq-total').textContent = 'Total: ' + fmtSize(total);
+      document.getElementById('fq-count').textContent = `${files.length} file${files.length !== 1 ? 's' : ''}`;
+      document.getElementById('fq-total').textContent = 'Total: ' + fmtSize(totalSize);
     }
 
-    function buildPickerInner(entry) {
-      if (entry.status === 'loading') return `<div style="padding:1rem;font-size:0.85rem;color:var(--ink-500)">⏳ Loading PDF pages…</div>`;
-      if (entry.status === 'error') return `<div style="padding:1rem;font-size:0.85rem;color:#b91c1c">⚠ Failed to load PDF.</div>`;
-      return `
-        <div class="pp-toolbar">
-          <span class="pp-toolbar-label">Select pages</span>
-          <button class="btn btn-ghost" type="button" onclick="selAll('${entry.id}')">All</button>
-          <button class="btn btn-ghost" type="button" onclick="selNone('${entry.id}')">None</button>
-          <button class="btn btn-ghost" type="button" onclick="selOdd('${entry.id}')">Odd</button>
-          <button class="btn btn-ghost" type="button" onclick="selEven('${entry.id}')">Even</button>
-          <div class="pp-range-row">
-            Pages <input type="number" id="rfrom-${entry.id}" placeholder="1" min="1" max="${entry.numPages}" onchange="applyRange('${entry.id}')"> – <input type="number" id="rto-${entry.id}" placeholder="${entry.numPages}" min="1" max="${entry.numPages}" onchange="applyRange('${entry.id}')">
+    function buildPickerContent(entry) {
+      if (entry.status === 'loading') {
+        return `<div style="padding:1rem;font-size:0.85rem;color:var(--ink-500)">⏳ Loading ${isDoc(entry.file) ? 'document' : 'PDF'} metadata…</div>`;
+      }
+      if (entry.status === 'error') {
+        return `<div style="padding:1rem;font-size:0.85rem;color:#b91c1c">⚠ Failed to load ${isDoc(entry.file) ? 'document' : 'PDF'}.</div>`;
+      }
+      if (isPdf(entry.file)) {
+        return `
+          <div class="pp-toolbar">
+            <span class="pp-toolbar-label">Select pages</span>
+            <button class="btn btn-ghost" type="button" onclick="selAll('${entry.id}')">All</button>
+            <button class="btn btn-ghost" type="button" onclick="selNone('${entry.id}')">None</button>
+            <button class="btn btn-ghost" type="button" onclick="selOdd('${entry.id}')">Odd</button>
+            <button class="btn btn-ghost" type="button" onclick="selEven('${entry.id}')">Even</button>
+            <div class="pp-range-row">
+              Pages <input type="number" id="rfrom-${entry.id}" placeholder="1" min="1" max="${entry.numPages}" onchange="applyRange('${entry.id}')"> – <input type="number" id="rto-${entry.id}" placeholder="${entry.numPages}" min="1" max="${entry.numPages}" onchange="applyRange('${entry.id}')">
+            </div>
+            <span class="pp-sel-info" id="selinfo-${entry.id}">${entry.selectedPages.size} / ${entry.numPages} selected</span>
           </div>
-          <span class="pp-sel-info" id="selinfo-${entry.id}">${entry.selectedPages.size} / ${entry.numPages} selected</span>
-        </div>
-        <div class="pp-actions">
-          <div class="pp-action-row">
-            <input class="pp-input" type="text" id="page-list-${entry.id}" placeholder="e.g. 1,3-5,7" />
-            <button class="btn btn-ghost" type="button" onclick="applyPageList('${entry.id}')">Apply pages</button>
+          <div class="pp-actions">
+            <div class="pp-action-row">
+              <input class="pp-input" type="text" id="page-list-${entry.id}" placeholder="e.g. 1,3-5,7" />
+              <button class="btn btn-ghost" type="button" onclick="applyPageList('${entry.id}')">Apply pages</button>
+            </div>
+            <small style="color:var(--ink-500);">Use comma-separated pages or ranges to select exactly the pages you want.</small>
           </div>
-          <small style="color:var(--ink-500);">Use comma-separated pages or ranges to select exactly the pages you want.</small>
-        </div>
-        ${entry.numPages === 1 ? `<div class="single-file-actions"><button class="btn btn-ghost" type="button" onclick="downloadPageOnly(event,'${entry.id}',1)">Download page</button></div>` : ''}
-        <div class="pp-grid" id="pgrid-${entry.id}">${buildPageThumbs(entry)}</div>
-      `;
-    }
-
-    function buildImagePickerInner(entry) {
+          <div class="pp-grid" id="pgrid-${entry.id}">${buildPageThumbs(entry)}</div>
+        `;
+      }
       return `
         <div style="padding:0.85rem 1rem;color:var(--ink-600);">
-          <div>This is a single-page image — it will be converted as-is.</div>
-          <button class="btn btn-ghost" type="button" onclick="downloadPageOnly(event,'${entry.id}',1)">Download converted file</button>
+          <div>${isDoc(entry.file) ? 'Word documents are rendered to one or more images.' : 'This is a single-page image — it will be converted as-is.'}</div>
+          <button class="btn btn-ghost" type="button" onclick="downloadPageOnly(event,'${entry.id}',1)">Download ${isDoc(entry.file) ? 'document' : 'image'}</button>
         </div>
       `;
     }
 
     function buildPageThumbs(entry) {
       let html = '';
-      for (let p = 1; p <= entry.numPages; p++) {
-        const sel = entry.selectedPages.has(p) ? 'selected' : '';
-        html += `<div class="page-thumb ${sel}" id="pthumb-${entry.id}-${p}" onclick="togglePage('${entry.id}',${p})">
-                    <div class="pt-num">${p}</div>
-                    <button class="page-download-btn" type="button" onclick="downloadPageOnly(event,'${entry.id}',${p})">⬇</button>
-                    <div class="pt-check">✓</div>
-                 </div>`;
+      for (let i = 1; i <= entry.numPages; i++) {
+        const selected = entry.selectedPages.has(i) ? 'selected' : '';
+        html += `<div class="page-thumb ${selected}" id="pthumb-${entry.id}-${i}" onclick="togglePage('${entry.id}',${i})">
+                  <div class="pt-num">${i}</div>
+                  <button class="page-download-btn" type="button" onclick="downloadPageOnly(event,'${entry.id}',${i})">⬇</button>
+                  <div class="pt-check">✓</div>
+                </div>`;
       }
       return html;
     }
@@ -333,102 +430,102 @@
       const chev = document.getElementById('fcchev-' + id);
       const open = picker.classList.toggle('open');
       chev.classList.toggle('open', open);
-      if (open) {
-        const entry = files.find(f => String(f.id) === String(id));
-        if (entry && isPdf(entry.file) && !entry.thumbsRendered && entry.pdfDoc) {
-          entry.thumbsRendered = true;
-          renderPageThumbs(entry);
-        }
+      const entry = files.find(item => String(item.id) === String(id));
+      if (open && entry && isPdf(entry.file) && !entry.thumbsRendered && entry.pdfDoc) {
+        entry.thumbsRendered = true;
+        renderPageThumbs(entry);
       }
     }
 
     async function renderPageThumbs(entry) {
-      for (let p = 1; p <= entry.numPages; p++) {
-        const cell = document.getElementById('pthumb-' + entry.id + '-' + p);
+      for (let pageNum = 1; pageNum <= entry.numPages; pageNum++) {
+        const cell = document.getElementById('pthumb-' + entry.id + '-' + pageNum);
         if (!cell) continue;
         try {
-          const page = await entry.pdfDoc.getPage(p);
-          const vp = page.getViewport({ scale: 0.25 });
+          const page = await entry.pdfDoc.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 0.2 });
           const canvas = document.createElement('canvas');
-          canvas.width = vp.width; canvas.height = vp.height;
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
           const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
           cell.prepend(canvas);
-        } catch (e) {
+        } catch (err) {
           cell.textContent = '⚠';
         }
       }
     }
 
-    function togglePage(id, p) {
-      const entry = files.find(f => String(f.id) === String(id));
+    function togglePage(id, pageNum) {
+      const entry = files.find(item => String(item.id) === String(id));
       if (!entry) return;
-      if (entry.selectedPages.has(p)) entry.selectedPages.delete(p);
-      else entry.selectedPages.add(p);
-      const thumb = document.getElementById('pthumb-' + id + '-' + p);
-      if (thumb) thumb.classList.toggle('selected', entry.selectedPages.has(p));
+      if (entry.selectedPages.has(pageNum)) entry.selectedPages.delete(pageNum);
+      else entry.selectedPages.add(pageNum);
+      const thumb = document.getElementById('pthumb-' + id + '-' + pageNum);
+      if (thumb) thumb.classList.toggle('selected', entry.selectedPages.has(pageNum));
       updateSelInfo(entry);
       updateBadge(entry);
     }
 
-    function selAll(id) { applySelFn(id, () => true); }
-    function selNone(id) { applySelFn(id, () => false); }
-    function selOdd(id) { applySelFn(id, p => p % 2 !== 0); }
-    function selEven(id) { applySelFn(id, p => p % 2 === 0); }
+    function selAll(id) { applySelection(id, () => true); }
+    function selNone(id) { applySelection(id, () => false); }
+    function selOdd(id) { applySelection(id, p => p % 2 !== 0); }
+    function selEven(id) { applySelection(id, p => p % 2 === 0); }
 
     function applyRange(id) {
-      const entry = files.find(f => String(f.id) === String(id));
+      const entry = files.find(item => String(item.id) === String(id));
       if (!entry) return;
-      const fromVal = parseInt(document.getElementById('rfrom-' + id).value);
-      const toVal = parseInt(document.getElementById('rto-' + id).value);
+      const fromVal = parseInt(document.getElementById('rfrom-' + id).value, 10);
+      const toVal = parseInt(document.getElementById('rto-' + id).value, 10);
       const from = isNaN(fromVal) ? 1 : Math.max(1, fromVal);
       const to = isNaN(toVal) ? entry.numPages : Math.min(entry.numPages, toVal);
-      applySelFn(id, p => p >= from && p <= to);
+      applySelection(id, page => page >= from && page <= to);
     }
 
     function applyPageList(id) {
-      const entry = files.find(f => String(f.id) === String(id));
+      const entry = files.find(item => String(item.id) === String(id));
       if (!entry) return;
-      const text = document.getElementById('page-list-' + id).value.trim();
-      const pages = parsePageList(text, entry.numPages);
+      const value = document.getElementById('page-list-' + id).value.trim();
+      const pages = parsePageList(value, entry.numPages);
       if (!pages.size) {
         showToast('Enter a valid page list like 1,3-5.');
         return;
       }
       entry.selectedPages = pages;
-      for (let p = 1; p <= entry.numPages; p++) {
-        const thumb = document.getElementById('pthumb-' + id + '-' + p);
-        if (thumb) thumb.classList.toggle('selected', entry.selectedPages.has(p));
+      for (let i = 1; i <= entry.numPages; i++) {
+        const thumb = document.getElementById('pthumb-' + id + '-' + i);
+        if (thumb) thumb.classList.toggle('selected', entry.selectedPages.has(i));
       }
       updateSelInfo(entry);
       updateBadge(entry);
     }
 
     function parsePageList(value, maxPage) {
-      const result = new Set();
-      value.split(/[,\s]+/).map(v => v.trim()).filter(Boolean).forEach(token => {
-        const range = token.match(/^(\d+)-(\d+)$/);
-        if (range) {
-          const start = Math.max(1, Number(range[1]));
-          const end = Math.min(maxPage, Number(range[2]));
-          for (let i = Math.min(start, end); i <= Math.max(start, end); i++) result.add(i);
+      const pages = new Set();
+      value.split(/[,\s]+/).filter(Boolean).forEach(token => {
+        const rangeMatch = token.match(/^(\d+)-(\d+)$/);
+        if (rangeMatch) {
+          const start = Math.max(1, Number(rangeMatch[1]));
+          const end = Math.min(maxPage, Number(rangeMatch[2]));
+          for (let n = Math.min(start, end); n <= Math.max(start, end); n++) pages.add(n);
         } else if (/^\d+$/.test(token)) {
           const page = Number(token);
-          if (page >= 1 && page <= maxPage) result.add(page);
+          if (page >= 1 && page <= maxPage) pages.add(page);
         }
       });
-      return result;
+      return pages;
     }
 
-    function applySelFn(id, fn) {
-      const entry = files.find(f => String(f.id) === String(id));
+    function applySelection(id, predicate) {
+      const entry = files.find(item => String(item.id) === String(id));
       if (!entry) return;
       entry.selectedPages.clear();
-      for (let p = 1; p <= entry.numPages; p++) {
-        if (fn(p)) entry.selectedPages.add(p);
-        const thumb = document.getElementById('pthumb-' + id + '-' + p);
-        if (thumb) thumb.classList.toggle('selected', entry.selectedPages.has(p));
+      for (let i = 1; i <= entry.numPages; i++) {
+        if (predicate(i)) entry.selectedPages.add(i);
+        const thumb = document.getElementById('pthumb-' + id + '-' + i);
+        if (thumb) thumb.classList.toggle('selected', entry.selectedPages.has(i));
       }
       updateSelInfo(entry);
       updateBadge(entry);
@@ -436,14 +533,19 @@
 
     function updateSelInfo(entry) {
       const el = document.getElementById('selinfo-' + entry.id);
-      if (el) el.textContent = entry.selectedPages.size + ' / ' + entry.numPages + ' selected';
+      if (el) el.textContent = `${entry.selectedPages.size} / ${entry.numPages} selected`;
     }
 
     function updateBadge(entry) {
-      const el = document.getElementById('fcbadge-' + entry.id);
+      const badge = document.getElementById('fcbadge-' + entry.id);
       const meta = document.getElementById('fcmeta-' + entry.id);
-      if (el) { el.className = 'fc-badge ' + entry.status; el.textContent = badgeLabel(entry); }
-      if (meta && entry.numPages > 0) { meta.textContent = fmtSize(entry.file.size) + (entry.numPages > 1 ? ` · ${entry.selectedPages.size}/${entry.numPages} pages selected` : ''); }
+      if (badge) {
+        badge.className = `fc-badge ${entry.status}`;
+        badge.textContent = badgeLabel(entry);
+      }
+      if (meta) {
+        meta.textContent = fmtSize(entry.file.size) + (entry.numPages > 1 ? ` · ${entry.selectedPages.size}/${entry.numPages} pages selected` : '');
+      }
     }
 
     function badgeLabel(entry) {
@@ -451,208 +553,303 @@
       if (entry.status === 'converting') return 'Converting…';
       if (entry.status === 'done') return 'Done ✓';
       if (entry.status === 'error') return 'Error';
-      if (isPdf(entry.file) && entry.numPages > 0) return entry.selectedPages.size + ' pages';
+      if (entry.numPages > 1) return `${entry.selectedPages.size} pages`;
       return 'Ready';
     }
 
-    function removeEntry(e, id) {
-      e.stopPropagation();
-      files = files.filter(f => String(f.id) !== String(id));
-      if (!files.length) resetAll(); else { renderQueue(); showPanels(); }
+    function getIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (ext === 'pdf') return '📄';
+      if (ext === 'doc' || ext === 'docx') return '📝';
+      if (['png','jpg','jpeg','gif','bmp','webp','tiff','tif'].includes(ext)) return '🖼️';
+      return '📁';
     }
 
-    document.getElementById('btn-clear').addEventListener('click', resetAll);
-    document.getElementById('btn-new').addEventListener('click', resetAll);
+    function fmtSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function removeEntry(event, id) {
+      event.stopPropagation();
+      files = files.filter(entry => String(entry.id) !== String(id));
+      renderQueue();
+      showPanels();
+      if (!files.length) resetResults();
+    }
 
     function resetAll() {
-      files = []; resultBlobs = [];
-      document.getElementById('file-queue').classList.remove('visible');
-      document.getElementById('action-bar').classList.remove('visible');
-      document.getElementById('options-panel').classList.remove('visible');
-      document.getElementById('results').classList.remove('visible');
+      files = [];
+      resultBlobs = [];
       document.getElementById('results-grid').innerHTML = '';
       document.getElementById('success-banner').style.display = 'none';
-      document.getElementById('fq-items').innerHTML = '';
-      dz.style.display = '';
+      document.getElementById('results').style.display = 'none';
+      renderQueue();
+      showPanels();
       setProgress(0, '');
     }
 
-    document.getElementById('btn-convert').addEventListener('click', convertAll);
+    function resetResults() {
+      document.getElementById('results-grid').innerHTML = '';
+      document.getElementById('success-banner').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      resultBlobs = [];
+    }
 
     async function convertAll() {
-      const convertible = files.filter(e => e.selectedPages.size > 0 && e.status !== 'loading');
-      if (!convertible.length) { showToast('Select at least one page to convert.'); return; }
+      const ready = files.filter(entry => entry.status === 'ready' && entry.selectedPages.size > 0);
+      if (!ready.length) {
+        showToast('Select at least one page to convert.');
+        return;
+      }
 
       resultBlobs = [];
       document.getElementById('results-grid').innerHTML = '';
       document.getElementById('success-banner').style.display = 'none';
-      document.getElementById('results').classList.remove('visible');
+      document.getElementById('results').style.display = 'none';
+      setProgress(0, 'Starting conversion…');
+      btnConvert.disabled = true;
+      btnConvert.textContent = 'Converting…';
 
       const scale = parseFloat(document.getElementById('opt-scale').value);
       const quality = parseFloat(document.getElementById('opt-quality').value);
       const bg = document.getElementById('opt-bg').value;
-      document.getElementById('progress-wrap').style.display = '';
-      const btn = document.getElementById('btn-convert'); btn.disabled = true; btn.textContent = 'Converting…';
+      document.getElementById('progress-wrap').style.display = 'block';
 
-      const totalPages = convertible.reduce((s, e) => s + e.selectedPages.size, 0);
-      let donePages = 0;
-      for (const entry of convertible) {
-        setEntryStatus(entry, 'converting');
+      const totalPages = ready.reduce((sum, entry) => sum + entry.selectedPages.size, 0);
+      let completed = 0;
+
+      for (const entry of ready) {
+        entry.status = 'converting';
         updateBadge(entry);
         try {
-          const blobs = isPdf(entry.file)
-            ? await convertPdf(entry, { scale, quality, bg }, n => { donePages += n; setProgress((donePages / totalPages) * 100, `${donePages} / ${totalPages} pages…`); })
-            : await convertImage(entry.file, { scale, quality, bg });
-          blobs.forEach(b => resultBlobs.push(b));
+          let blobs = [];
+          if (isPdf(entry.file)) {
+            blobs = await convertPdf(entry, { scale, quality, bg }, () => {
+              completed += 1;
+              setProgress((completed / totalPages) * 100, `${completed} / ${totalPages} pages processed`);
+            });
+          } else if (isDoc(entry.file)) {
+            blobs = await convertDoc(entry, { scale, quality, bg });
+            completed += entry.selectedPages.size;
+            setProgress((completed / totalPages) * 100, `${completed} / ${totalPages} pages processed`);
+          } else {
+            const blob = await convertImage(entry.file, { scale, quality, bg });
+            blobs = [blob];
+            completed += 1;
+            setProgress((completed / totalPages) * 100, `${completed} / ${totalPages} files processed`);
+          }
+          blobs.forEach(blob => resultBlobs.push(blob));
           appendResults(blobs);
-          setEntryStatus(entry, 'done');
+          entry.status = 'done';
         } catch (err) {
-          setEntryStatus(entry, 'error');
           console.error(err);
+          entry.status = 'error';
+          showToast(`Conversion failed for ${entry.file.name}`);
         }
         updateBadge(entry);
       }
 
       setProgress(100, `${resultBlobs.length} image${resultBlobs.length !== 1 ? 's' : ''} ready`);
-      btn.disabled = false; btn.textContent = 'Convert selected pages →';
-      document.getElementById('results').classList.add('visible');
-      document.getElementById('success-banner').style.display = '';
+      btnConvert.disabled = false;
+      btnConvert.textContent = 'Convert selected pages →';
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('success-banner').style.display = 'flex';
       document.getElementById('success-msg').textContent = `✨ ${resultBlobs.length} image${resultBlobs.length !== 1 ? 's' : ''} ready to download!`;
-      document.getElementById('results-title').textContent = `Converted images (${resultBlobs.length})`;
-      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    async function convertPdf(entry, { scale, quality, bg }, onPage) {
-      const pdf = entry.pdfDoc;
-      const baseName = entry.file.name.replace(/\.pdf$/i, '');
-      const pages = [...entry.selectedPages].sort((a, b) => a - b);
+    async function convertPdf(entry, options, progressCallback) {
       const blobs = [];
-      for (const pageNum of pages) {
-        const page = await pdf.getPage(pageNum);
-        const vp = page.getViewport({ scale });
+      for (const pageNum of entry.selectedPages) {
+        const page = await entry.pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: options.scale });
         const canvas = document.createElement('canvas');
-        canvas.width = vp.width; canvas.height = vp.height;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
-        if (bg === 'white') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-        await page.render({ canvasContext: ctx, viewport: vp }).promise;
-        const blob = await canvasToBlob(canvas, quality);
-        blobs.push({ blob, name: `${baseName}_p${pageNum}.${outputFmt}` });
-        onPage(1);
+        if (options.bg === 'white') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const blob = await canvasToBlob(canvas, options.quality, options.bg);
+        const name = `${getBaseName(entry.file.name)}-page-${pageNum}.${outputExtension()}`;
+        blobs.push({ blob, fileName: name });
+        if (progressCallback) progressCallback();
       }
       return blobs;
     }
 
-    async function convertImage(file, { scale, quality, bg }) {
+    async function convertImage(file, options) {
+      const img = await loadImageFromFile(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth * options.scale;
+      canvas.height = img.naturalHeight * options.scale;
+      const ctx = canvas.getContext('2d');
+      if (options.bg === 'white') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await canvasToBlob(canvas, options.quality, options.bg);
+      return { blob, fileName: `${getBaseName(file.name)}.${outputExtension()}` };
+    }
+
+    async function convertDoc(entry, options) {
+      const pages = [];
+      const container = document.createElement('div');
+      container.innerHTML = entry.docContent || '';
+      applyDocumentStyles(container);
+      container.style.width = '816px';
+      container.style.background = '#ffffff';
+      container.style.position = 'absolute';
+      container.style.left = '-99999px';
+      container.style.top = '0';
+      container.style.padding = '20px';
+      document.body.appendChild(container);
+
+      const fullHeight = container.scrollHeight;
+      const pageHeight = 920;
+      const pageCount = Math.max(1, Math.ceil(fullHeight / pageHeight));
+      const fullCanvas = await html2canvas(container, {
+        backgroundColor: options.bg === 'transparent' ? null : '#ffffff',
+        scale: options.scale,
+        useCORS: true
+      });
+      document.body.removeChild(container);
+
+      for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+        const canvas = document.createElement('canvas');
+        canvas.width = fullCanvas.width;
+        canvas.height = Math.min(pageHeight * options.scale, fullCanvas.height - pageIndex * pageHeight * options.scale);
+        const ctx = canvas.getContext('2d');
+        const sourceY = pageIndex * pageHeight * options.scale;
+        ctx.drawImage(fullCanvas, 0, sourceY, fullCanvas.width, canvas.height, 0, 0, fullCanvas.width, canvas.height);
+        const blob = await canvasToBlob(canvas, options.quality, options.bg);
+        pages.push({ blob, fileName: `${getBaseName(entry.file.name)}-page-${pageIndex+1}.${outputExtension()}` });
+      }
+      return pages;
+    }
+
+    async function canvasToBlob(canvas, quality, bg) {
+      return new Promise(resolve => {
+        const outputType = outputExtension() === 'jpeg' ? 'image/jpeg' : 'image/png';
+        canvas.toBlob(blob => resolve(blob), outputType, outputType === 'image/jpeg' ? quality : undefined);
+      });
+    }
+
+    function outputExtension() {
+      const bg = document.getElementById('opt-bg').value;
+      if (bg === 'transparent') return 'png';
+      return 'png';
+    }
+
+    function loadImageFromFile(file) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
         const url = URL.createObjectURL(file);
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.round(img.naturalWidth * scale);
-          canvas.height = Math.round(img.naturalHeight * scale);
-          const ctx = canvas.getContext('2d');
-          if (bg === 'white') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(url);
-          const blob = await canvasToBlob(canvas, quality);
-          resolve([{ blob, name: file.name.replace(/\.[^.]+$/, '') + '.' + outputFmt }]);
-        };
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
         img.onerror = reject;
         img.src = url;
       });
     }
 
-    function canvasToBlob(canvas, quality) {
-      const mime = outputFmt === 'png' ? 'image/png' : outputFmt === 'webp' ? 'image/webp' : 'image/jpeg';
-      return new Promise(res => canvas.toBlob(b => res(b), mime, quality));
-    }
-
-    async function downloadPageOnly(event, id, pageNum) {
-      event.stopPropagation();
-      const entry = files.find(f => String(f.id) === String(id));
-      if (!entry) return;
-      const scale = parseFloat(document.getElementById('opt-scale').value);
-      const quality = parseFloat(document.getElementById('opt-quality').value);
-      const bg = document.getElementById('opt-bg').value;
-      if (isPdf(entry.file)) {
-        const blob = await renderPdfPageBlob(entry, pageNum, { scale, quality, bg });
-        const name = `${entry.file.name.replace(/\.pdf$/i, '')}_p${pageNum}.${outputFmt}`;
-        downloadBlob(blob, name);
-      } else {
-        const [result] = await convertImage(entry.file, { scale, quality, bg });
-        downloadBlob(result.blob, result.name);
-      }
-    }
-
-    async function renderPdfPageBlob(entry, pageNum, { scale, quality, bg }) {
-      const page = await entry.pdfDoc.getPage(pageNum);
-      const vp = page.getViewport({ scale });
-      const canvas = document.createElement('canvas');
-      canvas.width = vp.width;
-      canvas.height = vp.height;
-      const ctx = canvas.getContext('2d');
-      if (bg === 'white') {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      return await canvasToBlob(canvas, quality);
-    }
-
-    function downloadBlob(blob, name) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    function appendResults(blobs) {
+    function appendResults(entries) {
       const grid = document.getElementById('results-grid');
-      blobs.forEach(({ blob, name }) => {
-        const url = URL.createObjectURL(blob);
+      entries.forEach(item => {
+        const url = URL.createObjectURL(item.blob);
         const card = document.createElement('div');
         card.className = 'result-card';
         card.innerHTML = `
-          <div class="result-img-wrap"><img src="${url}" loading="lazy" alt="${name}" /></div>
-          <div class="result-footer"><span title="${name}">${name}</span><a class="dl-btn" href="${url}" download="${name}">⬇</a></div>`;
+          <div class="result-img-wrap"><img src="${url}" alt="Converted image"></div>
+          <div class="result-footer">
+            <span>${item.fileName}</span>
+            <a class="dl-btn" href="${url}" download="${item.fileName}">Download</a>
+          </div>
+        `;
         grid.appendChild(card);
       });
     }
 
-    document.getElementById('btn-dl-all').addEventListener('click', async () => {
-      if (!resultBlobs.length) return;
-      const btn = document.getElementById('btn-dl-all'); btn.textContent = 'Zipping…'; btn.disabled = true;
+    async function downloadPageOnly(event, id, pageNum) {
+      event.stopPropagation();
+      const entry = files.find(item => String(item.id) === String(id));
+      if (!entry) return;
       try {
-        const { default: JSZip } = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
-        const zip = new JSZip();
-        const folder = zip.folder('converted-images');
-        for (const { blob, name } of resultBlobs) folder.file(name, blob);
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(zipBlob); a.download = 'converted-images.zip'; a.click();
-      } catch (e) { showToast('ZIP failed. Download individually.'); console.error(e); }
-      btn.textContent = '⬇ Download all as ZIP'; btn.disabled = false;
+        let result;
+        if (isPdf(entry.file)) {
+          const page = await entry.pdfDoc.getPage(pageNum);
+          const scale = parseFloat(document.getElementById('opt-scale').value);
+          const quality = parseFloat(document.getElementById('opt-quality').value);
+          const bg = document.getElementById('opt-bg').value;
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (bg === 'white') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const blob = await canvasToBlob(canvas, quality, bg);
+          result = { blob, fileName: `${getBaseName(entry.file.name)}-page-${pageNum}.${outputExtension()}` };
+        } else if (isDoc(entry.file)) {
+          const blobs = await convertDoc(entry, { scale: parseFloat(document.getElementById('opt-scale').value), quality: parseFloat(document.getElementById('opt-quality').value), bg: document.getElementById('opt-bg').value });
+          result = blobs[pageNum - 1] || blobs[0];
+        } else {
+          result = await convertImage(entry.file, { scale: parseFloat(document.getElementById('opt-scale').value), quality: parseFloat(document.getElementById('opt-quality').value), bg: document.getElementById('opt-bg').value });
+        }
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(result.blob);
+        link.download = result.fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to download file.');
+      }
+    }
+
+    async function downloadAllZip() {
+      if (!resultBlobs.length) return;
+      const zip = new JSZip();
+      resultBlobs.forEach(item => {
+        zip.file(item.fileName, item.blob);
+      });
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = 'docugraph-converted-images.zip';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function setEntryStatus(entry, status) {
+      entry.status = status;
+    }
+
+    function setProgress(value, message) {
+      const bar = document.getElementById('progress-bar');
+      const label = document.getElementById('progress-label');
+      bar.style.width = `${value}%`;
+      label.textContent = message;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2600);
+    }
+
+    function getBaseName(filename) {
+      return filename.replace(/\.[^/.]+$/, '');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      showPanels();
     });
-
-    function getIcon(name) {
-      const ext = name.split('.').pop().toLowerCase();
-      if (ext === 'pdf') return '📕';
-      if (['png','jpg','jpeg','webp','gif','bmp','tiff'].includes(ext)) return '🖼';
-      return '📄';
-    }
-
-    function fmtSize(bytes) {
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / 1048576).toFixed(2) + ' MB';
-    }
-
-    function setEntryStatus(entry, status) { entry.status = status; }
-    function setProgress(pct, label) { document.getElementById('progress-bar').style.width = pct + '%'; document.getElementById('progress-label').textContent = label; }
-    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
   </script>
 </body>
 </html>
